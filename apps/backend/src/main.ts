@@ -9,6 +9,6 @@ async function bootstrap() {
     credentials: true,
   });
   app.use('/trpc', trpcMiddleware);
-  await app.listen(3000);
+  await app.listen(5000);
 }
 bootstrap();
