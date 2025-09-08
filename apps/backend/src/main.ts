@@ -25,9 +25,9 @@ async function bootstrap() {
   app.use(clerkMiddleware());
   app.use('/trpc', trpcMiddleware);
   
-  await app.listen(5000);
+  await app.listen(3000);
   
-  console.log('🎉 Server is running on http://localhost:5000');
+  console.log('🎉 Server is running on http://localhost:000');
 }
 bootstrap().catch(err => {
   console.error('❌ Failed to start server:', err);
