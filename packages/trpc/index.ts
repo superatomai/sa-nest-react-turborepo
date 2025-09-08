@@ -80,12 +80,18 @@ export const appRouter = t.router({
 
 	// Project CRUD Operations
 	projectsGetAll: t.procedure
-		.input(z.object({ orgId: z.string() }))
-		.query(async ({ input, ctx }) => {
-			const projectsService = ctx.nestApp.get(ProjectsService);
-			const userForService = ctx.user ? { id: ctx.user.id } as any : undefined;
-			return projectsService.getAllProjects(input.orgId, userForService);
-		}),
+  .input(
+    z.object({
+      orgId: z.string(),
+      limit: z.number().optional(),
+      skip: z.number().optional(),
+    })
+  )
+  .query(async ({ input, ctx }) => {
+    const projectsService = ctx.nestApp.get(ProjectsService);
+    const userForService = ctx.user ? { id: ctx.user.id } as any : undefined;
+    return projectsService.getAllProjects(input.orgId, userForService, input.limit, input.skip);
+  }),
 
 	projectsGetById: t.procedure
 		.input(z.object({

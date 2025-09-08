@@ -9,66 +9,56 @@ export class VersionsService {
   constructor(private readonly drizzleService: DrizzleService) {}
 
   async createVersion(
-    data: {
-      uiId: string;
-      dsl: any;
-      prompt: string;
-    },
-    user?: User
-  ) {
-    if (!data.uiId?.trim()) {
-      throw new BadRequestException('UI ID is required');
-    }
-
-    if (!data.prompt?.trim()) {
-      throw new BadRequestException('Prompt is required');
-    }
-
-    if (!data.dsl) {
-      throw new BadRequestException('DSL is required');
-    }
-
-    // Verify UI exists
-    const ui = await this.drizzleService.db
-      .select()
-      .from(uis)
-      .where(and(eq(uis.uiId, data.uiId), eq(uis.deleted, false)))
-      .limit(1);
-
-    if (!ui.length) {
-      throw new NotFoundException(`UI with ID ${data.uiId} not found`);
-    }
-
-    // Find the latest version for this ui_id
-    const latestVersion = await this.drizzleService.db
-      .select()
-      .from(versions)
-      .where(eq(versions.uiId, data.uiId))
-      .orderBy(desc(versions.versionId))
-      .limit(1);
-
-    // Increment or set to 1 if no version exists
-    const nextVersionId = (latestVersion[0]?.versionId ?? 0) + 1;
-
-    // Create the new version
-    const newVersion = await this.drizzleService.db
-      .insert(versions)
-      .values({
-        uiId: data.uiId,
-        dsl: typeof data.dsl === "object" ? JSON.stringify(data.dsl) : data.dsl,
-        prompt: data.prompt.trim(),
-        versionId: nextVersionId,
-        createdBy: user?.id || null,
-        updatedBy: user?.id || null,
-      })
-      .returning();
-
-    return {
-      message: `Version ${nextVersionId} created successfully for UI ${data.uiId}`,
-      version: newVersion[0],
-      userId: user?.id || 'anonymous',
-    };
+  data: {
+    uiId: string;
+    dsl: any;
+    prompt: string;
+  },
+  user?: User
+) {
+  if (!data.uiId?.trim()) {
+    throw new BadRequestException('UI ID is required');
   }
+
+  if (!data.prompt?.trim()) {
+    throw new BadRequestException('Prompt is required');
+  }
+
+  if (!data.dsl) {
+    throw new BadRequestException('DSL is required');
+  }
+
+  // Find the latest version for this uiId
+  const latestVersion = await this.drizzleService.db
+    .select()
+    .from(versions)
+    .where(eq(versions.uiId, data.uiId))
+    .orderBy(desc(versions.versionId))
+    .limit(1);
+
+  // Increment or set to 1 if no version exists
+  const nextVersionId = (latestVersion[0]?.versionId ?? 0) + 1;
+
+  // Create the new version
+  const newVersion = await this.drizzleService.db
+    .insert(versions)
+    .values({
+      uiId: data.uiId,
+      dsl: typeof data.dsl === "object" ? JSON.stringify(data.dsl) : data.dsl,
+      prompt: data.prompt.trim(),
+      versionId: nextVersionId,
+      createdBy: user?.id || null,
+      updatedBy: user?.id || null,
+    })
+    .returning();
+
+  return {
+    message: `Version ${nextVersionId} created successfully for UI ${data.uiId}`,
+    version: newVersion[0],
+    userId: user?.id || 'anonymous',
+  };
+}
+
 
   async getAllVersions(
     filters: {

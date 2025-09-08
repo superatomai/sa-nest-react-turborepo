@@ -1,6 +1,12 @@
 // src/components/Navbar.tsx
-import { SignedIn, SignedOut, UserButton, SignOutButton } from "@clerk/clerk-react";
+import { 
+  SignedIn, 
+  UserButton, 
+  SignOutButton, 
+  OrganizationSwitcher
+} from "@clerk/clerk-react";
 import { Link } from "react-router-dom";
+
 
 export function Navbar() {
   return (
@@ -8,11 +14,15 @@ export function Navbar() {
       <nav className="flex items-center gap-4 p-4">
         <Link to="/">Home</Link>
         <Link to="/editor">Editor</Link>
-
-        <div className="ml-auto flex items-center gap-2">
+        <Link to="/projects">Projects</Link>
+        
+        <div className="ml-auto flex items-center gap-4">
+          <OrganizationSwitcher />
           <UserButton />
           <SignOutButton redirectUrl="/login">
-            <button>Sign out</button>
+            <button className="px-4 py-2 bg-blue-500 text-white rounded cursor-pointer">
+              Sign out
+            </button>
           </SignOutButton>
         </div>
       </nav>
