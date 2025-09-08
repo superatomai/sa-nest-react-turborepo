@@ -1,12 +1,11 @@
-// src/pages/Login.tsx
+import React from "react";
 import { SignIn } from "@clerk/clerk-react";
-import { LoginFlow } from "../components/LoginFlow";
 
 const Login = () => {
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen gap-4">
+    <div className="flex items-center justify-center min-h-screen">
+      {/* Clerk's SignIn component */}
       <SignIn routing="path" path="/login" />
-      <LoginFlow />
     </div>
   );
 };

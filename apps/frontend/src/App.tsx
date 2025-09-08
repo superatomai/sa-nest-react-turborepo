@@ -1,15 +1,9 @@
-<<<<<<< HEAD
 import { Routes, Route } from "react-router-dom";
 import Home from "./pages/Home";
 import Editor from "./pages/Editor";
 import Login from "./pages/Login";
-import { Navbar } from "./components/Navbar";
-=======
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import Home from './pages/Home';
-import Editor from './pages/Editor';
 import Projects from './pages/Projects';
->>>>>>> a61aae9d2b279ab535ba08138c8d24b3168b29a5
+import { Navbar } from "./components/Navbar";
 
 export function App() {
   return (
