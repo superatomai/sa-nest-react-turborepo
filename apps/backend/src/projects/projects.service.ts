@@ -1,32 +1,80 @@
 // apps/backend/src/projects/projects.service.ts
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { DrizzleService } from '../../drizzle/drizzle.service';
-import { projects } from '../../drizzle/schema';
-import { eq, and } from 'drizzle-orm';
+import { projects, uis } from '../../drizzle/schema';
+import { eq, and, sql, inArray } from 'drizzle-orm';
 import { User } from '@superatom-turbo/trpc';
 
 @Injectable()
 export class ProjectsService {
   constructor(private readonly drizzleService: DrizzleService) {}
 
-  async getAllProjects(orgId: string, user?: User) {
-    if (!orgId) {
-      throw new BadRequestException('Organization ID is required');
-    }
-
-    const projectsList = await this.drizzleService.db
-      .select()
-      .from(projects)
-      .where(and(eq(projects.orgId, orgId), eq(projects.deleted, false)));
-
-    return {
-      message: `Projects for organization ${orgId}`,
-      organizationId: orgId,
-      userId: user?.id || 'anonymous',
-      projects: projectsList,
-      totalCount: projectsList.length,
-    };
+  async getAllProjects(orgId: string, user?: User, limit?: number, skip?: number) {
+  if (!orgId) {
+    throw new BadRequestException("Organization ID is required");
   }
+
+  // --- Base filter (all non-deleted projects for the org)
+  const baseQuery = this.drizzleService.db
+    .select()
+    .from(projects)
+    .where(and(eq(projects.orgId, orgId), eq(projects.deleted, false)))
+    .orderBy(projects.updatedAt, 'desc');
+
+  // Total project count (before pagination)
+  const totalCount = (await baseQuery).length;
+
+  // Pagination
+  let projectsList = baseQuery;
+  if (typeof skip === "number") {
+    projectsList = projectsList.offset?.(skip) || projectsList;
+  }
+  if (typeof limit === "number") {
+    projectsList = projectsList.limit(limit);
+  }
+
+  // Fetch projects
+  const results = await projectsList;
+
+  // --- Fetch uis_count for each project (only non-deleted uis)
+  const projectIds = results.map((p: { id: any; }) => p.id);
+  let uisCounts: Record<string, number> = {};
+
+  if (projectIds.length > 0) {
+    const uisCountRows = await this.drizzleService.db
+      .select({
+        projectId: uis.projectId,
+        count: sql<number>`COUNT(*)`.as("count"),
+      })
+      .from(uis)
+      .where(
+        and(inArray(uis.projectId, projectIds), eq(uis.deleted, false))
+      )
+      .groupBy(uis.projectId);
+
+    // Convert rows into a lookup map
+    uisCounts = uisCountRows.reduce(
+      (acc: any, row: { projectId: any; count: any; }) => ({ ...acc, [row.projectId]: row.count }),
+      {}
+    );
+  }
+
+  // --- Merge uis_count into projects
+  const projectsWithCounts = results.map((project: { id: string | number; }) => ({
+    ...project,
+    uis_count: uisCounts[project.id] ?? 0,
+  }));
+
+  return {
+    message: `Projects for organization ${orgId}`,
+    organizationId: orgId,
+    userId: user?.id || "anonymous",
+    totalCount,
+    projects: projectsWithCounts,
+  };
+}
+
+
 
   async getProjectById(id: number, orgId: string, user?: User) {
     if (!orgId) {

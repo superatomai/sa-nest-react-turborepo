@@ -17,19 +17,18 @@ const queryClient = new QueryClient();
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <BrowserRouter>
-      <ClerkProvider
-        publishableKey={PUBLISHABLE_KEY}
-        signInUrl="/login"       
-        signUpUrl="/login"    
-       >
-
+    <ClerkProvider 
+      publishableKey={PUBLISHABLE_KEY}
+      signInFallbackRedirectUrl="/"
+      signUpFallbackRedirectUrl="/"
+    >
+      <QueryClientProvider client={queryClient}>
         <trpc.Provider client={trpcClient} queryClient={queryClient}>
-          <QueryClientProvider client={queryClient}>
+          <BrowserRouter>
             <App />
-          </QueryClientProvider>
+          </BrowserRouter>
         </trpc.Provider>
-      </ClerkProvider>
-    </BrowserRouter>
+      </QueryClientProvider>
+    </ClerkProvider>
   </React.StrictMode>
 );
