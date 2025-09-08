@@ -20,20 +20,124 @@ const StudioTestPage = () => {
 	const [currentSchema, setCurrentSchema] = useState<T_UI_Component>()
 	const [data, setData] = useState<any>(null)
 
+	// Prompt history state
+	const [promptHistory, setPromptHistory] = useState<string[]>([])
+	const [historyIndex, setHistoryIndex] = useState(-1)
+
 	const projectId = '49'; // Using string as expected by API
 	const uiId = 'ui_33O2Hf'
 
+	// Local storage key for prompt history
+	const PROMPT_HISTORY_KEY = 'prompt_history'
+
+	// Load prompt history from localStorage on component mount
+	useEffect(() => {
+		const savedHistory = localStorage.getItem(PROMPT_HISTORY_KEY)
+		if (savedHistory) {
+			try {
+				const parsedHistory = JSON.parse(savedHistory)
+				if (Array.isArray(parsedHistory)) {
+					setPromptHistory(parsedHistory)
+				}
+			} catch (error) {
+				console.error('Failed to parse prompt history from localStorage:', error)
+			}
+		}
+	}, [])
+
+	// Save prompt to history and localStorage
+	const savePromptToHistory = (prompt: string) => {
+		if (!prompt.trim()) return
+
+		setPromptHistory(prev => {
+			// Remove duplicate if it exists and add to beginning
+			const filtered = prev.filter(p => p !== prompt.trim())
+			const newHistory = [prompt.trim(), ...filtered].slice(0, 50) // Keep only last 50 prompts
+			
+			// Save to localStorage
+			localStorage.setItem(PROMPT_HISTORY_KEY, JSON.stringify(newHistory))
+			
+			return newHistory
+		})
+		
+		// Reset history index
+		setHistoryIndex(-1)
+	}
+
+	// Navigate through prompt history
+	const navigateHistory = (direction: 'up' | 'down') => {
+		if (promptHistory.length === 0) return
+
+		let newIndex: number
+		
+		if (direction === 'up') {
+			newIndex = historyIndex + 1
+			if (newIndex >= promptHistory.length) {
+				newIndex = promptHistory.length - 1
+			}
+		} else {
+			newIndex = historyIndex - 1
+			if (newIndex < -1) {
+				newIndex = -1
+			}
+		}
+
+		setHistoryIndex(newIndex)
+		
+		if (newIndex === -1) {
+			setInput('')
+		} else {
+			setInput(promptHistory[newIndex])
+		}
+	}
+
+
+	// tRPC queries
+	const getUiQuery = trpc.uisGetAll.useQuery(
+		{ uiId: uiId, projectId: parseInt(projectId) },
+		{ enabled: false } // Only run manually
+	);
+
+	// Add version query to fetch DSL if needed
+	const getVersionQuery = trpc.versionsGetAll.useQuery(
+		{}, // We'll pass specific version ID when needed
+		{ enabled: false } // Only run manually
+	);
 
 	// tRPC mutations
 	const createVersionMutation = trpc.versionsCreate.useMutation({
-		onSuccess: (response) => {
+		onSuccess: async (response) => {
 			console.log('Version created successfully:', response);
 
-			// Update UI with new version
-			updateUiMutation.mutate({
-				id: response.version.id,
-				uiVersion: response.version.versionId,
-			});
+			// First get the UI by uiId and projectId
+			const uiResult = await getUiQuery.refetch();
+			
+			if (uiResult.data && uiResult.data.uis) {
+				// The response structure has uis directly
+				const uis = uiResult.data.uis;
+				const uiData = Array.isArray(uis) ? uis.find(ui => ui.uiId === uiId) : null;
+				console.log('Retrieved UI data:', uiData);
+
+				if (uiData && uiData.id) {
+					// Update UI with new version
+					updateUiMutation.mutate({
+						id: uiData.id, // Use the actual UI record ID
+						uiVersion: response.version.id, // Set uiVersion to the new version ID
+					});
+				} else {
+					console.error('UI not found with uiId:', uiId);
+					setMessages(prev => [...prev, {
+						role: 'assistant',
+						content: 'Failed to find UI record. Please try again.'
+					}])
+				}
+			} else {
+				console.error('Failed to retrieve UI data');
+				setMessages(prev => [...prev, {
+					role: 'assistant',
+					content: 'Failed to update UI version. Please try again.'
+				}])
+			}
 
 			setMessages(prev => [...prev, {
 				role: 'assistant',
@@ -53,6 +157,7 @@ const StudioTestPage = () => {
 		onSuccess: (response) => {
 			console.log('UI updated successfully:', response);
 
+			setInput('');
 
 			setMessages(prev => [...prev, {
 				role: 'assistant',
@@ -91,6 +196,8 @@ const StudioTestPage = () => {
 					console.log('No query ID, using ui_data directly:', ui_data);
 					setData(ui_data);
 				}
+
+				//save the data to the database
 
 				console.log("creating  a new version");
 				const new_version ={
@@ -143,6 +250,80 @@ const StudioTestPage = () => {
 		}
 	}, [healthQuery.data, healthQuery.error])
 
+	// Load existing UI DSL on component mount
+	useEffect(() => {
+		const loadExistingUI = async () => {
+			try {
+				console.log('Loading existing UI for projectId:', projectId, 'uiId:', uiId);
+				
+				// Fetch UI data using the existing query
+				const result = await getUiQuery.refetch();
+				
+				if (result.data && result.data.uis) {
+					const uis = result.data.uis;
+					const uiData = Array.isArray(uis) ? uis.find(ui => ui.uiId === uiId) : null;
+					
+					if (uiData && uiData.uiVersion) {
+						console.log('Found UI data:', uiData);
+						
+						let dslToUse = null;
+						
+						// First check if DSL is directly available on the UI
+						if (uiData.dsl) {
+							dslToUse = uiData.dsl;
+						} else if (uiData.uiVersion) {
+							// Fetch version data to get the DSL
+							try {
+								const versionResult = await getVersionQuery.refetch();
+								if (versionResult.data && versionResult.data.versions) {
+									const versions = versionResult.data.versions;
+									const versionData = Array.isArray(versions) ? 
+										versions.find(v => v.id === uiData.uiVersion) : null;
+									
+									if (versionData && versionData.dsl) {
+										dslToUse = versionData.dsl;
+									}
+								}
+							} catch (versionError) {
+								console.error('Failed to fetch version data:', versionError);
+							}
+						}
+						
+						// Parse and set the DSL if we found it
+						if (dslToUse) {
+							try {
+								const parsedDSL = JSON.parse(dslToUse);
+								
+								if (parsedDSL.ui) {
+									console.log('Setting current schema from DSL:', parsedDSL.ui);
+									setCurrentSchema(parsedDSL.ui as T_UI_Component);
+								}
+								
+								if (parsedDSL.data) {
+									console.log('Setting data from DSL:', parsedDSL.data);
+									const ui_schema = parsedDSL.ui as T_UI_Component;
+									if (ui_schema.query?.id && parsedDSL.data[ui_schema.query.id]) {
+										setData(parsedDSL.data[ui_schema.query.id]);
+									} else {
+										setData(parsedDSL.data);
+									}
+								}
+								
+							} catch (parseError) {
+								console.error('Failed to parse DSL:', parseError);
+							}
+						} else {
+							console.log('No DSL found for this UI');
+						}
+					}
+				}
+			} catch (error) {
+				console.error('Failed to load existing UI:', error);
+			}
+		};
+		loadExistingUI();
+	}, [projectId, uiId]); // Run when projectId or uiId changes
+
 	// Define handlers that can be used in generated UI
 	const handlers = {
 		handleClick: () => alert('Button clicked!'),
@@ -155,8 +336,12 @@ const StudioTestPage = () => {
 		if (!input.trim()) return
 
 		const currentInput = input
+		
+		// Save prompt to history
+		savePromptToHistory(currentInput)
+		
 		setMessages([...messages, { role: 'user', content: input }])
-		setInput('')
+		// setInput('')
 
 		
 		// Use tRPC mutation to generate UI
@@ -285,11 +470,23 @@ const StudioTestPage = () => {
 					<div className="space-y-3">
 						<textarea
 							value={input}
-							onChange={(e) => setInput(e.target.value)}
+							onChange={(e) => {
+								setInput(e.target.value)
+								// Reset history index when user types
+								if (historyIndex !== -1) {
+									setHistoryIndex(-1)
+								}
+							}}
 							onKeyDown={(e) => {
 								if (e.key === 'Enter' && !e.shiftKey) {
 									e.preventDefault()
 									handleSend()
+								} else if (e.key === 'ArrowUp') {
+									e.preventDefault()
+									navigateHistory('up')
+								} else if (e.key === 'ArrowDown') {
+									e.preventDefault()
+									navigateHistory('down')
 								}
 							}}
 							className="w-full p-4 border border-slate-200 rounded-xl resize-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 bg-white/70 backdrop-blur-sm placeholder-slate-400"
@@ -298,7 +495,9 @@ const StudioTestPage = () => {
 							disabled={generateUIMutation.isPending}
 						/>
 						<div className="flex justify-between items-center">
-							<p className="text-xs text-slate-500">Press Enter to send, Shift+Enter for new line</p>
+							<p className="text-xs text-slate-500">
+								Enter to send • Shift+Enter for new line • ↑/↓ for history
+							</p>
 							<button
 								onClick={handleSend}
 								disabled={generateUIMutation.isPending || !input.trim()}

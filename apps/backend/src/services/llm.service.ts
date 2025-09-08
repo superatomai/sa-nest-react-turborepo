@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import OpenAI from 'openai';
 import { T_UI_Component, Z_UI_Component } from '../types/ui-schema';
 import { ProjectSchemaCacheService } from './project-schema-cache.service';
-import { OPENAI_API_KEY } from '../env';
+import { OPENROUTER_API_KEY } from '../env';
 
 // Types for better type safety
 interface GraphQLQueryResult {
@@ -17,11 +17,14 @@ export class LlmService {
   constructor(
     private readonly projectSchemaCache: ProjectSchemaCacheService,
   ) {
-    if (OPENAI_API_KEY) {
-      this.openai = new OpenAI({ apiKey: OPENAI_API_KEY });
-      console.log('✅ OpenAI client initialized');
+    if (OPENROUTER_API_KEY) {
+      this.openai = new OpenAI({ 
+        apiKey: OPENROUTER_API_KEY,
+        baseURL: 'https://openrouter.ai/api/v1'
+      });
+      console.log('✅ OpenRouter client initialized');
     } else {
-      console.warn('⚠️ OPENAI_API_KEY not found, OpenAI client not initialized');
+      console.warn('⚠️ OPENROUTER_API_KEY not found, OpenRouter client not initialized');
     }
   }
     async generateGraphQLFromPromptForProject(
@@ -30,7 +33,7 @@ export class LlmService {
     ): Promise<GraphQLQueryResult> {
         try {
             if (!this.openai) {
-                throw new Error('OpenAI API key not configured. Please set OPENAI_API_KEY environment variable.');
+                throw new Error('OpenRouter API key not configured. Please set OPENROUTER_API_KEY environment variable.');
             }
 
             console.log(`Generating GraphQL query for project ${projectId}, "${prompt}"`);
@@ -46,7 +49,7 @@ export class LlmService {
 
             // Generate GraphQL query using schema
             const completion = await this.openai.chat.completions.create({
-                model: "gpt-5",
+                model: "openai/gpt-4o",
                 messages: [
                     {
                         role: "system",
@@ -99,7 +102,7 @@ when no query is required set the query value to empty string ("").
             });
 
             const result = completion.choices[0].message.content?.trim();
-            if (!result) throw new Error('No response from OpenAI');
+            if (!result) throw new Error('No response from OpenRouter');
 
             // Clean up any potential markdown formatting
             const cleanResult = result.replace(/```json\n?/g, '').replace(/```\n?/g, '');
@@ -288,7 +291,7 @@ when no query is required set the query value to empty string ("").
             }
 
             const completion = await this.openai.chat.completions.create({
-                model: "gpt-5",
+                model: "openai/gpt-4o",
                 messages: [
                     {
                         role: "system",
