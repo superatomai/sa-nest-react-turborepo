@@ -30,6 +30,7 @@ export class ProjectSchemaCacheService {
             //getting in this format { data: { tables: { ... }, root_fields: { ... } },"projectId": "6","requestId": "r_docs_1","type": "docs" }
 
             if (!schemaData) {
+                
                 console.error(`Failed to fetch schema for project ${projectId}`);
                 return { success: false, error: 'Failed to fetch schema' };
             }

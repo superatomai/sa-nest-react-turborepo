@@ -23,7 +23,7 @@ export class TrpcService {
     return await this.uiGenerationService.healthCheck();
   }
 
-  async getStats() {
-    return this.uiGenerationService.getStats();
+  async getStatus() {
+    return this.uiGenerationService.getStatus();
   }
 }

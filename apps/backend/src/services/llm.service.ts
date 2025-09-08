@@ -4,12 +4,16 @@ import { T_UI_Component, UIComponentSchema } from '../types/ui-schema';
 import { ProjectSchemaCacheService } from './project-schema-cache.service';
 
 // Initialize OpenAI client only if API key is available
-let openai: OpenAI | null = null;
-if (process.env.OPENAI_API_KEY) {
-    openai = new OpenAI({
-        apiKey: process.env.OPENAI_API_KEY,
-    });
-}
+let openai: OpenAI ;
+console.log('open api key  is ', process.env.OPENAI_API_KEY);
+const open_ai_api_key = process.env.OPENAI_API_KEY || '';
+
+openai = new OpenAI({
+    apiKey:open_ai_api_key ,
+});
+
+// if (process.env.OPENAI_API_KEY) {
+// }
 
 // Types for better type safety
 interface GraphQLQueryResult {
@@ -28,9 +32,9 @@ export class LlmService {
         projectId: string,
     ): Promise<GraphQLQueryResult> {
         try {
-            if (!openai) {
-                throw new Error('OpenAI API key not configured. Please set OPENAI_API_KEY environment variable.');
-            }
+            // if (!openai) {
+            //     throw new Error('OpenAI API key not configured. Please set OPENAI_API_KEY environment variable.');
+            // }
 
             console.log(`Generating GraphQL query for project ${projectId}, "${prompt}"`);
 
@@ -219,6 +223,51 @@ Return ONLY valid JSON, no markdown formatting or additional text.`
         return schemaInfo;
     }
 
+   
+    private fixDoubleBindings(component: T_UI_Component): T_UI_Component {
+    const fixed = { ...component };
+    
+    const processComponent = (comp: T_UI_Component): T_UI_Component => {
+        const processed = { ...comp };
+        
+        // Move binding from props to top-level if it exists
+        if (processed.props?.binding) {
+            console.log(`🔧 Moving binding from props to top-level in ${processed.type}#${processed.id}`);
+            if (!processed.binding && typeof processed.props.binding === 'string') {
+                processed.binding = processed.props.binding;
+            }
+            delete processed.props.binding;
+        }
+        
+        // CRITICAL FIX: Remove binding from table row elements
+        // TR elements should never have array bindings - only their container (tbody) should
+        if (processed.type === 'tr' && processed.binding) {
+            console.log(`🔧 Removing array binding from TR element ${processed.id} (type: ${processed.type})`);
+            delete processed.binding;
+        }
+        
+        // Also remove from other elements that shouldn't have array bindings
+        if (['td', 'th'].includes(processed.type) && processed.binding) {
+            console.log(`🔧 Removing array binding from ${processed.type} element ${processed.id}`);
+            delete processed.binding;
+        }
+        
+        // Process children recursively
+        if (processed.children && Array.isArray(processed.children)) {
+            processed.children = processed.children.map(child => {
+                if (typeof child === 'string') return child;
+                return processComponent(child);
+            });
+        }
+        
+        return processed;
+    };
+    
+    return processComponent(fixed);
+}
+
+
+
     async generateUIFromData(
         data: any,
         originalPrompt: string,
@@ -314,6 +363,11 @@ CRITICAL DATA BINDING RULES:
 5. **No hardcoded values**: Don't put "John Doe" or "admin" - use {{name}} and {{role}}
 6. Every component needs a unique "id"
 
+*ARRAY BINDING RULES (CRITICAL):**
+1. **Binding is a top-level property**: Never put binding inside props
+2. **Single Level Binding**: Only the parent container should have the binding property
+3. **No Double Binding**: Child elements should NOT repeat the same binding
+
 WRONG (embedding actual data):
 "children": ["John Doe"] // ❌ Never do this
 "children": ["admin"] // ❌ Never do this
@@ -330,6 +384,12 @@ ANALYSIS PROCESS:
 5. Add interactive elements and transitions
 6. Ensure responsive design
 7. Include proper data bindings
+
+BINDING HIERARCHY RULES:
+- Container with array data: Add "binding": "arrayName" as TOP-LEVEL property
+- Direct children: NO binding property whatsoever
+- Template values: Use {{fieldName}} syntax in children arrays
+- Only ONE component in the tree should bind to the same array
 
 Return ONLY the JSON schema with no additional text.`
                     },
@@ -361,6 +421,9 @@ Requirements:
             let parsed: T_UI_Component;
             try {
                 parsed = JSON.parse(result);
+
+                 // 🔧 NEW: Fix double bindings before validation
+                 parsed = this.fixDoubleBindings(parsed);
 
                 // Validate and fix the structure
                 parsed = this.normalizeUIComponent(parsed);

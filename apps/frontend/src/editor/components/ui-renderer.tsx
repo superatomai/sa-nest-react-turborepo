@@ -1,5 +1,5 @@
-
 import React from 'react'
+
 interface UIRendererProps {
     schema: any
     data?: any
@@ -17,6 +17,26 @@ const resolveDataBinding = (text: string, data: any): string => {
     const bindingRegex = /\{\{([^}]+)\}\}/g
     return text.replace(bindingRegex, (match, path) => {
         try {
+            // Handle conditional expressions like {{status === 'active' ? '...' : '...'}}
+            if (path.includes('===') || path.includes('?') || path.includes(':')) {
+                try {
+                    // Simple evaluation for status-based conditional classes
+                    if (path.includes("status === 'active'")) {
+                        const isActive = data.status === 'active'
+                        const parts = path.split('?')
+                        if (parts.length === 2) {
+                            const [, rest] = parts
+                            const [trueValue, falseValue] = rest.split(':').map((s:any) => s.trim().replace(/'/g, ''))
+                            return isActive ? trueValue : falseValue
+                        }
+                    }
+                    return match // Return original if we can't parse
+                } catch {
+                    return match
+                }
+            }
+            
+            // Normal path resolution
             const value = path.split('.').reduce((cur: any, key: string) => {
                 if (cur === null || cur === undefined) return ''
                 if (!isNaN(Number(key))) {
@@ -32,13 +52,24 @@ const resolveDataBinding = (text: string, data: any): string => {
     })
 }
 
-const FLOWUIRenderer = ({ schema, data = null, handlers = {}, isStreaming = false, onRefresh }: UIRendererProps) => {
+const FLOWUIRenderer = ({
+    schema,
+    data = null,
+    handlers = {},
+    isStreaming = false,
+    onRefresh
+}: UIRendererProps) => {
+
+    // Track which bindings have been processed to prevent double processing
+    const processedBindings = new Set<string>()
+
     const renderComponent = (
         component: any,
         contextData: any = data,
         key?: number | string,
+        bindingPath: string[] = [] // Track the path of bindings processed
     ): React.ReactNode => {
-        // Handle text node
+
         if (typeof component === 'string') {
             return resolveDataBinding(component, contextData)
         }
@@ -54,7 +85,6 @@ const FLOWUIRenderer = ({ schema, data = null, handlers = {}, isStreaming = fals
 
         const normalizedType = type.toLowerCase().trim()
 
-        // ✅ Only allow safe HTML tags
         const validHtmlTags = new Set([
             'div', 'span', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
             'button', 'input', 'textarea', 'select', 'option', 'label',
@@ -80,13 +110,18 @@ const FLOWUIRenderer = ({ schema, data = null, handlers = {}, isStreaming = fals
                 currentData = dataPath.split('.').reduce((cur: any, key: string) => cur?.[key], contextData)
             }
 
-            // Process props with data binding
+            // Process props with data binding (excluding binding property)
             const processedProps: any = { ...props }
             Object.keys(processedProps).forEach(propKey => {
-                if (typeof processedProps[propKey] === 'string') {
+                if (propKey !== 'binding' && typeof processedProps[propKey] === 'string') {
                     processedProps[propKey] = resolveDataBinding(processedProps[propKey], currentData)
                 }
             })
+
+            // Remove binding from props if it exists
+            if (processedProps.binding) {
+                delete processedProps.binding
+            }
 
             // Hook up handlers
             if (processedProps.onClick && typeof processedProps.onClick === 'string') {
@@ -99,42 +134,66 @@ const FLOWUIRenderer = ({ schema, data = null, handlers = {}, isStreaming = fals
             // Add key for React reconciliation
             if (key !== undefined) processedProps.key = key
 
-            // Handle children rendering
+            // Render children
             let renderedChildren: React.ReactNode[] = []
 
-            // 🔥 NEW: Handle binding on this component
-            if (binding && currentData && currentData[binding]) {
-                const boundData = currentData[binding]
+            // Create a unique binding identifier for this path
+            const bindingId = binding ? `${bindingPath.join('.')}.${binding}` : null
+
+            // SIMPLIFIED BINDING LOGIC: Only process binding if it hasn't been processed in this path
+            const shouldProcessBinding = binding && 
+                currentData && 
+                currentData[binding] && 
+                !bindingPath.includes(binding) // Don't process if already in the binding path
+
+            if (shouldProcessBinding) {
+                console.log(`🔍 Processing binding "${binding}" for ${type}#${id} (path: ${bindingPath.join('.')})`)
+                
+                let boundData = currentData[binding]
 
                 if (Array.isArray(boundData)) {
-                    // For each item in the bound array, render all children with that item as context
+                    // Process each array item
                     boundData.forEach((item, index) => {
                         children.forEach((child: any, childIndex: number) => {
                             const childKey = `${binding}-${index}-${childIndex}`
-                            const renderedChild = renderComponent(child, item, childKey)
-                            if (renderedChild) {
-                                renderedChildren.push(renderedChild)
-                            }
+                            
+                            const renderedChild = renderComponent(
+                                child,
+                                item, // Pass individual item as context
+                                childKey,
+                                [...bindingPath, binding] // Add current binding to path
+                            )
+                            if (renderedChild) renderedChildren.push(renderedChild)
                         })
                     })
-                } else {
-                    // Single object binding
+                } else if (boundData && typeof boundData === 'object') {
+                    // Handle object binding
                     children.forEach((child: any, childIndex: number) => {
                         const childKey = `${binding}-${childIndex}`
-                        const renderedChild = renderComponent(child, boundData, childKey)
-                        if (renderedChild) {
-                            renderedChildren.push(renderedChild)
-                        }
+                        const renderedChild = renderComponent(
+                            child, 
+                            boundData, 
+                            childKey,
+                            [...bindingPath, binding]
+                        )
+                        if (renderedChild) renderedChildren.push(renderedChild)
                     })
                 }
             } else {
-                // Regular children rendering (no binding)
-                children.forEach((child: any, index: number) => {
-                    const childKey = `child-${index}`
-                    const renderedChild = renderComponent(child, currentData, childKey)
-                    if (renderedChild) {
-                        renderedChildren.push(renderedChild)
-                    }
+                // No binding or already processed - render children normally
+                if (binding && bindingPath.includes(binding)) {
+                    console.log(`🚨 Skipping duplicate binding "${binding}" on ${type}#${id} (already in path: ${bindingPath.join('.')})`)
+                }
+                
+                children.forEach((child: any, index: any) => {
+                    const childKey = `child-${id}-${index}`
+                    const renderedChild = renderComponent(
+                        child, 
+                        currentData, 
+                        childKey,
+                        bindingPath // Pass through the same binding path
+                    )
+                    if (renderedChild) renderedChildren.push(renderedChild)
                 })
             }
 
@@ -180,7 +239,6 @@ const FLOWUIRenderer = ({ schema, data = null, handlers = {}, isStreaming = fals
     try {
         return (
             <div className="generated-ui relative">
-                {/* Refresh button for queries */}
                 {schema.query && onRefresh && (
                     <button
                         onClick={onRefresh}
@@ -190,7 +248,6 @@ const FLOWUIRenderer = ({ schema, data = null, handlers = {}, isStreaming = fals
                         🔄 Refresh
                     </button>
                 )}
-
                 {renderComponent(schema, data, 'root')}
             </div>
         )

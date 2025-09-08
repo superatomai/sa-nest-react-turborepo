@@ -1,5 +1,6 @@
 import { Injectable, OnModuleDestroy } from '@nestjs/common';
 import { DocsMessage, GetDocsMessage, GraphQLQueryMessage, PendingRequest, QueryResponseMessage, WebSocketMessage } from 'src/types/websocket';
+import WebSocket from 'ws';
 
 
 class WebSocketRuntimeClient {
@@ -24,36 +25,54 @@ class WebSocketRuntimeClient {
         const wsUrl = `${this.websocketUrl}/websocket?type=runtime&projectId=${this.projectId}`;
 
         console.log(`Connecting to WebSocket: ${wsUrl}`);
-        this.ws = new WebSocket(wsUrl);
+        this.ws = new WebSocket(wsUrl, {
+           family: 4, // force IPv4
+          handshakeTimeout: 30000, // 30 seconds
+          timeout: 30000,
+        });
 
         const connectTimeout = setTimeout(() => {
-          reject(new Error('Connection timeout'));
-        }, 10000);
+          if (this.ws) {
+            this.ws.terminate();
+          }
+          reject(new Error(`Connection timeout after 30 seconds for project ${this.projectId}`));
+        }, 30000);
 
-        this.ws.onopen = () => {
+        this.ws.on('open', () => {
           clearTimeout(connectTimeout);
           console.log(`Runtime WebSocket connected for project ${this.projectId} (user-scoped DO)`);
           this.connected = true;
           this.lastPongReceived = Date.now();
           this.reconnectAttempts = 0;
           resolve();
-        };
+        });
 
-        this.ws.onerror = (error) => {
+        this.ws.on('error', (error) => {
           clearTimeout(connectTimeout);
-          console.error('Runtime WebSocket error:', error);
-          reject(new Error('WebSocket connection failed'));
-        };
+          console.error(`Runtime WebSocket error for project ${this.projectId}:`, error);
+          
+          // Provide more specific error messages
+          let errorMessage = 'WebSocket connection failed';
+          if (error.message.includes('ETIMEDOUT')) {
+            errorMessage = `Connection timeout - WebSocket server may be unreachable (${this.websocketUrl})`;
+          } else if (error.message.includes('ENETUNREACH')) {
+            errorMessage = `Network unreachable - Check internet connection and server availability`;
+          } else if (error.message.includes('ECONNREFUSED')) {
+            errorMessage = `Connection refused - WebSocket server may be down`;
+          }
+          
+          reject(new Error(`${errorMessage}: ${error.message}`));
+        });
 
-        this.ws.onclose = (event) => {
-          console.log(`Runtime WebSocket disconnected for project ${this.projectId}:`, event.code, event.reason);
+        this.ws.on('close', (code, reason) => {
+          console.log(`Runtime WebSocket disconnected for project ${this.projectId}:`, code, reason.toString());
           this.connected = false;
           this.handleDisconnection();
-        };
+        });
 
-        this.ws.onmessage = (event) => {
-          this.handleMessage(event.data);
-        };
+        this.ws.on('message', (data) => {
+          this.handleMessage(data.toString());
+        });
 
       } catch (error) {
         reject(error);
@@ -152,17 +171,21 @@ class WebSocketRuntimeClient {
     this.pendingRequests.clear();
 
     if (this.reconnectAttempts < this.maxReconnectAttempts) {
+      this.reconnectAttempts++;
       const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts), 30000);
-      console.log(`Attempting to reconnect for project ${this.projectId} in ${delay}ms...`);
+      console.log(`Attempting to reconnect for project ${this.projectId} (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts}) in ${delay}ms...`);
 
-      this.reconnectTimeout = setTimeout(() => {
-        this.reconnectAttempts++;
-        this.connect().catch((error) => {
-          console.error(`Reconnection failed for project ${this.projectId}:`, error);
-        });
+      this.reconnectTimeout = setTimeout(async () => {
+        try {
+          await this.connect();
+          console.log(`✅ Successfully reconnected project ${this.projectId} after ${this.reconnectAttempts} attempts`);
+        } catch (error) {
+          console.error(`❌ Reconnection attempt ${this.reconnectAttempts} failed for project ${this.projectId}:`, error instanceof Error ? error.message : error);
+          // handleDisconnection will be called again if connection fails
+        }
       }, delay);
     } else {
-      console.error(`Max reconnection attempts reached for project ${this.projectId}`);
+      console.error(`❌ Max reconnection attempts (${this.maxReconnectAttempts}) reached for project ${this.projectId}. WebSocket service unavailable.`);
     }
   }
 
@@ -294,16 +317,26 @@ export class WebSocketManagerService implements OnModuleDestroy {
    * Get WebSocket client for a specific user/project
    */
   async getClientForUser(projectId: string): Promise<WebSocketRuntimeClient> {
+    console.log(`🔗 [WebSocketManager] Getting client for project ${projectId}`);
+    console.log(`📡 [WebSocketManager] WebSocket URL: ${process.env.WEBSOCKET_URL || 'wss://user-websocket-bridge.ashish-91e.workers.dev'}`);
+    
     // Return existing client if already connected
     if (this.clients.has(projectId)) {
       const client = this.clients.get(projectId)!;
-      if (client.getStatus().connected) {
+      const status = client.getStatus();
+      console.log(`🔍 [WebSocketManager] Existing client found for project ${projectId}. Connected: ${status.connected}`);
+      
+      if (status.connected) {
+        console.log(`♻️ [WebSocketManager] Reusing existing connection for project ${projectId}`);
         return client;
+      } else {
+        console.log(`🧹 [WebSocketManager] Removing disconnected client for project ${projectId}`);
+        this.clients.delete(projectId);
       }
     }
 
-    console.log('projectId', projectId, process.env.WEBSOCKET_URL)
     // Create new client for user
+    console.log(`🆕 [WebSocketManager] Creating new WebSocket client for project ${projectId}`);
     const client = new WebSocketRuntimeClient(
       process.env.WEBSOCKET_URL || 'wss://user-websocket-bridge.ashish-91e.workers.dev',
       projectId
@@ -311,17 +344,20 @@ export class WebSocketManagerService implements OnModuleDestroy {
 
     // Ensure only one connection attempt per user
     if (!this.connectionPromises.has(projectId)) {
+      console.log(`🚀 [WebSocketManager] Starting connection attempt for project ${projectId}`);
       const connectionPromise = client.connect().then(() => {
         this.clients.set(projectId, client);
         this.connectionPromises.delete(projectId);
-        console.log(`✅ Connected to dedicated Durable Object for project: ${projectId}`);
+        console.log(`✅ [WebSocketManager] Successfully connected to dedicated Durable Object for project: ${projectId}`);
       }).catch((error: any) => {
         this.connectionPromises.delete(projectId);
-        console.error(`❌ Failed to connect to DO for project ${projectId}:`, error);
+        console.error(`❌ [WebSocketManager] Failed to connect to DO for project ${projectId}:`, error instanceof Error ? error.message : error);
         throw error;
       });
 
       this.connectionPromises.set(projectId, connectionPromise);
+    } else {
+      console.log(`⏳ [WebSocketManager] Connection attempt already in progress for project ${projectId}`);
     }
 
     await this.connectionPromises.get(projectId);
@@ -381,7 +417,7 @@ export class WebSocketManagerService implements OnModuleDestroy {
   /**
    * Get connection statistics
    */
-  getStats(): {
+  getStatus(): {
     totalClients: number;
     connectedClients: number;
     pendingConnections: number;
