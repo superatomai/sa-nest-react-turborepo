@@ -5,9 +5,20 @@ import { LlmService } from './services/llm.service';
 import { WebSocketManagerService } from './services/websocket-manager.service';
 import { UiGenerationService } from './services/ui-generation.service';
 import { ProjectSchemaCacheService } from './services/project-schema-cache.service';
+import { ConfigModule } from '@nestjs/config';
+import { AuthModule } from './auth/auth.module';
+import { DrizzleModule } from '../drizzle/drizzle.module';
+import { ProjectsModule } from './projects/projects.module';
 
 @Module({
-  imports: [],
+  imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+    }),
+    AuthModule,
+    DrizzleModule,
+    ProjectsModule,
+  ],
   controllers: [AppController],
   providers: [
     AppService,

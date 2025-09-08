@@ -10,8 +10,14 @@ import { UiGenerationService } from '../../apps/backend/src/services/ui-generati
 import { LlmService } from '../../apps/backend/src/services/llm.service';
 import { WebSocketManagerService } from '../../apps/backend/src/services/websocket-manager.service';
 import {ProjectSchemaCacheService} from '../../apps/backend/src/services/project-schema-cache.service';
+import { INestApplication } from '@nestjs/common';
+import { ProjectsService } from '../../apps/backend/src/projects/projects.service';
 
-const t = initTRPC.create();
+const t = initTRPC.context<{
+  req: any;
+  nestApp: INestApplication;
+  user?: { id: string }
+}>().create();
 
 // Initialize services
 const webSocketManagerService = new WebSocketManagerService();
@@ -45,6 +51,7 @@ const GenerateUIResponseSchema = z.object({
 });
 
 
+
 export const appRouter = t.router({
 	hello: t.procedure
 		.input(z.object({ name: z.string() }))
@@ -67,5 +74,17 @@ export const appRouter = t.router({
 	status: t.procedure
 		.query(async () => {
 			return await trpcService.getStatus();
-		})
+		}),
+
+  projectsGetAll: t.procedure
+    .input(z.object({ orgId: z.string() }))
+    .mutation(async ({ input, ctx }) => {
+      console.log('Received input:', input);
+    console.log('Input orgId:', input.orgId);
+      const projectsService = ctx.nestApp.get(ProjectsService);
+      console.log('projectsService?', projectsService);
+      const userForService = ctx.user ? { id: ctx.user.id } as any : undefined;
+
+      return projectsService.getAllProjects(input.orgId, userForService);
+    }),
 });
