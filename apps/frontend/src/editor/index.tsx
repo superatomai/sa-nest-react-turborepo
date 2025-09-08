@@ -1,33 +1,40 @@
-'use client'
-
 import { useEffect, useState } from 'react'
 import { T_UI_Component } from '../types/ui-schema'
 import FLOWUIRenderer from './components/ui-renderer'
 import { trpc } from '../utils/trpc'
+import TestWithYourSchema from './components/ui-renderer'
 
 const StudioTestPage = () => {
 	const [messages, setMessages] = useState<Array<{ role: string, content: string }>>([])
 	const [input, setInput] = useState('')
 	const [currentSchema, setCurrentSchema] = useState<T_UI_Component>()
 	const [data, setData] = useState<any>(null)
-	const projectId = '55'; // Using string as expected by API
+	const projectId = '56'; // Using string as expected by API
 
 	// tRPC mutation for generating UI
 	const generateUIMutation = trpc.generateUI.useMutation({
-		onSuccess: (data) => {
-			console.log('Generate UI success:', data)
-			if (data.success && data.data) {
-				const ui_schema = data.data.ui;
-				const ui_data = data.data.data;
+		onSuccess: (response) => {
+			console.log('Generate UI success:', response)
+			if (response.success && response.data) {
+				const ui_schema = response.data.ui;
+				const ui_data = response.data.data;
 				
 				console.log('ui_schema', ui_schema)
 				console.log('ui_data', ui_data)
 
 				setCurrentSchema(ui_schema as T_UI_Component)
-				// Get the data using the query id if it exists
+				
+				// 🔥 FIXED: Better data extraction logic
 				const typedSchema = ui_schema as T_UI_Component
-				if (typedSchema.query?.id && ui_data && typedSchema.query.id in ui_data) {
-					// setData(ui_data[typedSchema.query.id])
+				if (typedSchema.query?.id && ui_data && ui_data[typedSchema.query.id]) {
+					// Pass the actual data object, not wrapped in another object
+					const actualData = ui_data[typedSchema.query.id];
+					console.log('Setting data to:', actualData);
+					setData(actualData);
+				} else {
+					// Fallback: if no query id, use the data directly
+					console.log('No query ID, using ui_data directly:', ui_data);
+					setData(ui_data);
 				}
 
 				setMessages(prev => [...prev, {
@@ -91,6 +98,13 @@ const StudioTestPage = () => {
 		})
 	}
 
+	// 🔥 ADD: Debug logging to see what data is being passed
+	useEffect(() => {
+		console.log('🔍 Current state:')
+		console.log('currentSchema:', currentSchema)
+		console.log('data:', data)
+	}, [currentSchema, data])
+
 	return (
 		<div className="flex h-screen bg-blue-50">
 			{/* Left Side - Generated React Component */}
@@ -111,7 +125,9 @@ const StudioTestPage = () => {
 					<div className="flex-1 overflow-auto p-6">
 						{currentSchema ? (
 							<div className="min-h-full bg-white rounded-xl shadow-lg border border-slate-200 p-6">
+								
 								<FLOWUIRenderer schema={currentSchema} data={data} handlers={handlers} />
+								{/* <TestWithYourSchema /> */}
 							</div>
 						) : (
 							<div className="min-h-full flex items-center justify-center">

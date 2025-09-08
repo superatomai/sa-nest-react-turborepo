@@ -19,12 +19,20 @@ export default function Home() {
         </p>
         
         <div className="space-y-4">
-          <Link 
-            to="/editor"
-            className="inline-block px-8 py-4 bg-blue-600 text-white text-lg font-semibold rounded-xl hover:bg-blue-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
-          >
-            🚀 Launch Editor
-          </Link>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Link 
+              to="/projects"
+              className="inline-block px-8 py-4 bg-green-600 text-white text-lg font-semibold rounded-xl hover:bg-green-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
+            >
+              📂 View Projects
+            </Link>
+            <Link 
+              to="/editor"
+              className="inline-block px-8 py-4 bg-blue-600 text-white text-lg font-semibold rounded-xl hover:bg-blue-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
+            >
+              🚀 Launch Editor
+            </Link>
+          </div>
           
           <div className="flex justify-center space-x-4 text-sm text-gray-500">
             <span className="bg-white px-3 py-1 rounded-full">✨ AI-Powered</span>

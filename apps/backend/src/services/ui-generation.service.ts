@@ -157,8 +157,8 @@ export class UiGenerationService {
   /**
    * Get service statistics
    */
-  getStats() {
-    const wsStats = this.webSocketManager.getStats();
+  getStatus() {
+    const wsStats = this.webSocketManager.getStatus();
     
     return {
       websocket: wsStats,

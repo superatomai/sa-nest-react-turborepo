@@ -1,7 +1,11 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { trpcMiddleware, setNestApp } from './trpc';
+import * as dotenv from 'dotenv';
 import { clerkMiddleware } from '@clerk/express';
+
+// Load environment variables
+dotenv.config();
+import { trpcMiddleware, setNestApp } from './trpc';
 
 async function bootstrap() {
   console.log('🚀 Starting NestJS application...');
@@ -21,9 +25,9 @@ async function bootstrap() {
   app.use(clerkMiddleware());
   app.use('/trpc', trpcMiddleware);
   
-  await app.listen(5000);
+  await app.listen(3000);
   
-  console.log('🎉 Server is running on http://localhost:5000');
+  console.log('🎉 Server is running on http://localhost:3000');
 }
 bootstrap().catch(err => {
   console.error('❌ Failed to start server:', err);

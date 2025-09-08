@@ -9,6 +9,7 @@ import { ConfigModule } from '@nestjs/config';
 import { AuthModule } from './auth/auth.module';
 import { DrizzleModule } from '../drizzle/drizzle.module';
 import { ProjectsModule } from './projects/projects.module';
+import { UisModule } from './uis/uis.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { ProjectsModule } from './projects/projects.module';
     AuthModule,
     DrizzleModule,
     ProjectsModule,
+    UisModule,
   ],
   controllers: [AppController],
   providers: [
