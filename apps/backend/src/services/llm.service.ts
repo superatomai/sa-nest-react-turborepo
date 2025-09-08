@@ -4,16 +4,15 @@ import { T_UI_Component, UIComponentSchema } from '../types/ui-schema';
 import { ProjectSchemaCacheService } from './project-schema-cache.service';
 
 // Initialize OpenAI client only if API key is available
-let openai: OpenAI ;
-console.log('open api key  is ', process.env.OPENAI_API_KEY);
-const open_ai_api_key = process.env.OPENAI_API_KEY || '';
+let openai: OpenAI | null = null;
 
-openai = new OpenAI({
-    apiKey:open_ai_api_key ,
-});
-
-// if (process.env.OPENAI_API_KEY) {
-// }
+if (process.env.OPENAI_API_KEY) {
+    openai = new OpenAI({
+        apiKey: process.env.OPENAI_API_KEY,
+    });
+} else {
+    console.warn('⚠️ OPENAI_API_KEY not found in environment variables');
+}
 
 // Types for better type safety
 interface GraphQLQueryResult {
@@ -32,9 +31,9 @@ export class LlmService {
         projectId: string,
     ): Promise<GraphQLQueryResult> {
         try {
-            // if (!openai) {
-            //     throw new Error('OpenAI API key not configured. Please set OPENAI_API_KEY environment variable.');
-            // }
+            if (!openai) {
+                throw new Error('OpenAI API key not configured. Please set OPENAI_API_KEY environment variable.');
+            }
 
             console.log(`Generating GraphQL query for project ${projectId}, "${prompt}"`);
 
