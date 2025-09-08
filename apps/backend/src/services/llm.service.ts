@@ -2,18 +2,7 @@ import { Injectable } from '@nestjs/common';
 import OpenAI from 'openai';
 import { T_UI_Component, Z_UI_Component } from '../types/ui-schema';
 import { ProjectSchemaCacheService } from './project-schema-cache.service';
-
-// Initialize OpenAI client only if API key is available
-let openai: OpenAI | null = null;
-
-if (process.env.OPENAI_API_KEY) {
-    openai = new OpenAI({
-        apiKey: process.env.OPENAI_API_KEY,
-    });
-} else {
-    console.warn('⚠️ OPENAI_API_KEY not found in environment variables');
-}
-
+import { OPENAI_API_KEY } from '../env';
 
 // Types for better type safety
 interface GraphQLQueryResult {
@@ -24,15 +13,23 @@ interface GraphQLQueryResult {
 
 @Injectable()
 export class LlmService {
+    private openai: OpenAI | null = null;
   constructor(
     private readonly projectSchemaCache: ProjectSchemaCacheService,
-  ) {}
+  ) {
+    if (OPENAI_API_KEY) {
+      this.openai = new OpenAI({ apiKey: OPENAI_API_KEY });
+      console.log('✅ OpenAI client initialized');
+    } else {
+      console.warn('⚠️ OPENAI_API_KEY not found, OpenAI client not initialized');
+    }
+  }
     async generateGraphQLFromPromptForProject(
         prompt: string,
         projectId: string,
     ): Promise<GraphQLQueryResult> {
         try {
-            if (!openai) {
+            if (!this.openai) {
                 throw new Error('OpenAI API key not configured. Please set OPENAI_API_KEY environment variable.');
             }
 
@@ -48,7 +45,7 @@ export class LlmService {
             const schemaInfo = this.formatDocsForLLM(schemaData);
 
             // Generate GraphQL query using schema
-            const completion = await openai.chat.completions.create({
+            const completion = await this.openai.chat.completions.create({
                 model: "gpt-5",
                 messages: [
                     {
@@ -286,11 +283,11 @@ when no query is required set the query value to empty string ("").
         currentUI?: T_UI_Component
     ): Promise<T_UI_Component> {
         try {
-            if (!openai) {
+            if (!this.openai) {
                 throw new Error('OpenAI API key not configured. Please set OPENAI_API_KEY environment variable.');
             }
 
-            const completion = await openai.chat.completions.create({
+            const completion = await this.openai.chat.completions.create({
                 model: "gpt-5",
                 messages: [
                     {
