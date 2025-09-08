@@ -15,12 +15,12 @@ const QuerySchema = z.object({
 }).optional()
 
 // UI Component schema with proper recursive typing
-export const UIComponentSchema: z.ZodSchema<T_UI_Component> = z.lazy(() =>
+export const Z_UI_Component: z.ZodSchema<T_UI_Component> = z.lazy(() =>
 	z.object({
 		id: z.string().min(1), // Ensure non-empty string
 		type: z.string().min(1), // Component type (div, button, etc.)
 		props: ComponentPropsSchema.optional(),
-		children: z.array(z.union([UIComponentSchema, z.string()])).optional(),
+		children: z.array(z.union([Z_UI_Component, z.string()])).optional(),
 		query: QuerySchema,
 		dataPath: z.string().optional(), // JSONPath-style data access
 		binding: z.string().optional(),  // Data binding identifier
@@ -53,7 +53,7 @@ export const UISchemaSchema = z.object({
 	userId: z.string().min(1),
 	uiId: z.string().min(1),
 	name: z.string().min(1),
-	component: UIComponentSchema,
+	component: Z_UI_Component,
 	createdAt: z.date(),
 	updatedAt: z.date(),
 })

@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import OpenAI from 'openai';
-import { T_UI_Component, UIComponentSchema } from '../types/ui-schema';
+import { T_UI_Component, Z_UI_Component } from '../types/ui-schema';
 import { ProjectSchemaCacheService } from './project-schema-cache.service';
 
 // Initialize OpenAI client only if API key is available
@@ -13,6 +13,7 @@ if (process.env.OPENAI_API_KEY) {
 } else {
     console.warn('⚠️ OPENAI_API_KEY not found in environment variables');
 }
+
 
 // Types for better type safety
 interface GraphQLQueryResult {
@@ -48,12 +49,14 @@ export class LlmService {
 
             // Generate GraphQL query using schema
             const completion = await openai.chat.completions.create({
-                model: "gpt-4o-mini",
+                model: "gpt-5",
                 messages: [
                     {
                         role: "system",
-                        content: `You are a GraphQL query generator for project ${projectId}. Generate queries based on this database schema:
+                        content: `
+You are a GraphQL query generator for project ${projectId}. 
 
+Generate queries based on this database schema:
 ${schemaInfo}
 
 CRITICAL INSTRUCTIONS:
@@ -76,11 +79,18 @@ CRITICAL INSTRUCTIONS:
   * Aggregations: use _aggregate suffix (e.g., comments_aggregate)
 
 - Always include proper variable definitions in the query
-- For user-specific queries, use $userId as variable
 - Return valid JSON with 'query', 'variables', and 'explanation' fields
 - If relationships are needed, mention in explanation that separate queries may be needed
 
-Return ONLY valid JSON, no markdown formatting or additional text.`
+Return ONLY valid JSON, no markdown formatting or additional text.
+{
+    query: string;
+    variables?: Record<string, any>;
+    explanation?: string;
+}
+
+when no query is required set the query value to empty string ("").
+`
                     },
                     {
                         role: "user",
@@ -281,7 +291,7 @@ Return ONLY valid JSON, no markdown formatting or additional text.`
             }
 
             const completion = await openai.chat.completions.create({
-                model: "gpt-4o-mini",
+                model: "gpt-5",
                 messages: [
                     {
                         role: "system",
@@ -428,7 +438,7 @@ Requirements:
                 parsed = this.normalizeUIComponent(parsed);
 
                 // Validate against Zod schema
-                const validatedResult = UIComponentSchema.safeParse(parsed);
+                const validatedResult = Z_UI_Component.safeParse(parsed);
                 if (validatedResult.success) {
                     console.log('✅ Schema validation passed');
                     return validatedResult.data;

@@ -1,6 +1,9 @@
-import { Injectable, OnModuleDestroy } from '@nestjs/common';
-import { DocsMessage, GetDocsMessage, GraphQLQueryMessage, PendingRequest, QueryResponseMessage, WebSocketMessage } from 'src/types/websocket';
+import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { DocsMessage, GetDocsMessage, GetProdUIMessage, GraphQLQueryMessage, PendingRequest, ProdUIResponseMessage, QueryResponseMessage, WebSocketMessage } from 'src/types/websocket';
 import WebSocket from 'ws';
+import { UiDataService } from './ui-data.service';
+import { UiUtilsService } from './ui-utils.service';
+import { Z_UI_Component } from 'src/types/ui-schema';
 
 
 class WebSocketRuntimeClient {
@@ -15,7 +18,8 @@ class WebSocketRuntimeClient {
 
   constructor(
     private websocketUrl: string,
-    private projectId: string
+    private projectId: string,
+    private uiUtilsService: UiUtilsService, // 👈 inject her
   ) { }
 
   async connect(): Promise<void> {
@@ -81,6 +85,7 @@ class WebSocketRuntimeClient {
   }
 
   private handleMessage(data: string): void {
+    console.log('data received on runtime', data);
     try {
       const message: WebSocketMessage = JSON.parse(data);
       console.log(`Runtime received message for project ${this.projectId}:`, message.type);
@@ -98,11 +103,12 @@ class WebSocketRuntimeClient {
         case 'docs':
           this.handleDocsResponse(message as DocsMessage);
           break;
-
+        case 'get_prod_ui':
+          this.handleGetProdUI(message as GetProdUIMessage);
+          break;
         case 'error':
           this.handleError(message);
           break;
-
         case 'pong':
           this.lastPongReceived = Date.now();
           console.log('Received pong from server');
@@ -149,6 +155,111 @@ class WebSocketRuntimeClient {
       pendingRequest.resolve(message);
     }
   }
+
+  private async handleGetProdUI(message: GetProdUIMessage): Promise<void> {
+    console.log(
+      `Runtime handling get_prod_ui (uiId=${message.uiId}, requestId=${message.requestId}) for project ${this.projectId}`
+    );
+
+    try {
+      const projectId = message.projectId;
+      const uiId = message.uiId;
+
+       // 1️⃣ Fetch DSL from UiUtilsService
+      const dslResult = await this.uiUtilsService.fetchDSL({
+        projectId,
+        uiId: uiId,
+      });
+
+      if (!dslResult.success || !dslResult.data) {
+        throw new Error(dslResult.message || 'DSL not found');
+      }
+
+      let dsl = dslResult.data as any;
+
+      console.log('dsl', dsl);
+      // 2️⃣ Build query + vars (depends on your DSL structure)
+      let data: null | any = null;
+
+    try {
+            dsl = JSON.parse(dsl);
+        } catch (err) {
+            console.error('Invalid DSL JSON:', err)
+            throw new Error('Invalid DSL JSON');
+        }  
+
+        const parsed = Z_UI_Component.safeParse(dsl.ui);
+        if (!parsed.success) {
+            console.error('Invalid DSL JSON:', parsed.error)
+          throw new Error('Invalid DSL JSON');
+        }
+
+        const ui_schema = parsed.data;
+        const query = ui_schema.query?.graphql;
+        const variables = ui_schema.query?.vars;
+        const queryId = ui_schema.query?.id; // 👈 safe access
+      
+
+        if(!query ) {  
+          console.error('no query found in DSL')
+          throw new Error('no query found in DSL');
+        }
+          
+
+      // 3️⃣ Execute query against runtime/agent
+      const queryResponse = await this.executeGraphQLQuery(query, variables);
+
+        data= queryResponse.data;
+      // const uiData = {
+      //   id: message.uiId,
+      //   type: "div",
+      //   children: [
+      //     { id: "child-1", type: "span", children: ["Hello from runtime!"] }
+      //   ]
+      // };
+      
+      // add data to dsl
+      // Ensure `dsl.data` exists
+      dsl.data = dsl.data || {};
+      // Only assign if queryId is defined
+      if (queryId) {
+        dsl.data[queryId] = data;
+      } else {
+        console.warn('⚠️ query.id not provided in DSL, skipping data assignment');
+      }
+
+      console.log('res in getting prod data', queryResponse);
+
+      const response: ProdUIResponseMessage = {
+        type: "prod_ui_response",
+        requestId: message.requestId,
+        uiId: uiId,
+        data: dsl,
+        projectId: this.projectId,  // NEW: Include project ID in prod_ui_response
+        prodId: message.prodId,  // NEW: Include prodId in prod_ui_response
+      };
+
+      this.ws?.send(JSON.stringify(response));
+      console.log(
+        `Sent prod_ui_response (uiId=${message.uiId}, requestId=${message.requestId})`
+      );
+    } catch (err: any) {
+      const response: ProdUIResponseMessage = {
+        type: "prod_ui_response",
+        requestId: message.requestId,
+        uiId: message.uiId,
+        data: { error: err.message || "Failed to build UI" },
+        projectId: this.projectId,
+        prodId: message.prodId,
+      };
+      this.ws?.send(JSON.stringify(response));
+      console.error(
+        `Failed to process get_prod_ui (uiId=${message.uiId}, requestId=${message.requestId}):`,
+        err
+      );
+    } 
+}
+
 
   private handleError(message: any): void {
     console.error(`WebSocket error for project ${this.projectId}:`, message.message);
@@ -215,11 +326,11 @@ class WebSocketRuntimeClient {
         query,
         variables: variables || {},
         projectId: this.projectId,
-        timestamp: Date.now()
+        timestamp:Date.now()
       };
 
       this.ws!.send(JSON.stringify(message));
-      console.log(`Sent GraphQL query for project ${this.projectId} with ID: ${requestId}`);
+      console.log(`Sent GraphQL query for project ${this.projectId} with ID: ${requestId} query: ${query} variables: ${JSON.stringify(variables)}`);
     });
   }
 
@@ -309,9 +420,13 @@ class WebSocketRuntimeClient {
 }
 
 @Injectable()
-export class WebSocketManagerService implements OnModuleDestroy {
+export class WebSocketManagerService implements OnModuleInit, OnModuleDestroy {
   private clients = new Map<string, WebSocketRuntimeClient>();
   private connectionPromises = new Map<string, Promise<void>>();
+
+    constructor(
+    private readonly uiUtilsService: UiUtilsService,   // 👈 inject utils instead of UiDataService
+  ) {}
 
   /**
    * Get WebSocket client for a specific user/project
@@ -339,7 +454,8 @@ export class WebSocketManagerService implements OnModuleDestroy {
     console.log(`🆕 [WebSocketManager] Creating new WebSocket client for project ${projectId}`);
     const client = new WebSocketRuntimeClient(
       process.env.WEBSOCKET_URL || 'wss://user-websocket-bridge.ashish-91e.workers.dev',
-      projectId
+      projectId,
+      this.uiUtilsService
     );
 
     // Ensure only one connection attempt per user
@@ -362,6 +478,22 @@ export class WebSocketManagerService implements OnModuleDestroy {
 
     await this.connectionPromises.get(projectId);
     return this.clients.get(projectId)!;
+  }
+
+  async onModuleInit() {
+    const runtimeProjectId = process.env.RUNTIME_PROJECT_ID || '49';
+    if (!runtimeProjectId) {
+      console.warn('⚠️ No RUNTIME_PROJECT_ID set. Skipping auto-connect.');
+      return;
+    }
+
+    console.log(`🚀 Auto-connecting runtime WebSocket for project ${runtimeProjectId}`);
+    try {
+      await this.getClientForUser(runtimeProjectId);
+      console.log(`✅ Runtime WebSocket is now connected for project ${runtimeProjectId}`);
+    } catch (err) {
+      console.error(`❌ Failed to auto-connect runtime project ${runtimeProjectId}:`, err);
+    }
   }
 
   /**
