@@ -4,16 +4,73 @@ import FLOWUIRenderer from './components/ui-renderer'
 import { trpc } from '../utils/trpc'
 import TestWithYourSchema from './components/ui-renderer'
 
+const default_ui_schema:T_UI_Component = {
+	id: "ui_33O2Hf",
+	type: "div",
+	props: {
+		className: "min-h-screen bg-gray-50 py-8"
+	},
+	children: [],
+}
+		
 const StudioTestPage = () => {
 	const [messages, setMessages] = useState<Array<{ role: string, content: string }>>([])
 	const [input, setInput] = useState('')
+
 	const [currentSchema, setCurrentSchema] = useState<T_UI_Component>()
 	const [data, setData] = useState<any>(null)
-	const projectId = '56'; // Using string as expected by API
+
+	const projectId = '49'; // Using string as expected by API
+	const uiId = 'ui_33O2Hf'
+
+
+	// tRPC mutations
+	const createVersionMutation = trpc.versionsCreate.useMutation({
+		onSuccess: (response) => {
+			console.log('Version created successfully:', response);
+
+			// Update UI with new version
+			updateUiMutation.mutate({
+				id: response.version.id,
+				uiVersion: response.version.versionId,
+			});
+
+			setMessages(prev => [...prev, {
+				role: 'assistant',
+				content: 'New version created successfully!'
+			}])
+		},
+		onError: (error) => {
+			console.error('Create version error:', error)
+			setMessages(prev => [...prev, {
+				role: 'assistant',
+				content: 'Failed to create version. Please try again.'
+			}])
+		}
+	})
+
+	const updateUiMutation = trpc.uisUpdate.useMutation({
+		onSuccess: (response) => {
+			console.log('UI updated successfully:', response);
+
+
+			setMessages(prev => [...prev, {
+				role: 'assistant',
+				content: 'UI updated successfully!'
+			}])
+		},
+		onError: (error) => {
+			console.error('Update UI error:', error)
+			setMessages(prev => [...prev, {
+				role: 'assistant',
+				content: 'Failed to update UI. Please try again.'
+			}])
+		}
+	})
 
 	// tRPC mutation for generating UI
 	const generateUIMutation = trpc.generateUI.useMutation({
-		onSuccess: (response) => {
+		onSuccess: (response, variables) => {
 			console.log('Generate UI success:', response)
 			if (response.success && response.data) {
 				const ui_schema = response.data.ui;
@@ -24,18 +81,28 @@ const StudioTestPage = () => {
 
 				setCurrentSchema(ui_schema as T_UI_Component)
 				
-				// 🔥 FIXED: Better data extraction logic
 				const typedSchema = ui_schema as T_UI_Component
 				if (typedSchema.query?.id && ui_data && ui_data[typedSchema.query.id]) {
 					// Pass the actual data object, not wrapped in another object
 					const actualData = ui_data[typedSchema.query.id];
-					console.log('Setting data to:', actualData);
 					setData(actualData);
 				} else {
 					// Fallback: if no query id, use the data directly
 					console.log('No query ID, using ui_data directly:', ui_data);
 					setData(ui_data);
 				}
+
+				console.log("creating  a new version");
+				const new_version ={
+					uiId: uiId,
+					dsl: JSON.stringify(response.data),
+					prompt: input,
+				}
+				// Create a new version when UI is generated
+				createVersionMutation.mutate(new_version);
+
+
+
 
 				setMessages(prev => [...prev, {
 					role: 'assistant',
@@ -87,23 +154,19 @@ const StudioTestPage = () => {
 	const handleSend = async () => {
 		if (!input.trim()) return
 
+		const currentInput = input
 		setMessages([...messages, { role: 'user', content: input }])
 		setInput('')
 
+		
 		// Use tRPC mutation to generate UI
 		generateUIMutation.mutate({
-			prompt: input,
+			prompt: currentInput,
 			projectId: projectId,
-			currentSchema: currentSchema
+			currentSchema: currentSchema || default_ui_schema
 		})
 	}
 
-	// 🔥 ADD: Debug logging to see what data is being passed
-	useEffect(() => {
-		console.log('🔍 Current state:')
-		console.log('currentSchema:', currentSchema)
-		console.log('data:', data)
-	}, [currentSchema, data])
 
 	return (
 		<div className="flex h-screen bg-blue-50">

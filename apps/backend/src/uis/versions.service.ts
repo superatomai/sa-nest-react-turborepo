@@ -1,8 +1,9 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { DrizzleService } from '../../drizzle/drizzle.service';
 import { versions, uis } from '../../drizzle/schema';
-import type { User } from '@clerk/backend';
+// import type { User } from '@clerk/backend';
 import { eq, and, desc, max, sql } from 'drizzle-orm';
+import { User } from '@superatom-turbo/trpc';
 
 @Injectable()
 export class VersionsService {

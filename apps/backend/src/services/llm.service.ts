@@ -1,18 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import OpenAI from 'openai';
-import { T_UI_Component, UIComponentSchema } from '../types/ui-schema';
+import { T_UI_Component, Z_UI_Component } from '../types/ui-schema';
 import { ProjectSchemaCacheService } from './project-schema-cache.service';
-
-// Initialize OpenAI client only if API key is available
-let openai: OpenAI | null = null;
-
-if (process.env.OPENAI_API_KEY) {
-    openai = new OpenAI({
-        apiKey: process.env.OPENAI_API_KEY,
-    });
-} else {
-    console.warn('⚠️ OPENAI_API_KEY not found in environment variables');
-}
+import { OPENAI_API_KEY } from '../env';
 
 // Types for better type safety
 interface GraphQLQueryResult {
@@ -23,15 +13,23 @@ interface GraphQLQueryResult {
 
 @Injectable()
 export class LlmService {
+    private openai: OpenAI | null = null;
   constructor(
     private readonly projectSchemaCache: ProjectSchemaCacheService,
-  ) {}
+  ) {
+    if (OPENAI_API_KEY) {
+      this.openai = new OpenAI({ apiKey: OPENAI_API_KEY });
+      console.log('✅ OpenAI client initialized');
+    } else {
+      console.warn('⚠️ OPENAI_API_KEY not found, OpenAI client not initialized');
+    }
+  }
     async generateGraphQLFromPromptForProject(
         prompt: string,
         projectId: string,
     ): Promise<GraphQLQueryResult> {
         try {
-            if (!openai) {
+            if (!this.openai) {
                 throw new Error('OpenAI API key not configured. Please set OPENAI_API_KEY environment variable.');
             }
 
@@ -47,13 +45,15 @@ export class LlmService {
             const schemaInfo = this.formatDocsForLLM(schemaData);
 
             // Generate GraphQL query using schema
-            const completion = await openai.chat.completions.create({
-                model: "gpt-4o-mini",
+            const completion = await this.openai.chat.completions.create({
+                model: "gpt-5",
                 messages: [
                     {
                         role: "system",
-                        content: `You are a GraphQL query generator for project ${projectId}. Generate queries based on this database schema:
+                        content: `
+You are a GraphQL query generator for project ${projectId}. 
 
+Generate queries based on this database schema:
 ${schemaInfo}
 
 CRITICAL INSTRUCTIONS:
@@ -76,11 +76,18 @@ CRITICAL INSTRUCTIONS:
   * Aggregations: use _aggregate suffix (e.g., comments_aggregate)
 
 - Always include proper variable definitions in the query
-- For user-specific queries, use $userId as variable
 - Return valid JSON with 'query', 'variables', and 'explanation' fields
 - If relationships are needed, mention in explanation that separate queries may be needed
 
-Return ONLY valid JSON, no markdown formatting or additional text.`
+Return ONLY valid JSON, no markdown formatting or additional text.
+{
+    query: string;
+    variables?: Record<string, any>;
+    explanation?: string;
+}
+
+when no query is required set the query value to empty string ("").
+`
                     },
                     {
                         role: "user",
@@ -276,12 +283,12 @@ Return ONLY valid JSON, no markdown formatting or additional text.`
         currentUI?: T_UI_Component
     ): Promise<T_UI_Component> {
         try {
-            if (!openai) {
+            if (!this.openai) {
                 throw new Error('OpenAI API key not configured. Please set OPENAI_API_KEY environment variable.');
             }
 
-            const completion = await openai.chat.completions.create({
-                model: "gpt-4o-mini",
+            const completion = await this.openai.chat.completions.create({
+                model: "gpt-5",
                 messages: [
                     {
                         role: "system",
@@ -428,7 +435,7 @@ Requirements:
                 parsed = this.normalizeUIComponent(parsed);
 
                 // Validate against Zod schema
-                const validatedResult = UIComponentSchema.safeParse(parsed);
+                const validatedResult = Z_UI_Component.safeParse(parsed);
                 if (validatedResult.success) {
                     console.log('✅ Schema validation passed');
                     return validatedResult.data;

@@ -1,10 +1,11 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import * as dotenv from 'dotenv';
 import { clerkMiddleware } from '@clerk/express';
+import {
+  CLERK_PUBLISHABLE_KEY,
+  CLERK_SECRET_KEY,
+} from './env'; // 👈 Import from env.ts
 
-// Load environment variables
-dotenv.config();
 import { trpcMiddleware, setNestApp } from './trpc';
 
 async function bootstrap() {
@@ -28,6 +29,7 @@ async function bootstrap() {
   await app.listen(3000);
   
   console.log('🎉 Server is running on http://localhost:3000');
+  console.log('🔒 Clerk public key:', CLERK_PUBLISHABLE_KEY);
 }
 bootstrap().catch(err => {
   console.error('❌ Failed to start server:', err);

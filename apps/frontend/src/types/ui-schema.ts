@@ -59,3 +59,10 @@ export const UISchemaSchema = z.object({
 })
 
 export type UISchema = z.infer<typeof UISchemaSchema>
+
+
+export type User = {
+	id: string;
+	email?: string;
+	roles?: string[];
+};

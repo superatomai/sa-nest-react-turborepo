@@ -26,4 +26,8 @@ export class TrpcService {
   async getStatus() {
     return this.uiGenerationService.getStatus();
   }
+
+  
+
+
 }

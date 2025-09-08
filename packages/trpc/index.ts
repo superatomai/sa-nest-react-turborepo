@@ -1,82 +1,70 @@
 import * as dotenv from 'dotenv';
-
-// Load environment variables from root directory first
 dotenv.config({ path: '../../.env' });
 
 import { initTRPC } from '@trpc/server';
 import { z } from 'zod';
-import { TrpcService } from '../../apps/backend/src/trpc/trpc.service';
-import { UiGenerationService } from '../../apps/backend/src/services/ui-generation.service';
-import { LlmService } from '../../apps/backend/src/services/llm.service';
-import { WebSocketManagerService } from '../../apps/backend/src/services/websocket-manager.service';
-import { ProjectSchemaCacheService } from '../../apps/backend/src/services/project-schema-cache.service';
 import { INestApplication } from '@nestjs/common';
+// import type { User } from '@clerk/backend';
+
+// Import service types for DI
+import { TrpcService } from '../../apps/backend/src/trpc/trpc.service';
 import { ProjectsService } from '../../apps/backend/src/projects/projects.service';
 import { UisService } from '../../apps/backend/src/uis/uis.service';
 import { VersionsService } from '../../apps/backend/src/uis/versions.service';
+import { UiDataService } from '../../apps/backend/src/services/ui-data.service';
+import { UiUtilsService } from '../../apps/backend/src/services/ui-utils.service';
+import { TrpcSSEService } from '../../apps/backend/src/trpc/trpc-sse.service';
+
+// ------------------
+// Setup TRPC context
+// -----------------
+
+// packages/trpc/index.ts
+export type User = {
+  id: string;
+  email?: string;
+  roles?: string[];
+};
 
 const t = initTRPC.context<{
-	req: any;
-	nestApp: INestApplication;
-	user?: { id: string }
+  req: any;
+  res?: any;
+  nestApp: INestApplication;
+  user?:User ; // use the custom User type
 }>().create();
 
-// Initialize services
-const webSocketManagerService = new WebSocketManagerService();
-const projectSchemaCacheService = new ProjectSchemaCacheService(webSocketManagerService);
-const llmService = new LlmService(projectSchemaCacheService);
-const uiGenerationService = new UiGenerationService(llmService, webSocketManagerService);
-const trpcService = new TrpcService(uiGenerationService);
-
-// Input schemas for UI generation
+// ------------------
+// Input / Response Schemas
+// ------------------
 const GenerateUIInputSchema = z.object({
-	prompt: z.string().min(1, 'Prompt is required'),
-	projectId: z.string().min(1, 'Project ID is required'),
-	currentSchema: z.any().optional(), // T_UI_Component schema would go here
+  prompt: z.string().min(1, 'Prompt is required'),
+  projectId: z.string().min(1, 'Project ID is required'),
+  currentSchema: z.any().optional(),
 });
 
-// Response schema
 const GenerateUIResponseSchema = z.object({
-	success: z.boolean(),
-	data: z.object({
-		ui: z.any(), // T_UI_Component schema would go here
-		data: z.record(z.string(), z.any()),
-	}).optional(),
-	metadata: z.object({
-		projectId: z.string(),
-		originalPrompt: z.string(),
-		graphqlQuery: z.string(),
-		graphqlVariables: z.record(z.string(), z.any()).optional(),
-		executionTime: z.number(),
-	}).optional(),
-	error: z.string().optional(),
+  success: z.boolean(),
+  data: z.object({
+    ui: z.any(),
+    data: z.record(z.string(), z.any()),
+  }).optional(),
+  metadata: z.object({
+    projectId: z.string(),
+    originalPrompt: z.string(),
+    graphqlQuery: z.string(),
+    graphqlVariables: z.record(z.string(), z.any()).optional(),
+    executionTime: z.number(),
+  }).optional(),
+  error: z.string().optional(),
 });
 
-
-
+// ------------------
+// TRPC Router
+// ------------------
 export const appRouter = t.router({
-	hello: t.procedure
-		.input(z.object({ name: z.string() }))
-		.query(({ input }) => ({ greeting: `Hello, ${input.name}!` })),
-	generateUI: t.procedure
-		.input(GenerateUIInputSchema)
-		.mutation(async ({ input }) => {
-			return await trpcService.generateUI({
-				prompt: input.prompt,
-				projectId: input.projectId,
-				currentSchema: input.currentSchema
-			});
-		}),
-	// Health check endpoint
-	health: t.procedure
-		.query(async () => {
-			return await trpcService.getHealth();
-		}),
-	// Stats endpoint  
-	status: t.procedure
-		.query(async () => {
-			return await trpcService.getStatus();
-		}),
+  hello: t.procedure
+    .input(z.object({ name: z.string() }))
+    .query(({ input }) => ({ greeting: `Hello, ${input.name}!` })),
 
 	// Project CRUD Operations
 	projectsGetAll: t.procedure
@@ -92,208 +80,152 @@ export const appRouter = t.router({
     const userForService = ctx.user ? { id: ctx.user.id } as any : undefined;
     return projectsService.getAllProjects(input.orgId, userForService, input.limit, input.skip);
   }),
+  // ----------------
+  // UI Generation
+  // ----------------
+  generateUI: t.procedure
+    .input(GenerateUIInputSchema)
+    .mutation(async ({ input, ctx }) => {
+      const trpcService = ctx.nestApp.get(TrpcService);
+      return trpcService.generateUI({
+        prompt: input.prompt,
+        projectId: input.projectId,
+        currentSchema: input.currentSchema,
+      });
+    }),
 
-	projectsGetById: t.procedure
-		.input(z.object({
-			id: z.number().int().positive(),
-			orgId: z.string().min(1)
-		}))
-		.query(async ({ input, ctx }) => {
-			const projectsService = ctx.nestApp.get(ProjectsService);
-			const userForService = ctx.user ? { id: ctx.user.id } as any : undefined;
-			return projectsService.getProjectById(input.id, input.orgId, userForService);
-		}),
+  health: t.procedure.query(async ({ ctx }) => {
+    const trpcService = ctx.nestApp.get(TrpcService);
+    return trpcService.getHealth();
+  }),
 
-	projectsCreate: t.procedure
-		.input(z.object({
-			name: z.string().min(1, 'Project name is required').max(255),
-			description: z.string().optional(),
-			orgId: z.string().min(1, 'Organization ID is required')
-		}))
-		.mutation(async ({ input, ctx }) => {
-			const projectsService = ctx.nestApp.get(ProjectsService);
-			const userForService = ctx.user ? { id: ctx.user.id } as any : undefined;
-			return projectsService.createProject(input, userForService);
-		}),
+  status: t.procedure.query(async ({ ctx }) => {
+    const trpcService = ctx.nestApp.get(TrpcService);
+    return trpcService.getStatus();
+  }),
 
-	projectsUpdate: t.procedure
-		.input(z.object({
-			id: z.number().int().positive(),
-			orgId: z.string().min(1, 'Organization ID is required'),
-			name: z.string().min(1).max(255).optional(),
-			description: z.string().optional()
-		}))
-		.mutation(async ({ input, ctx }) => {
-			const projectsService = ctx.nestApp.get(ProjectsService);
-			const userForService = ctx.user ? { id: ctx.user.id } as any : undefined;
-			const { id, orgId, ...updateData } = input;
-			return projectsService.updateProject(id, updateData, orgId, userForService);
-		}),
+  // ----------------
+  // Projects CRUD
+  // ----------------
+ 
+  projectsGetById: t.procedure
+    .input(z.object({ id: z.number().int().positive(), orgId: z.string() }))
+    .query(async ({ input, ctx }) => {
+      const service = ctx.nestApp.get(ProjectsService);
+      return service.getProjectById(input.id, input.orgId, ctx.user);
+    }),
 
-	projectsDelete: t.procedure
-		.input(z.object({
-			id: z.number().int().positive(),
-			orgId: z.string().min(1, 'Organization ID is required')
-		}))
-		.mutation(async ({ input, ctx }) => {
-			const projectsService = ctx.nestApp.get(ProjectsService);
-			const userForService = ctx.user ? { id: ctx.user.id } as any : undefined;
-			return projectsService.deleteProject(input.id, input.orgId, userForService);
-		}),
+  projectsCreate: t.procedure
+    .input(z.object({ name: z.string().min(1).max(255), description: z.string().optional(), orgId: z.string().min(1) }))
+    .mutation(async ({ input, ctx }) => {
+      const service = ctx.nestApp.get(ProjectsService);
+      return service.createProject(input, ctx.user);
+    }),
 
-	// UI CRUD Operations
-	uisGetAll: t.procedure
-		.input(z.object({
-			projectId: z.number().int().positive().optional(),
-			orgId: z.string().optional(),
-			where: z.record(z.string(), z.any()).optional(),
-			orderBy: z.record(z.string(), z.enum(['asc', 'desc'])).optional(),
-			limit: z.number().int().positive().optional(),
-			skip: z.number().int().min(0).optional(),
-		}))
-		.query(async ({ input, ctx }) => {
-			const uisService = ctx.nestApp.get(UisService);
-			const userForService = ctx.user ? { id: ctx.user.id } as any : undefined;
-			return uisService.getAllUis(input, userForService);
-		}),
+  // ----------------
+  // UIs CRUD
+  // ----------------
+  uisGetAll: t.procedure
+    .input(z.object({
+      projectId: z.number().int().optional(),
+      orgId: z.string().optional(),
+      where: z.record(z.string(), z.any()).optional(),
+      orderBy: z.record(z.string(), z.enum(['asc', 'desc'])).optional(),
+      limit: z.number().int().optional(),
+      skip: z.number().int().optional(),
+    }))
+    .query(async ({ input, ctx }) => {
+      const service = ctx.nestApp.get(UisService);
+      return service.getAllUis(input, ctx.user);
+    }),
 
-	uisGetById: t.procedure
-		.input(z.object({
-			id: z.number().int().positive()
-		}))
-		.query(async ({ input, ctx }) => {
-			const uisService = ctx.nestApp.get(UisService);
-			const userForService = ctx.user ? { id: ctx.user.id } as any : undefined;
-			return uisService.getUiById(input.id, userForService);
-		}),
+  uisGetById: t.procedure
+    .input(z.object({ id: z.number().int().positive() }))
+    .query(async ({ input, ctx }) => {
+      const service = ctx.nestApp.get(UisService);
+      return service.getUiById(input.id, ctx.user);
+    }),
 
-	uisCreate: t.procedure
-		.input(z.object({
-			uiId: z.string().min(1, 'UI ID is required'),
-			uiVersion: z.number().int().positive(),
-			name: z.string().min(1, 'UI name is required').max(255),
-			description: z.string().optional(),
-			projectId: z.number().int().positive()
-		}))
-		.mutation(async ({ input, ctx }) => {
-			const uisService = ctx.nestApp.get(UisService);
-			const userForService = ctx.user ? { id: ctx.user.id } as any : undefined;
-			return uisService.createUi(input, userForService);
-		}),
+  uisCreate: t.procedure
+    .input(z.object({
+      uiId: z.string().min(1),
+      name: z.string().min(1),
+	  uiVersion: z.number().int().positive(),
+      description: z.string().optional(),
+      projectId: z.number().int().positive(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const service = ctx.nestApp.get(UisService);
+      return service.createUi(input, ctx.user);
+    }),
 
-	uisUpdate: t.procedure
-		.input(z.object({
-			id: z.number().int().positive(),
-			name: z.string().min(1).max(255).optional(),
-			description: z.string().optional(),
-			published: z.boolean().optional(),
-			uiVersion: z.number().int().positive().optional()
-		}))
-		.mutation(async ({ input, ctx }) => {
-			const uisService = ctx.nestApp.get(UisService);
-			const userForService = ctx.user ? { id: ctx.user.id } as any : undefined;
-			const { id, ...updateData } = input;
-			return uisService.updateUi(id, updateData, userForService);
-		}),
+  uisUpdate: t.procedure
+    .input(z.object({
+      id: z.number().int().positive(),
+      name: z.string().optional(),
+      description: z.string().optional(),
+      published: z.boolean().optional(),
+      uiVersion: z.number().optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const service = ctx.nestApp.get(UisService);
+      const { id, ...data } = input;
+      return service.updateUi(id, data, ctx.user);
+    }),
 
-	uisDelete: t.procedure
-		.input(z.object({
-			id: z.number().int().positive()
-		}))
-		.mutation(async ({ input, ctx }) => {
-			const uisService = ctx.nestApp.get(UisService);
-			const userForService = ctx.user ? { id: ctx.user.id } as any : undefined;
-			return uisService.deleteUi(input.id, userForService);
-		}),
+  // ----------------
+  // Versions CRUD
+  // ----------------
+  versionsGetAll: t.procedure
+    .input(z.object({
+      uiId: z.string().optional(),
+      where: z.record(z.string(), z.any()).optional(),
+      orderBy: z.record(z.string(), z.enum(['asc', 'desc'])).optional(),
+      limit: z.number().int().optional(),
+      skip: z.number().int().optional(),
+    }))
+    .query(async ({ input, ctx }) => {
+      const service = ctx.nestApp.get(VersionsService);
+      return service.getAllVersions(input, ctx.user);
+    }),
 
-	// Version CRUD Operations
-	versionsGetAll: t.procedure
-		.input(z.object({
-			uiId: z.string().optional(),
-			where: z.record(z.string(), z.any()).optional(),
-			orderBy: z.record(z.string(), z.enum(['asc', 'desc'])).optional(),
-			limit: z.number().int().positive().optional(),
-			skip: z.number().int().min(0).optional(),
-		}))
-		.query(async ({ input, ctx }) => {
-			const versionsService = ctx.nestApp.get(VersionsService);
-			const userForService = ctx.user ? { id: ctx.user.id } as any : undefined;
-			return versionsService.getAllVersions(input, userForService);
-		}),
+  versionsCreate: t.procedure
+    .input(z.object({
+      uiId: z.string().min(1),
+      dsl: z.any(),
+      prompt: z.string().min(1),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const service = ctx.nestApp.get(VersionsService);
+      return service.createVersion(input, ctx.user);
+    }),
 
-	versionsGetById: t.procedure
-		.input(z.object({
-			id: z.number().int().positive()
-		}))
-		.query(async ({ input, ctx }) => {
-			const versionsService = ctx.nestApp.get(VersionsService);
-			const userForService = ctx.user ? { id: ctx.user.id } as any : undefined;
-			return versionsService.getVersionById(input.id, userForService);
-		}),
+  // ----------------
+  // UI Data
+  // ----------------
+  getUIWithData: t.procedure
+    .input(z.object({ projectId: z.string().min(1), uiId: z.string().min(1) }))
+    .mutation(async ({ input, ctx }) => {
+      const service = ctx.nestApp.get(UiDataService);
+      return service.getUIWithData(input, ctx.user);
+    }),
 
-	versionsGetByUiAndVersion: t.procedure
-		.input(z.object({
-			uiId: z.string().min(1, 'UI ID is required'),
-			versionId: z.number().int().positive()
-		}))
-		.query(async ({ input, ctx }) => {
-			const versionsService = ctx.nestApp.get(VersionsService);
-			const userForService = ctx.user ? { id: ctx.user.id } as any : undefined;
-			return versionsService.getVersionByUiAndVersion(input.uiId, input.versionId, userForService);
-		}),
+  getUISchema: t.procedure
+    .input(z.object({ projectId: z.string().min(1), uiId: z.string().min(1) }))
+    .query(async ({ input, ctx }) => {
+      const service = ctx.nestApp.get(UiDataService);
+      return service.getUISchema(input);
+    }),
 
-	versionsGetLatestForUi: t.procedure
-		.input(z.object({
-			uiId: z.string().min(1, 'UI ID is required')
-		}))
-		.query(async ({ input, ctx }) => {
-			const versionsService = ctx.nestApp.get(VersionsService);
-			const userForService = ctx.user ? { id: ctx.user.id } as any : undefined;
-			return versionsService.getLatestVersionForUi(input.uiId, userForService);
-		}),
-
-	versionsCreate: t.procedure
-		.input(z.object({
-			uiId: z.string().min(1, 'UI ID is required'),
-			dsl: z.any(),
-			prompt: z.string().min(1, 'Prompt is required')
-		}))
-		.mutation(async ({ input, ctx }) => {
-			const versionsService = ctx.nestApp.get(VersionsService);
-			const userForService = ctx.user ? { id: ctx.user.id } as any : undefined;
-			return versionsService.createVersion(input, userForService);
-		}),
-
-	versionsUpdate: t.procedure
-		.input(z.object({
-			id: z.number().int().positive(),
-			dsl: z.any().optional(),
-			prompt: z.string().min(1).optional()
-		}))
-		.mutation(async ({ input, ctx }) => {
-			const versionsService = ctx.nestApp.get(VersionsService);
-			const userForService = ctx.user ? { id: ctx.user.id } as any : undefined;
-			const { id, ...updateData } = input;
-			return versionsService.updateVersion(id, updateData, userForService);
-		}),
-
-	versionsDelete: t.procedure
-		.input(z.object({
-			id: z.number().int().positive()
-		}))
-		.mutation(async ({ input, ctx }) => {
-			const versionsService = ctx.nestApp.get(VersionsService);
-			const userForService = ctx.user ? { id: ctx.user.id } as any : undefined;
-			return versionsService.deleteVersion(input.id, userForService);
-		}),
-
-	versionsGetStats: t.procedure
-		.input(z.object({
-			uiId: z.string().optional()
-		}))
-		.query(async ({ input, ctx }) => {
-			const versionsService = ctx.nestApp.get(VersionsService);
-			const userForService = ctx.user ? { id: ctx.user.id } as any : undefined;
-			return versionsService.getVersionStats(input.uiId, userForService);
-		}),
+  // ----------------
+  // UI Utils
+  // ----------------
+  uploadNewUIVersion: t.procedure
+    .input(z.object({ input: z.string().min(1), dsl: z.any(), uiId: z.string().min(1) }))
+    .mutation(async ({ input, ctx }) => {
+      const service = ctx.nestApp.get(UiUtilsService);
+      return service.uploadNewUIVersion(input);
+    }),
 });
+
+export type AppRouter = typeof appRouter;

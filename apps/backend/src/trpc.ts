@@ -3,6 +3,7 @@ import { appRouter } from '../../../packages/trpc';
 import { Request, Response } from 'express';
 import { INestApplication } from '@nestjs/common';
 import { getAuth } from '@clerk/express';
+import { User as TRPCUser } from '../../../packages/trpc';
 
 let nestApp: INestApplication;
 
@@ -20,7 +21,7 @@ export const trpcMiddleware = trpcExpress.createExpressMiddleware({
       return {
         req,
         nestApp,
-        user: auth.userId ? { id: auth.userId } : undefined,
+        user: auth.userId ? { id: auth.userId } as TRPCUser : undefined,
       };
     } catch (error) {
       console.error('Error extracting auth from request:', error);

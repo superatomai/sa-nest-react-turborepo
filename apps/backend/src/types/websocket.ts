@@ -11,6 +11,24 @@ export interface Connection {
     metadata?: Record<string, any>; // NEW: Store additional connection info
 }
 
+export interface GetProdUIMessage {
+  type: 'get_prod_ui';
+  requestId: string;
+  projectId: string;
+  uiId: string;
+  prodId?: string;
+}
+
+export interface ProdUIResponseMessage {
+  type: 'prod_ui_response';
+  requestId: string;
+  projectId: string;
+  uiId: string;  // NEW: Include UI ID in prod_ui_response
+  data?: any;
+  error?: string;  // NEW: Include error message in prod_ui_response
+  prodId?: string;
+}
+
 export interface BaseMessage {
     type: string;
     timestamp: number;
@@ -32,7 +50,6 @@ export interface GraphQLQueryMessage extends BaseMessage {
     variables?: Record<string, any>;
     requestId: string;
     projectId: string;  // REQUIRED: Must specify which user's data to query
-    runtimeId?: string;
 }
 
 export interface QueryResponseMessage extends BaseMessage {
@@ -41,7 +58,6 @@ export interface QueryResponseMessage extends BaseMessage {
     projectId: string;
     data?: any;
     error?: string;
-    runtimeId?: string;
 }
 
 export interface GetDocsMessage extends BaseMessage {
@@ -92,7 +108,10 @@ export type WebSocketMessage =
     | PongMessage
     | ErrorMessage
     | GetDocsMessage
-    | DocsMessage;
+    | DocsMessage
+    | GetProdUIMessage
+    | ProdUIResponseMessage;
+
 
 export interface UserConnections {
     projectId: string;
