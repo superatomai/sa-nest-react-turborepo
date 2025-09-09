@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { T_UI_Component } from '../types/ui-schema'
 import FLOWUIRenderer from './components/ui-renderer'
 import { trpc } from '../utils/trpc'
+import { observer } from 'mobx-react-lite'
+import { projectStore } from '@/stores/mobx_project_store'
 
 const default_ui_schema:T_UI_Component = {
 	id: "ui_33O2Hf",
@@ -22,6 +24,9 @@ const StudioTestPage = () => {
 	// Prompt history state
 	const [promptHistory, setPromptHistory] = useState<string[]>([])
 	const [historyIndex, setHistoryIndex] = useState(-1)
+
+	const pid = projectStore.selectedProjectId;
+	console.log("pid", pid);
 
 	const projectId = '49'; // Using string as expected by API
 	const uiId = 'ui_33O2Hf'
@@ -527,4 +532,4 @@ const StudioTestPage = () => {
 	)
 }
 
-export default StudioTestPage
+export default observer(StudioTestPage)
