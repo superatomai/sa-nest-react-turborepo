@@ -19,6 +19,7 @@ export const trpcMiddleware = trpcExpress.createExpressMiddleware({
       
       return {
         req,
+        res,
         nestApp,
         user: auth.userId ? { id: auth.userId } as TRPCUser : undefined,
       };
@@ -26,6 +27,7 @@ export const trpcMiddleware = trpcExpress.createExpressMiddleware({
       console.error('Error extracting auth from request:', error);
       return {
         req,
+        res,
         nestApp,
         user: undefined,
       };

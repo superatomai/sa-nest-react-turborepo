@@ -1,12 +1,15 @@
-import { Controller, Get, Query, HttpException, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Query, Body, HttpException, HttpStatus, Res } from '@nestjs/common';
 import { AppService } from './app.service';
 import { WebSocketManagerService } from './services/websocket-manager.service';
+import { TrpcSSEService } from './trpc/trpc-sse.service';
+import { Response } from 'express';
 
 @Controller()
 export class AppController {
   constructor(
     private readonly appService: AppService,
-    private readonly webSocketManagerService: WebSocketManagerService
+    private readonly webSocketManagerService: WebSocketManagerService,
+    private readonly trpcSSEService: TrpcSSEService
   ) {}
 
   @Get()
@@ -36,6 +39,28 @@ export class AppController {
         error instanceof Error ? error.message : 'Failed to fetch docs',
         HttpStatus.INTERNAL_SERVER_ERROR
       );
+    }
+  }
+
+  @Post('generate-ui-sse')
+  async generateUISSE(
+    @Body() body: {
+      prompt: string;
+      projectId: string;
+      currentSchema?: any;
+    },
+    @Res() res: Response
+  ) {
+    try {
+      await this.trpcSSEService.generateUISSE(body, res);
+    } catch (error) {
+      console.error('Error in generateUISSE endpoint:', error);
+      if (!res.headersSent) {
+        res.status(500).json({
+          error: 'Internal server error',
+          message: error instanceof Error ? error.message : 'Unknown error'
+        });
+      }
     }
   }
 }
