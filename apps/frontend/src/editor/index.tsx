@@ -25,11 +25,14 @@ const StudioTestPage = () => {
 	const [promptHistory, setPromptHistory] = useState<string[]>([])
 	const [historyIndex, setHistoryIndex] = useState(-1)
 
-	const pid = projectStore.selectedProjectId;
+	let pid = projectStore.selectedProjectId;
 	console.log("pid", pid);
+	if(!pid){
+		pid = 75
+	}
 
-	const projectId = '49'; // Using string as expected by API
-	const uiId = 'ui_33O2Hf'
+	const projectId = String(pid) || '49'; // Using string as expected by API
+	const uiId = 'ui_fFxd_b'
 
 	// Local storage key for prompt history
 	const PROMPT_HISTORY_KEY = 'prompt_history'
@@ -143,10 +146,10 @@ const StudioTestPage = () => {
 				}])
 			}
 
-			setMessages(prev => [...prev, {
-				role: 'assistant',
-				content: 'New version created successfully!'
-			}])
+			// setMessages(prev => [...prev, {
+			// 	role: 'assistant',
+			// 	content: 'New version created successfully!'
+			// }])
 		},
 		onError: (error) => {
 			console.error('Create version error:', error)
@@ -160,9 +163,7 @@ const StudioTestPage = () => {
 	const updateUiMutation = trpc.uisUpdate.useMutation({
 		onSuccess: (response) => {
 			console.log('UI updated successfully:', response);
-
 			setInput('');
-
 			setMessages(prev => [...prev, {
 				role: 'assistant',
 				content: 'UI updated successfully!'
@@ -179,7 +180,7 @@ const StudioTestPage = () => {
 
 	// tRPC mutation for generating UI
 	const generateUIMutation = trpc.generateUI.useMutation({
-		onSuccess: (response, variables) => {
+		onSuccess: (response) => {
 			console.log('Generate UI success:', response)
 			if (response.success && response.data) {
 				const ui_schema = response.data.ui;
@@ -215,10 +216,10 @@ const StudioTestPage = () => {
 
 
 
-				setMessages(prev => [...prev, {
-					role: 'assistant',
-					content: 'UI generated successfully!'
-				}])
+				// setMessages(prev => [...prev, {
+				// 	role: 'assistant',
+				// 	content: 'UI generated successfully!'
+				// }])
 			} else {
 				setMessages(prev => [
                     ...prev,
@@ -262,7 +263,6 @@ const StudioTestPage = () => {
 				
 				// Fetch UI data using the existing query
 				const result = await getUiQuery.refetch();
-				
 				if (result.data && result.data.uis) {
 					const uis = result.data.uis;
 					const uiData = Array.isArray(uis) ? uis.find(ui => ui.uiId === uiId) : null;
@@ -279,11 +279,12 @@ const StudioTestPage = () => {
 							// Fetch version data to get the DSL
 							try {
 								const versionResult = await getVersionQuery.refetch();
+								console.log('version result', versionResult);
 								if (versionResult.data && versionResult.data.versions) {
 									const versions = versionResult.data.versions;
 									const versionData = Array.isArray(versions) ? 
 										versions.find(v => v.id === uiData.uiVersion) : null;
-									
+										console.log('version data', versionData);
 									if (versionData && versionData.dsl) {
 										dslToUse = versionData.dsl;
 									}
@@ -293,6 +294,7 @@ const StudioTestPage = () => {
 							}
 						}
 						
+						console.log('dsl to use', dslToUse);
 						// Parse and set the DSL if we found it
 						if (dslToUse) {
 							try {
@@ -358,28 +360,16 @@ const StudioTestPage = () => {
 
 
 	return (
-		<div className="flex h-screen bg-blue-50">
+		<div className="flex h-screen bg-white">
 			{/* Left Side - Generated React Component */}
 			<div className="flex-1 bg-white bg-opacity-90 border-r border-gray-300 shadow-xl">
-				<div className="h-full flex flex-col">
-					{/* Header for preview area */}
-					<div className="px-6 py-4 bg-blue-500 text-white">
-						<div className="flex items-center space-x-3">
-							<div className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
-							<h2 className="text-lg font-semibold">Live Preview</h2>
-							<div className="ml-auto text-sm bg-blue-600 px-3 py-1 rounded-full">
-								{currentSchema ? 'Active' : 'Waiting...'}
-							</div>
-						</div>
-					</div>
-
+				<div className="h-full flex flex-col">					
 					{/* Preview Content */}
-					<div className="flex-1 overflow-auto p-6">
+					<div className="flex-1 overflow-auto">
 						{currentSchema ? (
-							<div className="min-h-full bg-white rounded-xl shadow-lg border border-slate-200 p-6">
+							<div className="min-h-full bg-white rounded-xl shadow-lg border border-slate-200">
 								
 								<FLOWUIRenderer schema={currentSchema} data={data} handlers={handlers} />
-								{/* <TestWithYourSchema /> */}
 							</div>
 						) : (
 							<div className="min-h-full flex items-center justify-center">
@@ -397,7 +387,7 @@ const StudioTestPage = () => {
 					</div>
 
 					{/* JSON Preview (optional - for debugging) */}
-					{currentSchema && (
+					{/* {currentSchema && (
 						<div className="absolute bottom-6 left-6 max-w-md">
 							<details className="bg-slate-900/95 backdrop-blur-sm text-emerald-400 p-3 rounded-xl text-xs shadow-2xl border border-slate-700">
 								<summary className="cursor-pointer font-medium hover:text-emerald-300 transition-colors">
@@ -408,12 +398,12 @@ const StudioTestPage = () => {
 								</pre>
 							</details>
 						</div>
-					)}
+					)} */}
 				</div>
 			</div>
 
 			{/* Right Side - Chat Interface */}
-			<div className="w-96 bg-white flex flex-col shadow-2xl">
+			<div className="w-96 bg-slate-200 flex flex-col shadow-2xl">
 				{/* Chat Header */}
 				<div className="px-6 py-4 bg-purple-500 text-white">
 					<div className="flex items-center space-x-3">
@@ -423,7 +413,7 @@ const StudioTestPage = () => {
 							</svg>
 						</div>
 						<div>
-							<h2 className="text-lg font-semibold">AI Assistant</h2>
+							<h2 className="text-lg font-semibold">SA AI Assistant</h2>
 							<p className="text-sm text-white/70">Your UI Generation Partner</p>
 						</div>
 					</div>
@@ -444,7 +434,7 @@ const StudioTestPage = () => {
 					
 					{messages.map((msg, i) => (
 						<div key={i} className={`${msg.role === 'user' ? 'text-right' : 'text-left'}`}>
-							<div className={`inline-block p-4 rounded-2xl max-w-[85%] shadow-sm ${msg.role === 'user'
+							<div className={`inline-block p-2.5 rounded-2xl max-w-[85%] shadow-sm ${msg.role === 'user'
 								? 'bg-blue-500 text-white'
 								: 'bg-white border border-gray-200 text-gray-800 shadow-md'
 								}`}>
@@ -470,7 +460,7 @@ const StudioTestPage = () => {
 				</div>
 
 				{/* Input Area */}
-				<div className="border-t border-slate-200/60 bg-white/80 backdrop-blur-sm p-6">
+				<div className="border-t border-slate-200/60 bg-white/80 backdrop-blur-sm p-2.5">
 					<div className="space-y-3">
 						<textarea
 							value={input}
@@ -494,7 +484,7 @@ const StudioTestPage = () => {
 								}
 							}}
 							className="w-full p-4 border border-slate-200 rounded-xl resize-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 bg-white/70 backdrop-blur-sm placeholder-slate-400"
-							placeholder="Describe your UI... (e.g., 'Create a login form with email and password')"
+							placeholder="Describe your UI... (e.g., 'Show me list of users in a table')"
 							rows={3}
 							disabled={generateUIMutation.isPending}
 						/>
