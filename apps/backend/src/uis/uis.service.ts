@@ -11,6 +11,7 @@ export class UisService {
   async getAllUis(
     filters: {
       projectId?: number;
+      uiId?: string;
       orgId?: string;
       where?: any;
       orderBy?: any;
@@ -24,6 +25,11 @@ export class UisService {
     // If projectId is provided, filter by it
     if (filters.projectId) {
       whereConditions.push(eq(uis.projectId, filters.projectId));
+    }
+
+    // If uiId is provided, filter by it
+    if (filters.uiId) {
+      whereConditions.push(eq(uis.uiId, filters.uiId));
     }
 
     // If orgId is provided, we need to join with projects to filter

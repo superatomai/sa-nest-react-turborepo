@@ -49,8 +49,8 @@ const envPath = findEnvFile();
 console.log(`[ENV] Loading from: ${envPath}`);
 dotenv.config({ path: envPath }); 
 
-console.log('[ENV] Loaded OPENAI_API_KEY:', process.env.OPENAI_API_KEY ? '[set]' : '[missing]'); 
-export const OPENAI_API_KEY = process.env.OPENAI_API_KEY; 
+console.log('[ENV] Loaded OPENROUTER_API_KEY:', process.env.OPENROUTER_API_KEY ? '[set]' : '[missing]'); 
+export const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY; 
 export const DATABASE_URL = process.env.DATABASE_URL; 
 export const WEBSOCKET_URL = process.env.WEBSOCKET_URL; 
 export const RUNTIME_PROJECT_ID = process.env.RUNTIME_PROJECT_ID; 

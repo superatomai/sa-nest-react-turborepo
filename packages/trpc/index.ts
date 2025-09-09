@@ -128,6 +128,7 @@ export const appRouter = t.router({
   uisGetAll: t.procedure
     .input(z.object({
       projectId: z.number().int().optional(),
+      uiId: z.string().optional(),
       orgId: z.string().optional(),
       where: z.record(z.string(), z.any()).optional(),
       orderBy: z.record(z.string(), z.enum(['asc', 'desc'])).optional(),
