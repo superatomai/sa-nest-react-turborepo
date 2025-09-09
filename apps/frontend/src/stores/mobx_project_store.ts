@@ -18,21 +18,47 @@ class ProjectStore {
   hasInitialized = false;
   selectedProjectId: number | null = null;
 
+  // Pagination state
+  skip = 0;
+  limit = 8;
+
   constructor() {
     makeAutoObservable(this);
   }
 
+  /**
+   * Replace projects completely (first page).
+   */
   setProjects(projects: Project[], total: number) {
     runInAction(() => {
       this.projects = projects;
       this.totalProjects = total;
       this.hasInitialized = true;
+      this.skip = projects.length; // move skip forward
     });
   }
 
-  addProjects(newProjects: Project[]) {
+  /**
+   * Append more projects (load more).
+   */
+  addProjects(projects: Project[], total: number) {
     runInAction(() => {
-      this.projects = [...this.projects, ...newProjects];
+      this.projects = [...this.projects, ...projects];
+      this.totalProjects = total;
+      this.skip += projects.length;
+    });
+  }
+
+  /**
+   * Reset store completely (useful when org changes).
+   */
+  resetPagination() {
+    runInAction(() => {
+      this.projects = [];
+      this.totalProjects = 0;
+      this.skip = 0;
+      this.hasInitialized = false;
+      this.selectedProjectId = null;
     });
   }
 

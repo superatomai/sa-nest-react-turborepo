@@ -231,10 +231,7 @@ const StudioTestPage = () => {
 				}
 				// Create a new version when UI is generated
 				createVersionMutation.mutate(new_version);
-
-
-
-
+				
 				setMessages(prev => [...prev, {
 					role: 'assistant',
 					content: 'UI generated successfully!'

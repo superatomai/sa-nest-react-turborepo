@@ -71,15 +71,22 @@ export const appRouter = t.router({
   .input(
     z.object({
       orgId: z.string(),
-      limit: z.number().optional(),
-      skip: z.number().optional(),
+      limit: z.number().default(8),  // default page size
+      skip: z.number().default(0),   // default offset
     })
   )
   .query(async ({ input, ctx }) => {
     const projectsService = ctx.nestApp.get(ProjectsService);
     const userForService = ctx.user ? { id: ctx.user.id } as any : undefined;
-    return projectsService.getAllProjects(input.orgId, userForService, input.limit, input.skip);
+
+    return projectsService.getAllProjects(
+      input.orgId,
+      userForService,
+      input.limit,
+      input.skip
+    );
   }),
+
   // ----------------
   // UI Generation
   // ----------------

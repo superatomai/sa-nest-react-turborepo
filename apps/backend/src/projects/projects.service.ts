@@ -9,44 +9,37 @@ import { User } from '@superatom-turbo/trpc';
 export class ProjectsService {
   constructor(private readonly drizzleService: DrizzleService) {}
 
-  async getAllProjects(orgId: string, user?: User, limit?: number, skip?: number) {
+  async getAllProjects(orgId: string, user?: User, limit = 8, skip = 0) {
   if (!orgId) {
     throw new BadRequestException("Organization ID is required");
   }
 
-  // --- Base filter (all non-deleted projects for the org)
-  const baseQuery = this.drizzleService.db
-  .select({
-    id: projects.id,
-    name: projects.name,
-    description: projects.description,
-    createdAt: sql<string>`to_char(${projects.createdAt}, 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')`,
-    updatedAt: sql<string>`to_char(${projects.updatedAt}, 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')`,
-    deleted: projects.deleted,
-    orgId: projects.orgId,
-    createdBy: projects.createdBy,
-    updatedBy: projects.updatedBy,
-  })
-  .from(projects)
-  .where(and(eq(projects.orgId, orgId), eq(projects.deleted, false)))
-  .orderBy(desc(projects.updatedAt));
+  // --- Total count query (efficient)
+  const [{ count: totalCount }] = await this.drizzleService.db
+    .select({ count: sql<number>`COUNT(*)` })
+    .from(projects)
+    .where(and(eq(projects.orgId, orgId), eq(projects.deleted, false)));
 
-  // Total project count (before pagination)
-  const totalCount = (await baseQuery).length;
+  // --- Paginated query
+  const results = await this.drizzleService.db
+    .select({
+      id: projects.id,
+      name: projects.name,
+      description: projects.description,
+      createdAt: sql<string>`to_char(${projects.createdAt}, 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')`,
+      updatedAt: sql<string>`to_char(${projects.updatedAt}, 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')`,
+      deleted: projects.deleted,
+      orgId: projects.orgId,
+      createdBy: projects.createdBy,
+      updatedBy: projects.updatedBy,
+    })
+    .from(projects)
+    .where(and(eq(projects.orgId, orgId), eq(projects.deleted, false)))
+    .orderBy(desc(projects.updatedAt))
+    .limit(limit)
+    .offset(skip);
 
-  // Pagination
-  let projectsList = baseQuery;
-  if (typeof skip === "number") {
-    projectsList = projectsList.offset?.(skip) || projectsList;
-  }
-  if (typeof limit === "number") {
-    projectsList = projectsList.limit(limit);
-  }
-
-  // Fetch projects
-  const results = await projectsList;
-
-  // --- Fetch uis_count for each project (only non-deleted uis)
+  // --- Fetch uis_count for these projects
   const projectIds = results.map((p: { id: any; }) => p.id);
   let uisCounts: Record<string, number> = {};
 
@@ -57,19 +50,16 @@ export class ProjectsService {
         count: sql<number>`COUNT(*)`.as("count"),
       })
       .from(uis)
-      .where(
-        and(inArray(uis.projectId, projectIds), eq(uis.deleted, false))
-      )
+      .where(and(inArray(uis.projectId, projectIds), eq(uis.deleted, false)))
       .groupBy(uis.projectId);
 
-    // Convert rows into a lookup map
     uisCounts = uisCountRows.reduce(
       (acc: any, row: { projectId: any; count: any; }) => ({ ...acc, [row.projectId]: row.count }),
       {}
     );
   }
 
-  // --- Merge uis_count into projects
+  // --- Merge counts
   const projectsWithCounts = results.map((project: { id: string | number; }) => ({
     ...project,
     uis_count: uisCounts[project.id] ?? 0,
@@ -83,6 +73,7 @@ export class ProjectsService {
     projects: projectsWithCounts,
   };
 }
+
 
 
 

@@ -9,48 +9,73 @@ import { ToggleListGrid } from "@/components/ToggleListGrid";
 import { Header } from "@/components/Header";
 import AllUis from "@/components/uis/AllUis";
 
+const LIMIT = 8;
+
 const Projects = () => {
   const { organization } = useOrganization();
-  const orgId: string | any = organization?.id;
+  const orgId: string | undefined = organization?.id;
   const [selectedId, setSelectedId] = useState<number>();
-  
+  const [page, setPage] = useState(0);
 
   if (!orgId) {
     return <div>No organization selected</div>;
   }
 
-  const projectsQuery = trpc.projectsGetAll.useQuery({ orgId });
+  const projectsQuery = trpc.projectsGetAll.useQuery(
+    { orgId, skip: page * LIMIT, limit: LIMIT },
+    {
+      ...(undefined as any),
+      keepPreviousData: true,
+    }
+  );
+
   const isProjectsActive = window.location.pathname === "/projects";
-  const Projects = projectStore.projects;
-  const selectedProject: any = Projects.find((p: any) => p.id === selectedId)
+  const projectList = projectStore.projects;
+  const selectedProject = projectList.find((p) => p.id === selectedId);
 
   useEffect(() => {
     if (projectsQuery.data?.projects) {
-      projectStore.setProjects(
-        projectsQuery.data.projects,
-        projectsQuery.data.totalCount
-      );
+      if (page === 0) {
+        projectStore.setProjects(
+          projectsQuery.data.projects,
+          projectsQuery.data.totalCount
+        );
+      } else {
+        projectStore.addProjects(
+          projectsQuery.data.projects,
+          projectsQuery.data.totalCount
+        );
+      }
     }
-    console.log("fetched projects", JSON.stringify(projectsQuery.data?.projects));
-  }, [projectsQuery.data]);
+  }, [projectsQuery.data, page]);
 
 
+  useEffect(()=>{
+    console.log(JSON.stringify(projectList))
+},[projectList])
+
+  // Scroll to selected project
   useEffect(() => {
-        const el = document.getElementById("selected-project-container");
-        if (el) {
-            el.scrollIntoView({ behavior: "smooth", block: "start" });
-        }
-    }, [selectedId]);
-
+    const el = document.getElementById("selected-project-container");
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [selectedId]);
 
   const handleProjectSelect = (projectId: number) => {
     setSelectedId(projectId);
     projectStore.selectProject(projectId);
   };
 
+  const handleLoadMore = () => {
+    if (projectStore.hasMoreProjects) {
+      setPage((prev) => prev + 1);
+    }
+  };
+
   return (
     <div className="container mx-auto">
-      <Header/>
+      <Header />
       <div className="">
         <div className="flex flex-col gap-3 w-full">
           {/* Breadcrumb Navigation */}
@@ -101,8 +126,9 @@ const Projects = () => {
         </div>
       </div>
 
+      {/* Projects Grid */}
       <div className="grid sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-5 ">
-        {Projects.map((project) => (
+        {projectList.map((project) => (
           <ProjectCard
             key={project.id}
             ProjectDetails={project}
@@ -112,14 +138,28 @@ const Projects = () => {
         ))}
       </div>
 
+      {/* Load More Button */}
+      {projectStore.hasMoreProjects && (
+        <div className="flex justify-center mt-6">
+          <button
+            onClick={handleLoadMore}
+            disabled={projectsQuery.isFetching}
+            className="px-6 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg shadow hover:bg-blue-700 disabled:opacity-50"
+          >
+            {projectsQuery.isFetching ? "Loading..." : "Load More"}
+          </button>
+        </div>
+      )}
+
+      {/* Selected Project UIs */}
       {selectedProject && selectedId && (
-                <div
-                    className="flex w-full flex-col gap-4"
-                    id="selected-project-container"
-                >
-                    <AllUis projectId={selectedId} selectedProject={selectedProject}/>
-                </div>
-        )}
+        <div
+          className="flex w-full flex-col gap-4"
+          id="selected-project-container"
+        >
+          <AllUis projectId={selectedId} selectedProject={selectedProject} />
+        </div>
+      )}
     </div>
   );
 };
