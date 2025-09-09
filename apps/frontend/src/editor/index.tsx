@@ -2,9 +2,9 @@ import { useEffect, useState } from 'react'
 import { T_UI_Component } from '../types/ui-schema'
 import FLOWUIRenderer from './components/ui-renderer'
 import { trpc } from '../utils/trpc'
-import TestWithYourSchema from './components/ui-renderer'
 import { projectStore } from '@/stores/mobx_project_store'
 import { observer } from 'mobx-react-lite'
+import { useParams } from 'react-router-dom'
 
 const default_ui_schema:T_UI_Component = {
 	id: "ui_33O2Hf",
@@ -21,13 +21,33 @@ const StudioTestPage = () => {
 
 	const [currentSchema, setCurrentSchema] = useState<T_UI_Component>()
 	const [data, setData] = useState<any>(null)
+	const [projectId, setProjectId] = useState<string>("");
+
+	// const[projectId, setProjectId] = useState(projectStore.selectedProjectId)
+
+	const { uiId } = useParams<{ uiId: string }>();
+	const { data: uidata} = trpc.uisGetById.useQuery(
+		{ id: uiId! },   // non-null assertion
+		{ enabled: !!uiId } // only run query if uiId exists
+		);
+
+	useEffect(() => {
+		if (uiId && uidata) {
+			console.log("uiId", uidata.ui)
+			const ui = uidata.ui;
+
+			setProjectId(()=>{
+				return ui.projectId.toString()
+			})
+		}
+	}, [uiId, uidata]);
+
 
 	// Prompt history state
 	const [promptHistory, setPromptHistory] = useState<string[]>([])
 	const [historyIndex, setHistoryIndex] = useState(-1)
 
-	const projectId = '49'; // Using string as expected by API
-	const uiId = 'ui_33O2Hf'
+	// const uiId = 'ui_33O2Hf'
 	const pid = projectStore.selectedProjectId;
 	console.log("pid", pid)
 
@@ -205,7 +225,7 @@ const StudioTestPage = () => {
 
 				console.log("creating  a new version");
 				const new_version ={
-					uiId: uiId,
+					uiId: uiId!,
 					dsl: JSON.stringify(response.data),
 					prompt: input,
 				}

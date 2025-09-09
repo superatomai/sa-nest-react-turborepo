@@ -125,33 +125,33 @@ export class UisService {
     };
   }
 
-  async getUiById(id: number, user?: User) {
-    const ui = await this.drizzleService.db
-      .select()
-      .from(uis)
-      .where(and(eq(uis.id, id), eq(uis.deleted, false)))
-      .limit(1);
+ async getUiById(id: string, user?: User) {
+  const ui = await this.drizzleService.db
+    .select()
+    .from(uis)
+    .where(and( eq (uis.uiId, id), eq(uis.deleted, false)))
+    .limit(1);
 
-    if (!ui.length) {
-      throw new NotFoundException(`UI with ID ${id} not found`);
-    }
-
-    // Get latest version for this UI
-    const latestVersion = await this.drizzleService.db
-      .select({ maxVersionId: max(versions.versionId) })
-      .from(versions)
-      .where(eq(versions.uiId, ui[0].uiId))
-      .groupBy(versions.uiId);
-
-    return {
-      message: `UI ${id} retrieved successfully`,
-      ui: {
-        ...(ui[0] as any),
-        version_id: latestVersion[0]?.maxVersionId || 1,
-      },
-      userId: user?.id || 'anonymous',
-    };
+  if (!ui.length) {
+    throw new NotFoundException(`UI with ID ${id} not found`);
   }
+
+  const latestVersion = await this.drizzleService.db
+    .select({ maxVersionId: max(versions.versionId) })
+    .from(versions)
+    .where(eq(versions.uiId, ui[0].uiId))
+    .groupBy(versions.uiId);
+
+  return {
+    message: `UI ${id} retrieved successfully`,
+    ui: {
+      ...(ui[0] as any),
+      version_id: latestVersion[0]?.maxVersionId || 1,
+    },
+    userId: user?.id || 'anonymous',
+  };
+}
+
 
   async createUi(
     data: {

@@ -141,11 +141,11 @@ export const appRouter = t.router({
     }),
 
   uisGetById: t.procedure
-    .input(z.object({ id: z.number().int().positive() }))
-    .query(async ({ input, ctx }) => {
-      const service = ctx.nestApp.get(UisService);
-      return service.getUiById(input.id, ctx.user);
-    }),
+  .input(z.object({ id: z.string().min(1) })) // nanoid is string
+  .query(async ({ input, ctx }) => {
+    const service = ctx.nestApp.get(UisService);
+    return service.getUiById(input.id, ctx.user);
+  }),
 
   uisCreate: t.procedure
     .input(z.object({
