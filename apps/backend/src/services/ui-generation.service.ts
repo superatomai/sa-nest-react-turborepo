@@ -68,8 +68,16 @@ export class UiGenerationService {
 
 			// Step 2: Execute query via WebSocket to user's data agent
 			console.log('Executing query for project', projectId, query, JSON.stringify(variables || {}, null, 2));
+			
+			let exec_query:any = {
+				id: nanoid(6),
+				graphql: "",
+			}
 
-			let exec_query = this.getQueryFromDSL(currentSchema)[0];
+			const prev_queries = this.getQueryFromDSL(currentSchema);
+			if(prev_queries.length > 0){
+				exec_query = prev_queries[0];
+			}
 
 			if (query) {
 				exec_query = {
@@ -79,17 +87,22 @@ export class UiGenerationService {
 				};
 			}
 
-			const ws_data = await this.webSocketManager.executeQueryForUser(projectId, exec_query.graphql, exec_query.vars);
-			console.log(`Received data for project ${projectId}:`, ws_data);
+			let data = {};
+			if(exec_query.graphql){
+				console.log("exec_query", exec_query);
+				const ws_data = await this.webSocketManager.executeQueryForUser(projectId, exec_query.graphql, exec_query.vars);
+				console.log(`Received data for project ${projectId}:`, ws_data);
+				data = ws_data.data;
+			}
 
-			const data = ws_data.data;
+
 
 			// Step 3: Generate UI schema from data
 			const schema: T_UI_Component = await this.llmService.generateUIFromData(
 				data,
 				prompt,
-				query,
-				variables,
+				exec_query.graphql,
+				exec_query.vars,
 				projectId,
 				currentSchema
 			);
@@ -98,8 +111,8 @@ export class UiGenerationService {
 			const ui = schema;
 			ui.query = {
 				id: nanoid(6),
-				graphql: query,
-				vars: variables
+				graphql: exec_query.graphql,
+				vars: exec_query.vars
 			};
 
 			// Step 5: Prepare response data structure

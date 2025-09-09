@@ -3,22 +3,22 @@ import { z } from "zod"
 // Base component props schema
 const ComponentPropsSchema = z.object({
 	className: z.string().optional(),
-	style: z.record(z.string(), z.unknown()).optional(), 
+	style: z.record(z.string(), z.any()).optional(), 
 	onClick: z.string().optional(),
 }).passthrough()
 
 // Query schema for data fetching
 const QuerySchema = z.object({
-	id: z.string().min(1).optional(),
-	graphql: z.string().min(1).optional(),
-	vars: z.record(z.string(), z.unknown()).optional(),
+	id: z.string().optional(),
+	graphql: z.string().optional(),
+	vars: z.record(z.string(), z.any()).optional(),
 }).optional()
 
 // UI Component schema with proper recursive typing
 export const Z_UI_Component: z.ZodSchema<T_UI_Component> = z.lazy(() =>
 	z.object({
-		id: z.string().min(1), // Ensure non-empty string
-		type: z.string().min(1), // Component type (div, button, etc.)
+		id: z.string(),
+		type: z.string(),
 		props: ComponentPropsSchema.optional(),
 		children: z.array(z.union([Z_UI_Component, z.string()])).optional(),
 		query: QuerySchema,

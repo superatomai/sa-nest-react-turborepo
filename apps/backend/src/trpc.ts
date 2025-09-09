@@ -16,7 +16,6 @@ export const trpcMiddleware = trpcExpress.createExpressMiddleware({
   createContext: ({ req, res }: { req: Request; res: Response }) => {
     try {
       const auth = getAuth(req);
-      console.log('Clerk auth result:', auth);
       
       return {
         req,
