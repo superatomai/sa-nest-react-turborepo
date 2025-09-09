@@ -211,7 +211,6 @@ when no query is required set the query value to empty string ("").
 
         return docs;
     }
-
    
     private fixDoubleBindings(component: T_UI_Component): T_UI_Component {
         const fixed = { ...component };
@@ -254,8 +253,6 @@ when no query is required set the query value to empty string ("").
         
         return processComponent(fixed);
     }
-
-
 
     async generateUIFromData(
         data: any,

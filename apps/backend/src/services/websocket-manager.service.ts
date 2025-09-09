@@ -14,6 +14,7 @@ class WebSocketRuntimeClient {
 	private pendingRequests = new Map<string, PendingRequest>();
 	private clientId: string | null = null;
 	private lastPongReceived: number = 0;
+	private pingInterval: NodeJS.Timeout | null = null;
 
 	constructor(
 		private websocketUrl: string,
@@ -46,6 +47,10 @@ class WebSocketRuntimeClient {
 					this.connected = true;
 					this.lastPongReceived = Date.now();
 					this.reconnectAttempts = 0;
+					
+					// Start periodic ping to keep connection alive
+					this.startPingInterval();
+					
 					resolve();
 				});
 
@@ -154,9 +159,7 @@ class WebSocketRuntimeClient {
 	}
 
 	private async handleGetProdUI(message: GetProdUIMessage): Promise<void> {
-		console.log(
-			`Runtime handling get_prod_ui (uiId=${message.uiId}, requestId=${message.requestId}) for project ${this.projectId}`
-		);
+		console.log(`Runtime handling get_prod_ui (uiId=${message.uiId}, requestId=${message.requestId}) for project ${this.projectId}`);
 
 		try {
 			const projectId = message.projectId;
@@ -196,24 +199,18 @@ class WebSocketRuntimeClient {
 			const variables = ui_schema.query?.vars;
 			const queryId = ui_schema.query?.id; // 👈 safe access
 
-
-			if (!query) {
-				console.error('no query found in DSL')
-				throw new Error('no query found in DSL');
+			if(query) {
+				try {
+					console.log(`Executing GraphQL query for project ${this.projectId}, uiId ${uiId}`);
+					const queryResponse = await this.executeGraphQLQuery(query, variables);
+					data = queryResponse.data;
+					console.log(`Query executed successfully for project ${this.projectId}, uiId ${uiId}`);
+				} catch (queryError) {
+					console.error(`Query execution failed for project ${this.projectId}, uiId ${uiId}:`, queryError);
+					// Still continue with empty data rather than failing completely
+					data = null;
+				}
 			}
-
-
-			// 3️⃣ Execute query against runtime/agent
-			const queryResponse = await this.executeGraphQLQuery(query, variables);
-
-			data = queryResponse.data;
-			// const uiData = {
-			//   id: message.uiId,
-			//   type: "div",
-			//   children: [
-			//     { id: "child-1", type: "span", children: ["Hello from runtime!"] }
-			//   ]
-			// };
 
 			// add data to dsl
 			// Ensure `dsl.data` exists
@@ -225,7 +222,6 @@ class WebSocketRuntimeClient {
 				console.warn('⚠️ query.id not provided in DSL, skipping data assignment');
 			}
 
-			console.log('res in getting prod data', queryResponse);
 
 			const response: ProdUIResponseMessage = {
 				type: "prod_ui_response",
@@ -237,9 +233,7 @@ class WebSocketRuntimeClient {
 			};
 
 			this.ws?.send(JSON.stringify(response));
-			console.log(
-				`Sent prod_ui_response (uiId=${message.uiId}, requestId=${message.requestId})`
-			);
+			console.log(`Sent prod_ui_response (uiId=${message.uiId}, requestId=${message.requestId})`);
 		} catch (err: any) {
 			const response: ProdUIResponseMessage = {
 				type: "prod_ui_response",
@@ -297,17 +291,41 @@ class WebSocketRuntimeClient {
 		}
 	}
 
-	async executeGraphQLQuery(query: string, variables?: Record<string, any>): Promise<any> {
+	async executeGraphQLQuery(query: string, variables?: Record<string, any>, retryCount = 0): Promise<any> {
 		if (!this.connected || !this.ws) {
 			throw new Error('WebSocket not connected');
+		}
+
+		// Check if connection is actually healthy
+		if (!this.isHealthy()) {
+			console.warn(`Connection unhealthy for project ${this.projectId}, attempting reconnection...`);
+			try {
+				await this.connect();
+			} catch (error) {
+				throw new Error(`Failed to reconnect: ${error instanceof Error ? error.message : error}`);
+			}
 		}
 
 		return new Promise((resolve, reject) => {
 			const requestId = crypto.randomUUID();
 
-			const timeout = setTimeout(() => {
+			const timeout = setTimeout(async () => {
 				this.pendingRequests.delete(requestId);
-				reject(new Error('Query timeout'));
+				
+				// Retry logic for timeouts
+				if (retryCount < 2) {
+					console.log(`Query timeout for project ${this.projectId}, retrying (${retryCount + 1}/2)...`);
+					try {
+						const result = await this.executeGraphQLQuery(query, variables, retryCount + 1);
+						resolve(result);
+						return;
+					} catch (retryError) {
+						reject(new Error(`Query timeout after ${retryCount + 1} retries: ${retryError instanceof Error ? retryError.message : retryError}`));
+						return;
+					}
+				}
+				
+				reject(new Error(`Query timeout after 40000ms for project ${this.projectId} (${retryCount + 1} attempts)`));
 			}, 40000);
 
 			this.pendingRequests.set(requestId, {
@@ -331,18 +349,42 @@ class WebSocketRuntimeClient {
 		});
 	}
 
-	async getDocs(): Promise<any> {
+	async getDocs(retryCount = 0): Promise<any> {
 		if (!this.connected || !this.ws) {
 			throw new Error(`WebSocket not connected for project ${this.projectId}`);
+		}
+
+		// Check if connection is actually healthy
+		if (!this.isHealthy()) {
+			console.warn(`Connection unhealthy for project ${this.projectId}, attempting reconnection for docs...`);
+			try {
+				await this.connect();
+			} catch (error) {
+				throw new Error(`Failed to reconnect for docs: ${error instanceof Error ? error.message : error}`);
+			}
 		}
 
 		return new Promise((resolve, reject) => {
 			const requestId = crypto.randomUUID();
 
-			const timeout = setTimeout(() => {
+			const timeout = setTimeout(async () => {
 				this.pendingRequests.delete(requestId);
-				reject(new Error('Docs request timeout'));
-			}, 30000);
+				
+				// Retry logic for docs timeout
+				if (retryCount < 2) {
+					console.log(`Docs request timeout for project ${this.projectId}, retrying (${retryCount + 1}/2)...`);
+					try {
+						const result = await this.getDocs(retryCount + 1);
+						resolve(result);
+						return;
+					} catch (retryError) {
+						reject(new Error(`Docs request timeout after ${retryCount + 1} retries: ${retryError instanceof Error ? retryError.message : retryError}`));
+						return;
+					}
+				}
+				
+				reject(new Error(`Docs request timeout after 45000ms for project ${this.projectId} (${retryCount + 1} attempts)`));
+			}, 45000);
 
 			this.pendingRequests.set(requestId, {
 				requestId,
@@ -375,10 +417,33 @@ class WebSocketRuntimeClient {
 		};
 	}
 
+	private startPingInterval(): void {
+		// Clear existing interval
+		if (this.pingInterval) {
+			clearInterval(this.pingInterval);
+		}
+		
+		// Send ping every 30 seconds to keep connection alive
+		this.pingInterval = setInterval(() => {
+			if (this.ws && this.connected) {
+				try {
+					this.ws.send(JSON.stringify({ type: 'ping', projectId: this.projectId }));
+				} catch (error) {
+					console.error(`Failed to send ping for project ${this.projectId}:`, error);
+				}
+			}
+		}, 30000);
+	}
+
 	disconnect(): void {
 		if (this.reconnectTimeout) {
 			clearTimeout(this.reconnectTimeout);
 			this.reconnectTimeout = null;
+		}
+
+		if (this.pingInterval) {
+			clearInterval(this.pingInterval);
+			this.pingInterval = null;
 		}
 
 		this.pendingRequests.forEach((request) => {
