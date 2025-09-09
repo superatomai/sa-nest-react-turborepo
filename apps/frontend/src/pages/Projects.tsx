@@ -31,6 +31,7 @@ const Projects = () => {
         projectsQuery.data.totalCount
       );
     }
+    console.log("fetched projects", JSON.stringify(projectsQuery.data?.projects));
   }, [projectsQuery.data]);
 
 
@@ -44,10 +45,11 @@ const Projects = () => {
 
   const handleProjectSelect = (projectId: number) => {
     setSelectedId(projectId);
+    projectStore.selectProject(projectId);
   };
 
   return (
-    <div className="container mx-auto px-6 py-8">
+    <div className="container mx-auto">
       <Header/>
       <div className="">
         <div className="flex flex-col gap-3 w-full">

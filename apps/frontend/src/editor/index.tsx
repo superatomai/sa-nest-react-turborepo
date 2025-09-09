@@ -3,6 +3,8 @@ import { T_UI_Component } from '../types/ui-schema'
 import FLOWUIRenderer from './components/ui-renderer'
 import { trpc } from '../utils/trpc'
 import TestWithYourSchema from './components/ui-renderer'
+import { projectStore } from '@/stores/mobx_project_store'
+import { observer } from 'mobx-react-lite'
 
 const default_ui_schema:T_UI_Component = {
 	id: "ui_33O2Hf",
@@ -22,6 +24,8 @@ const StudioTestPage = () => {
 
 	const projectId = '49'; // Using string as expected by API
 	const uiId = 'ui_33O2Hf'
+	const pid = projectStore.selectedProjectId;
+	console.log("pid", pid)
 
 
 	// tRPC mutations
@@ -329,4 +333,4 @@ const StudioTestPage = () => {
 	)
 }
 
-export default StudioTestPage
+export default observer(StudioTestPage)

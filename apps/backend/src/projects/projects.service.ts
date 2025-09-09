@@ -2,7 +2,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { DrizzleService } from '../../drizzle/drizzle.service';
 import { projects, uis } from '../../drizzle/schema';
-import { eq, and, sql, inArray } from 'drizzle-orm';
+import { eq, and, sql, inArray, desc } from 'drizzle-orm';
 import { User } from '@superatom-turbo/trpc';
 
 @Injectable()
@@ -16,10 +16,20 @@ export class ProjectsService {
 
   // --- Base filter (all non-deleted projects for the org)
   const baseQuery = this.drizzleService.db
-    .select()
-    .from(projects)
-    .where(and(eq(projects.orgId, orgId), eq(projects.deleted, false)))
-    .orderBy(projects.updatedAt, 'desc');
+  .select({
+    id: projects.id,
+    name: projects.name,
+    description: projects.description,
+    createdAt: sql<string>`to_char(${projects.createdAt}, 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')`,
+    updatedAt: sql<string>`to_char(${projects.updatedAt}, 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')`,
+    deleted: projects.deleted,
+    orgId: projects.orgId,
+    createdBy: projects.createdBy,
+    updatedBy: projects.updatedBy,
+  })
+  .from(projects)
+  .where(and(eq(projects.orgId, orgId), eq(projects.deleted, false)))
+  .orderBy(desc(projects.updatedAt));
 
   // Total project count (before pagination)
   const totalCount = (await baseQuery).length;

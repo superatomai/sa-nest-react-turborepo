@@ -10,7 +10,7 @@ type Props = {
     UICardDetails: any;
     selectedProjId: number
 }
-const UICard = ({UICardDetails, selectedProjId} : Props) => {
+const UICard = ({UICardDetails} : Props) => {
     
     const navigate = useNavigate();
     const [showNameTooltip, setShowNameTooltip] = useState(false);
@@ -21,9 +21,6 @@ const UICard = ({UICardDetails, selectedProjId} : Props) => {
     const name = UICardDetails.name ?? "";
     const hasLongName = name.length > 18;
 
-    useEffect(()=>{
-        console.log("UICardDetails", JSON.stringify(UICardDetails))
-    },[UICardDetails])
 
   return (
     <>
