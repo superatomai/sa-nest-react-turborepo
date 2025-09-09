@@ -1,10 +1,11 @@
 import { truncateText } from "@/lib/utils/truncate-text";
 import { Card, CardDescription, CardTitle } from "../ui/card";
-import { useEffect, useState } from "react";
+import {  useEffect, useState } from "react";
 import ToolTip from "../Tooltip";
 import { Icon } from "@iconify/react/dist/iconify.js";
 import { getTimeAgo } from "@/lib/utils/time-ago";
 import { useNavigate } from "react-router-dom";
+import DeleteUiModal from "./DeleteUiModal";
 
 type Props = {
     UICardDetails: any;
@@ -15,11 +16,17 @@ const UICard = ({UICardDetails} : Props) => {
     const navigate = useNavigate();
     const [showNameTooltip, setShowNameTooltip] = useState(false);
     const [showDescTooltip, setShowDescTooltip] = useState(false);
+    const [showDeleteUiModal, setShowDeleteUiModal] = useState(false); 
 
     const description = UICardDetails.description ?? "";
     const hasLongDescription = description.length > 30;
     const name = UICardDetails.name ?? "";
     const hasLongName = name.length > 18;
+
+
+    useEffect(()=>{
+        console.log("UICardDetails",JSON.stringify(UICardDetails))
+    },[UICardDetails])
 
 
   return (
@@ -110,17 +117,26 @@ const UICard = ({UICardDetails} : Props) => {
                     </button>
                     <button
                         className="py-1 px-3 bg-white cursor-pointer border border-gray-300 rounded-md text-xs z-20 text-gray-600 hover:border-red-500 hover:text-red-600 hover:bg-red-50 transition-all duration-200 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
-                        // disabled={isUpdating}
-                        // onClick={(e) => {
-                        //     e.stopPropagation();
-                        //     setShowDeleteUiModal(!showDeleteUiModal);
-                        // }}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setShowDeleteUiModal(true);
+                        }}
                     >
                         <Icon icon="material-symbols:delete-rounded" />
                     </button>
                     <div className="absolute inset-0 bg-gradient-to-t from-[#92B5F7] to-white/80 -left-3 -right-3 bottom-0 top-0 z-10"></div>
                 </div>
             </Card>
+            {
+                showDeleteUiModal && (
+                    <DeleteUiModal
+                        showDeleteUiModal={showDeleteUiModal}
+                        setShowDeleteUiModal={setShowDeleteUiModal}
+                        ui_name={UICardDetails.name}
+                        id={UICardDetails.id}
+                    />
+                )
+            }
     </>
   )
 }

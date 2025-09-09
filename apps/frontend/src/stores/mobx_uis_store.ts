@@ -16,6 +16,7 @@ class UisStore {
   uis: Ui[] = [];
   hasInitialized = false;
   selectedUiId: number | null = null;
+  totalUis: number = 0;
 
   constructor() {
     makeAutoObservable(this);
@@ -49,7 +50,7 @@ class UisStore {
   addUiToStore(ui: Ui) {
     runInAction(() => {
       this.uis.unshift(ui);
-    //   this.totalUis += 1;
+      this.totalUis += 1;
     });
   }
 
@@ -61,10 +62,10 @@ class UisStore {
     });
   }
 
-  removeUiFromStore(uiId: number) {
+  removeUiFromStore(id: number) {
     runInAction(() => {
-      this.uis = this.uis.filter((u) => u.id !== uiId);
-    //   this.totalUis -= 1;
+      this.uis = this.uis.filter((u) => u.id !== id);
+      this.totalUis -= 1;
     });
   }
 }

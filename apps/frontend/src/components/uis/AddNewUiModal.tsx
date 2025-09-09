@@ -90,9 +90,12 @@ const AddNewUiModal = ({ setShowAddUiModal, projectId }: Props) => {
         projectId,
       });
 
-      console.log("UI created:", JSON.stringify(newUi.ui));
+      const uiWithVersion = {
+        ...newUi.ui,
+        version_id: 1,
+      };
       // 3. Add to MobX store
-      uisStore.addUiToStore(newUi.ui);
+      uisStore.addUiToStore(uiWithVersion);
 
       // 4. Reset + close modal
       resetForm();

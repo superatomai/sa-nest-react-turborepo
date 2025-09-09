@@ -24,7 +24,7 @@ export function App() {
     }
   }, [isLoaded, organization]);
 
-  const hideNavbar = location.pathname.startsWith("/editor");
+  const hideSidebar = location.pathname.startsWith("/editor");
   const isPublicRoute = ["/login", "/login/sso-callback", "/sign-in/sso-callback", "/sign-up/sso-callback"].includes(location.pathname);
 
   if (isPublicRoute || !isSignedIn) {
@@ -40,15 +40,16 @@ export function App() {
   }
 
   return (
-    <SidebarProvider>
-      <div className="flex min-h-screen w-full">
-        {/* <div className="hidden md:block">
-        <AppSidebar />
-        </div> */}
-        <div className="flex-1 flex flex-col">
-          {!hideNavbar && <Navbar />}
-          <main className="flex-1 overflow-auto">
-            <Routes>
+    <SidebarProvider className="overflow-hidden">
+  
+      <div className="">
+        {
+         !hideSidebar && <AppSidebar  />
+        }
+        </div>
+          {/* {!hideNavbar && <Navbar />} */}
+          <div className="h-screen overflow-auto w-full flex-1">
+            <Routes >
               <Route
                 path="/"
                 element={
@@ -105,9 +106,9 @@ export function App() {
                 }
               />
             </Routes>
-          </main>
-        </div>
-      </div>
+          </div>
+            
+          
     </SidebarProvider>
   );
 }

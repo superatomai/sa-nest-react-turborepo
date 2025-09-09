@@ -2,7 +2,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 const CardsLoading = () => {
     return (
-        <div className="grid grid-cols-4 gap-5 h-full min-h-[200px]">
+        <div className="grid sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-5 h-full min-h-[200px]">
             {[...Array(4)].map((_, i) => (
                 <div key={i} className="space-y-3">
                     <Skeleton className="h-[200px] w-full rounded-lg" />

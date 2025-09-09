@@ -20,6 +20,9 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
       publishableKey={PUBLISHABLE_KEY}
       signInFallbackRedirectUrl="/"
       signUpFallbackRedirectUrl="/"
+      afterSignOutUrl="/login"
+      signInUrl="/login"
+      signUpUrl="/login"
     >
       <QueryClientProvider client={queryClient}>
         <trpc.Provider client={trpcClient} queryClient={queryClient}>

@@ -8,8 +8,8 @@ import { Icon } from "@iconify/react/dist/iconify.js";
 import { ToggleListGrid } from "@/components/ToggleListGrid";
 import { Header } from "@/components/Header";
 import AllUis from "@/components/uis/AllUis";
-import CardsLoading from "@/components/loading-skeleton/cards-loading";
 import { ProjectsLoading } from "@/components/loading-skeleton/projects-loading";
+import NoProjectsFound from "@/components/project/NoProjectsFound";
 
 const LIMIT = 8;
 
@@ -34,7 +34,11 @@ const Projects = () => {
   const isProjectsActive = window.location.pathname === "/projects";
   const projectList = projectStore.projects;
   const selectedProject = projectList.find((p) => p.id === selectedId);
-  const projectsLoading = projectStore.hasInitialized;  
+  
+  // Fix the loading logic - only show full loading screen for initial load
+  const isInitialLoading = projectsQuery.isLoading && !projectStore.hasInitialized && page === 0;
+  const isLoadingMore = projectsQuery.isFetching && page > 0;
+  const hasNoProjects = projectStore.projects.length === 0 && projectStore.hasInitialized && !projectsQuery.isLoading;
 
   useEffect(() => {
     if (projectsQuery.data?.projects) {
@@ -51,11 +55,6 @@ const Projects = () => {
       }
     }
   }, [projectsQuery.data, page]);
-
-
-  useEffect(()=>{
-    console.log(JSON.stringify(projectList))
-},[projectList])
 
   // Scroll to selected project
   useEffect(() => {
@@ -76,17 +75,20 @@ const Projects = () => {
     }
   };
 
+  // Show loading screen only for initial load
+  if (isInitialLoading) {
+    return (
+      <div className="w-full min-h-screen">
+        <ProjectsLoading />
+      </div>
+    );
+  }
+
+  // Show projects page with consistent header
   return (
-    <>
-    {
-      !projectsLoading ? (
-      <>
-        <ProjectsLoading/>
-      </> )
-      : 
-      (<div className="container mx-auto">
+    <div className="container">
       <Header />
-      <div className="">
+      <div className="mx-4">
         <div className="flex flex-col gap-3 w-full">
           {/* Breadcrumb Navigation */}
           <div className="flex items-center gap-1 text-sm text-gray-600 my-4">
@@ -136,47 +138,57 @@ const Projects = () => {
         </div>
       </div>
 
-      {/* Projects Grid */}
-      <div className="grid sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-5 ">
-        {projectList.map((project) => (
-          <ProjectCard
-            key={project.id}
-            ProjectDetails={project}
-            selected={selectedId === project.id}
-            onSelect={() => handleProjectSelect(project.id)}
-          />
-        ))}
-      </div>
-
-      {/* Load More Button */}
-      {projectStore.hasMoreProjects && (
-        <div className="flex justify-center mt-6">
-          <button
-            onClick={handleLoadMore}
-            disabled={projectsQuery.isFetching}
-            className="px-6 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg shadow hover:bg-blue-700 disabled:opacity-50"
-          >
-            {projectsQuery.isFetching ? "Loading..." : "Load More"}
-          </button>
+      {/* Conditional Content: No Projects Found vs Projects Grid */}
+      {hasNoProjects ? (
+        <div className="mx-4">
+          <NoProjectsFound orgId={orgId} />
         </div>
-      )}
+      ) : (
+        <>
+          {/* Projects Grid */}
+          <div className="grid sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-5 mx-4">
+            {projectList.map((project) => (
+              <ProjectCard
+                key={project.id}
+                ProjectDetails={project}
+                selected={selectedId === project.id}
+                onSelect={() => handleProjectSelect(project.id)}
+              />
+            ))}
+          </div>
 
-      {/* Selected Project UIs */}
-      {selectedProject && selectedId && (
-        <div
-          className="flex w-full flex-col gap-4"
-          id="selected-project-container"
-        >
-          <AllUis projectId={selectedId} selectedProject={selectedProject} />
-        </div>
-      )}
-    </div>)
-    }
-    
-    
-   
-    </>
+          {/* Load More Button */}
+          {projectStore.hasMoreProjects && (
+            <div className="flex justify-center mt-6 mb-5">
+              <button
+                onClick={handleLoadMore}
+                disabled={isLoadingMore}
+                className="px-6 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg shadow hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+              >
+                {isLoadingMore ? (
+                  <div className="flex items-center gap-2">
+                    <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full"></div>
+                    Loading...
+                  </div>
+                ) : (
+                  "Load More"
+                )}
+              </button>
+            </div>
+          )}
 
+          {/* Selected Project UIs */}
+          {selectedProject && selectedId && (
+            <div
+              className="flex w-full flex-col gap-4"
+              id="selected-project-container"
+            >
+              <AllUis projectId={selectedId} selectedProject={selectedProject} />
+            </div>
+          )}
+        </>
+      )}
+    </div>
   );
 };
 

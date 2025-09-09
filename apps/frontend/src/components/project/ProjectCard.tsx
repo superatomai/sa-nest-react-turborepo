@@ -6,6 +6,8 @@ import { observer } from 'mobx-react-lite';
 import { Icon } from '@iconify/react/dist/iconify.js';
 import { useState } from 'react';
 import ToolTip from '../Tooltip';
+import DeleteProjectModal from './DeleteProjectModal';
+import UpdateProjectModal from './UpdateProject';
 
 interface ProjectCardProps {
   ProjectDetails: any;
@@ -16,6 +18,8 @@ interface ProjectCardProps {
 const ProjectCard = observer(({ ProjectDetails, selected, onSelect }: ProjectCardProps) => {
   const [showTooltip, setShowTooltip] = useState(false);
   const [showNameTooltip, setShowNameTooltip] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
 
   const hasLongDescription = ProjectDetails.description && ProjectDetails.description.length > 50;
   const hasLongName = ProjectDetails.name && ProjectDetails.name.length > 20;
@@ -51,7 +55,7 @@ const ProjectCard = observer(({ ProjectDetails, selected, onSelect }: ProjectCar
                 </div>
               )}
 
-              <div className="h-10 flex items-start mt-1">
+              <div className="h-6 flex items-start mt-1">
                 {ProjectDetails.description ? (
                   <div
                     className="relative inline-block"
@@ -153,13 +157,20 @@ const ProjectCard = observer(({ ProjectDetails, selected, onSelect }: ProjectCar
             </button>
             <button
               className="py-1 px-3 cursor-pointer bg-white border border-gray-300 rounded-md text-xs z-20 text-gray-600 hover:border-blue-500 hover:text-blue-600 hover:bg-blue-50 transition-all duration-200"
-              onClick={(e) => e.stopPropagation()}
+              onClick={(e) =>( 
+                e.stopPropagation(),
+                setShowEditModal(true)
+              )}
             >
               <Icon icon="material-symbols:edit-rounded" />
             </button>
             <button
               className="py-1 px-3 cursor-pointer bg-white border border-gray-300 rounded-md text-xs z-20 text-gray-600 hover:border-red-500 hover:text-red-600 hover:bg-red-50 transition-all duration-200"
-              onClick={(e) => e.stopPropagation()}
+              onClick={(e) =>( 
+                e.stopPropagation(),
+                setShowDeleteModal(true)
+                )
+              }
             >
               <Icon icon="material-symbols:delete-rounded" />
             </button>
@@ -167,6 +178,17 @@ const ProjectCard = observer(({ ProjectDetails, selected, onSelect }: ProjectCar
           </div>
         </CardContent>
       </Card>
+              {
+                showDeleteModal && (
+                  <DeleteProjectModal setShowDeleteProjectModal={setShowDeleteModal} showDeleteProjectModal={showDeleteModal} Project_name={ProjectDetails.name} id={ProjectDetails.id} orgId={ProjectDetails.orgId}/>
+                )
+              }
+
+              {
+                showEditModal && (
+                  <UpdateProjectModal setShowUpdateModal={setShowEditModal} showUpdateModal={showEditModal} projectDetails={ProjectDetails} orgId={ProjectDetails.orgId}/>
+                )
+              }
     </div>
   );
 });
