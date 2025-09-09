@@ -17,6 +17,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarTrigger,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@iconify/react";
@@ -27,11 +28,11 @@ const navigationItems = [
     url: "/",
     icon: "lucide:home"
   },
-  {
-    title: "Editor",
-    url: "/editor", 
-    icon: "lucide:edit"
-  },
+//   {
+//     title: "Editor",
+//     url: "/editor", 
+//     icon: "lucide:edit"
+//   },
   {
     title: "Projects",
     url: "/projects",
@@ -41,22 +42,24 @@ const navigationItems = [
 
 export function AppSidebar() {
   const location = useLocation();
+  const sidebar = useSidebar();
 
   return (
     <SignedIn>
-      <Sidebar>
-        <SidebarHeader>
-          <div className="flex items-center justify-between px-2">
-            <h2 className="text-lg font-semibold tracking-tight">
-              Your App
-            </h2>
-            <SidebarTrigger className="-mr-1" />
+      <Sidebar collapsible="icon" className="h-screen bg-white outline-2 static w-[200px] pt-5" variant="inset">
+        <SidebarHeader className="flex w-full items-center justify-center p-0">
+          <div className="flex w-full justify-between px-2">
+            {sidebar.open ? <h2 className="text-[20px] tracking-tight font-bold bg-gradient-to-r from-[#044ACC] to-[#57C785] bg-clip-text text-transparent">
+  Superatom Ai
+</h2>
+ : null}
+            <SidebarTrigger className="-mr-1 z-50 cursor-pointer" />
           </div>
         </SidebarHeader>
         
         <SidebarContent>
           <SidebarGroup>
-            <SidebarGroupLabel>Navigation</SidebarGroupLabel>
+            {sidebar.open && <SidebarGroupLabel>Navigation</SidebarGroupLabel>}
             <SidebarGroupContent>
               <SidebarMenu>
                 {navigationItems.map((item) => (
@@ -64,6 +67,8 @@ export function AppSidebar() {
                     <SidebarMenuButton 
                       asChild 
                       isActive={location.pathname === item.url}
+                      tooltip={!sidebar.open ? item.title : undefined}
+                      className={!sidebar.open ? "justify-center" : ""}
                     >
                       <Link to={item.url}>
                         <Icon icon={item.icon} className="h-4 w-4" />
@@ -77,46 +82,90 @@ export function AppSidebar() {
           </SidebarGroup>
 
           <SidebarGroup>
-            <SidebarGroupLabel>Organization</SidebarGroupLabel>
+            {sidebar.open && <SidebarGroupLabel>Organization</SidebarGroupLabel>}
             <SidebarGroupContent>
-              <div className="px-2 py-1">
-                <OrganizationSwitcher 
-                  appearance={{
-                    elements: {
-                      rootBox: "w-full",
-                      organizationSwitcherTrigger: "w-full justify-start text-sm"
-                    }
-                  }}
-                />
-              </div>
+              {sidebar.open ? (
+                <div className="px-2 py-1">
+                  <OrganizationSwitcher 
+                    appearance={{
+                      elements: {
+                        rootBox: "w-full",
+                        organizationSwitcherTrigger: "w-full justify-start text-sm"
+                      }
+                    }}
+                  />
+                </div>
+              ) : (
+                <SidebarMenu>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      tooltip="Organization"
+                      className="justify-center"
+                    >
+                      <Icon icon="lucide:building" className="h-4 w-4" />
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                </SidebarMenu>
+              )}
             </SidebarGroupContent>
           </SidebarGroup>
         </SidebarContent>
 
         <SidebarFooter>
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <div className="flex items-center justify-between w-full px-2 py-1">
-                <UserButton 
-                  appearance={{
-                    elements: {
-                      avatarBox: "w-8 h-8"
-                    }
-                  }}
-                />
-                <SignOutButton redirectUrl="/login">
-                  <Button 
-                    variant="ghost" 
-                    size="sm"
-                    className="h-8 w-8 p-0"
+          <SidebarMenu className="flex items-center justify-between w-full">
+            <SidebarMenuItem className="flex w-full items-center justify-between">
+              {sidebar.open ? (
+                <div className="flex items-center justify-between w-full px-2 py-1">
+                  <UserButton 
+                    appearance={{
+                      elements: {
+                        avatarBox: "w-8 h-8"
+                      }
+                    }}
+                  />
+                  <SignOutButton redirectUrl="/login">
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      className="h-8 w-8 p-0"
+                    >
+                      <Icon 
+                        icon="lucide:log-out" 
+                        className="h-4 w-4" 
+                      />
+                    </Button>
+                  </SignOutButton>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center gap-2">
+                  <SidebarMenuButton
+                    tooltip="Profile"
+                    className="justify-center w-8 h-8 p-0"
                   >
-                    <Icon 
-                      icon="lucide:log-out" 
-                      className="h-4 w-4" 
+                    <UserButton 
+                      appearance={{
+                        elements: {
+                          avatarBox: "w-6 h-6"
+                        }
+                      }}
                     />
-                  </Button>
-                </SignOutButton>
-              </div>
+                  </SidebarMenuButton>
+                  <SignOutButton redirectUrl="/login">
+                    <SidebarMenuButton
+                      tooltip="Sign Out"
+                      className="justify-center w-8 h-8 p-0 cursor-pointer"
+                      asChild
+                    >
+                      <Button variant="ghost" size="sm" className="cursor-pointer">
+                        <Icon 
+                          icon="lucide:log-out" 
+                          className="h-4 w-4 cursor-pointer" 
+                        />
+                      </Button>
+                    </SidebarMenuButton>
+                  </SignOutButton>
+                </div>
+              )}
             </SidebarMenuItem>
           </SidebarMenu>
         </SidebarFooter>

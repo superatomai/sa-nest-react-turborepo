@@ -82,10 +82,21 @@ class ProjectStore {
   }
 
   updateProjectInStore(updated: Project) {
+    console.log("updateProjectInStore", updated);
     runInAction(() => {
       this.projects = this.projects.map((p) =>
         p.id === updated.id ? { ...p, ...updated } : p
       );
+    });
+  }
+
+  sortProjectsInStore(){
+    console.log("sorting projects by updated at desc")
+
+    this.projects = this.projects.sort((a, b) => {
+      const dateA = new Date(a.updatedAt || 0);
+      const dateB = new Date(b.updatedAt || 0);
+      return dateB.getTime() - dateA.getTime();
     });
   }
 

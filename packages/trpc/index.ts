@@ -136,6 +136,26 @@ export const appRouter = t.router({
 		const trpcService = ctx.nestApp.get(TrpcService);
 		return trpcService.getStatus();
 	}),
+  projectsDelete: t.procedure
+    .input(z.object({ id: z.number().int().positive(), orgId: z.string().min(1) }))
+    .mutation(async ({ input, ctx }) => {
+      const service = ctx.nestApp.get(ProjectsService);
+      return service.deleteProject(input.id, input.orgId, ctx.user);
+    }),
+
+  projectsUpdate: t.procedure
+  .input(z.object({ 
+    id: z.number().int().positive(), 
+    data: z.object({
+      name: z.string().min(1).max(255).optional(),
+      description: z.string().optional(),
+    }),
+    orgId: z.string().min(1),
+  }))
+  .mutation(async ({ input, ctx }) => {
+    const service = ctx.nestApp.get(ProjectsService);
+    return service.updateProject(input.id, input.data, input.orgId, ctx.user);
+  }),
 
 	// ----------------
 	// Projects CRUD
@@ -172,6 +192,12 @@ export const appRouter = t.router({
 			const service = ctx.nestApp.get(UisService);
 			return service.getAllUis(input, ctx.user);
 		}),
+    uisDelete: t.procedure
+    .input(z.object({ id: z.number().int().positive() }))
+    .mutation(async ({ input, ctx }) => {
+      const service = ctx.nestApp.get(UisService);
+      return service.deleteUi(input.id, ctx.user);
+    }),
 
 	uisGetById: t.procedure
 		.input(z.object({ id: z.string().min(1) })) // nanoid is string
