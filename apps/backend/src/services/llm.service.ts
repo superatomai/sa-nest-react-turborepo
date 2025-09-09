@@ -40,9 +40,9 @@ export class LlmService {
             const schemaData = schemaResult.data;
 
             // Convert docs to schema info string for LLM
-            // const schemaInfo = this.formatDocsForLLM(schemaData);
+            const schemaInfo = this.formatDocsForLLM(schemaData);
 
-            const schemaInfo = this.GetDocsForLLM(schemaData);
+            // const schemaInfo = this.GetDocsForLLM(schemaData);
 
             // Generate GraphQL query using schema
             const completion = await this.openai.chat.completions.create({
