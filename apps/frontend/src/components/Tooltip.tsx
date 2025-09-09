@@ -1,4 +1,3 @@
-import React from 'react'
 
 const ToolTip = ({ description }: { description: string }) => {
     return (

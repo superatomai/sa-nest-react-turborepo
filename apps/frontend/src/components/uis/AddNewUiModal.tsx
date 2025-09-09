@@ -90,14 +90,14 @@ const AddNewUiModal = ({ setShowAddUiModal, projectId }: Props) => {
         projectId,
       });
 
+      console.log("UI created:", JSON.stringify(newUi.ui));
       // 3. Add to MobX store
-      uisStore.addUiToStore(newUi);
+      uisStore.addUiToStore(newUi.ui);
 
       // 4. Reset + close modal
       resetForm();
       setShowAddUiModal(false);
 
-      console.log("UI created:", newUi);
     } catch (error) {
       console.error("Error creating UI:", error);
       alert("Failed to create UI. Please try again.");
