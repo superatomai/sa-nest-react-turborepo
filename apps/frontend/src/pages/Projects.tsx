@@ -8,6 +8,8 @@ import { Icon } from "@iconify/react/dist/iconify.js";
 import { ToggleListGrid } from "@/components/ToggleListGrid";
 import { Header } from "@/components/Header";
 import AllUis from "@/components/uis/AllUis";
+import CardsLoading from "@/components/loading-skeleton/cards-loading";
+import { ProjectsLoading } from "@/components/loading-skeleton/projects-loading";
 
 const LIMIT = 8;
 
@@ -32,6 +34,7 @@ const Projects = () => {
   const isProjectsActive = window.location.pathname === "/projects";
   const projectList = projectStore.projects;
   const selectedProject = projectList.find((p) => p.id === selectedId);
+  const projectsLoading = projectStore.hasInitialized;  
 
   useEffect(() => {
     if (projectsQuery.data?.projects) {
@@ -74,12 +77,19 @@ const Projects = () => {
   };
 
   return (
-    <div className="container mx-auto">
+    <>
+    {
+      !projectsLoading ? (
+      <>
+        <ProjectsLoading/>
+      </> )
+      : 
+      (<div className="container mx-auto">
       <Header />
       <div className="">
         <div className="flex flex-col gap-3 w-full">
           {/* Breadcrumb Navigation */}
-          <div className="flex items-center gap-1 text-sm text-gray-600 mb-4">
+          <div className="flex items-center gap-1 text-sm text-gray-600 my-4">
             <Icon icon={"si:projects-line"} width={14} height={14} />
             <span
               className={`${isProjectsActive ? "text-blue-600" : ""} font-xs`}
@@ -160,7 +170,13 @@ const Projects = () => {
           <AllUis projectId={selectedId} selectedProject={selectedProject} />
         </div>
       )}
-    </div>
+    </div>)
+    }
+    
+    
+   
+    </>
+
   );
 };
 
