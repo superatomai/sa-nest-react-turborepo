@@ -21,25 +21,119 @@ const StudioTestPage = () => {
 	const [currentSchema, setCurrentSchema] = useState<T_UI_Component>()
 	const [data, setData] = useState<any>(null)
 	const [projectId, setProjectId] = useState<string>("");
-
-	// const[projectId, setProjectId] = useState(projectStore.selectedProjectId)
-
+	const [isDSLLoading, setIsDSLLoading] = useState<boolean>(false);
 	const { uiId } = useParams<{ uiId: string }>();
+
 	const { data: uidata} = trpc.uisGetById.useQuery(
 		{ id: uiId! },   // non-null assertion
 		{ enabled: !!uiId } // only run query if uiId exists
-		);
+	);
 
 	useEffect(() => {
 		if (uiId && uidata) {
-			console.log("uiId", uidata.ui)
 			const ui = uidata.ui;
-
 			setProjectId(()=>{
 				return ui.projectId.toString()
 			})
 		}
 	}, [uiId, uidata]);
+
+	// Load existing UI DSL on component mount - run after projectId is set
+	useEffect(() => {
+		const loadExistingUI = async () => {
+			if (!projectId || !uiId || projectId === "") return;
+			
+			setIsDSLLoading(true);
+			try {
+				console.log('Loading existing UI for projectId:', projectId, 'uiId:', uiId);
+			
+				if (uidata && uidata.ui) {
+					console.log('Found UI data:', uidata.ui);
+					const ui_version = uidata.ui.uiVersion;
+
+					let dslToUse = null;
+
+					try {
+						const versionResult = await getVersionQuery.refetch();
+						if (versionResult.data && versionResult.data.versions) {
+							const versions = versionResult.data.versions;
+							
+							// Load conversations from all versions
+							const conversations: Array<{ role: string, content: string }> = [];
+							
+							if (Array.isArray(versions)) {
+								// Sort versions by creation date (assuming id is chronological or there's a createdAt field)
+								const sortedVersions = [...versions].sort((a, b) => a.id - b.id);
+								
+								sortedVersions.forEach(version => {
+									if (version.prompt && version.prompt.trim()) {
+										// Add user message (the prompt)
+										conversations.push({
+											role: 'user',
+											content: version.prompt
+										});
+										// Add assistant response
+										conversations.push({
+											role: 'assistant',
+											content: 'UI generated successfully!'
+										});
+									}
+								});
+							}
+							
+							// Set conversations in messages state
+							if (conversations.length > 0) {
+								console.log('Loading conversations:', conversations);
+								setMessages(conversations);
+							}
+							
+							// Find the current version's DSL
+							const versionData = Array.isArray(versions) ? 
+								versions.find(v => v.id === ui_version) : null;
+							if (versionData && versionData.dsl) {
+								dslToUse = versionData.dsl;
+							}
+						}
+					} catch (versionError) {
+						console.error('Failed to fetch version data:', versionError);
+					}
+
+					console.log('dsl to use', dslToUse);
+						// Parse and set the DSL if we found it
+					if (dslToUse) {
+						try {
+							const parsedDSL = JSON.parse(dslToUse);
+							
+							if (parsedDSL.ui) {
+								console.log('Setting current schema from DSL:', parsedDSL.ui);
+								setCurrentSchema(parsedDSL.ui as T_UI_Component);
+							}
+							
+							if (parsedDSL.data) {
+								console.log('Setting data from DSL:', parsedDSL.data);
+								const ui_schema = parsedDSL.ui as T_UI_Component;
+								if (ui_schema.query?.id && parsedDSL.data[ui_schema.query.id]) {
+									setData(parsedDSL.data[ui_schema.query.id]);
+								} else {
+									setData(parsedDSL.data);
+								}
+							}
+							
+						} catch (parseError) {
+							console.error('Failed to parse DSL:', parseError);
+						}
+					} else {
+						console.log('No DSL found for this UI');
+					}
+				}
+			} catch (error) {
+				console.error('Failed to load existing UI:', error);
+			} finally {
+				setIsDSLLoading(false);
+			}
+		};
+		loadExistingUI();
+	}, [projectId, uiId]); // Run when projectId or uiId changes
 
 
 	// Prompt history state
@@ -111,15 +205,9 @@ const StudioTestPage = () => {
 	}
 
 
-	// tRPC queries
-	const getUiQuery = trpc.uisGetAll.useQuery(
-		{ uiId: uiId, projectId: parseInt(projectId) },
-		{ enabled: false } // Only run manually
-	);
-
 	// Add version query to fetch DSL if needed
 	const getVersionQuery = trpc.versionsGetAll.useQuery(
-		{}, // We'll pass specific version ID when needed
+		{ uiId: uiId }, // Pass uiId to get versions for this UI
 		{ enabled: false } // Only run manually
 	);
 
@@ -128,40 +216,34 @@ const StudioTestPage = () => {
 		onSuccess: async (response) => {
 			console.log('Version created successfully:', response);
 
-			// First get the UI by uiId and projectId
-			const uiResult = await getUiQuery.refetch();
-			
-			if (uiResult.data && uiResult.data.uis) {
-				// The response structure has uis directly
-				const uis = uiResult.data.uis;
-				const uiData = Array.isArray(uis) ? uis.find(ui => ui.uiId === uiId) : null;
-				console.log('Retrieved UI data:', uiData);
-
-				if (uiData && uiData.id) {
-					// Update UI with new version
-					updateUiMutation.mutate({
-						id: uiData.id, // Use the actual UI record ID
-						uiVersion: response.version.id, // Set uiVersion to the new version ID
-					});
-				} else {
-					console.error('UI not found with uiId:', uiId);
-					setMessages(prev => [...prev, {
-						role: 'assistant',
-						content: 'Failed to find UI record. Please try again.'
-					}])
-				}
+			if (uidata && uidata.ui && uidata.ui.id) {
+				// Update UI with new version
+				updateUiMutation.mutate({
+					id: uidata.ui.id, // Use the actual UI record ID
+					uiVersion: response.version.id, // Set uiVersion to the new version ID
+				});
 			} else {
-				console.error('Failed to retrieve UI data');
+				console.error('UI not found with uiId:', uiId);
 				setMessages(prev => [...prev, {
 					role: 'assistant',
-					content: 'Failed to update UI version. Please try again.'
+					content: 'Failed to find UI record. Please try again.'
 				}])
 			}
+			
+			// if (uiResult.data && uiResult.data.uis) {
+			// 	// The response structure has uis directly
+			// 	const uis = uiResult.data.uis;
+			// 	const uiData = Array.isArray(uis) ? uis.find(ui => ui.uiId === uiId) : null;
+			// 	console.log('Retrieved UI data:', uiData);
 
-			// setMessages(prev => [...prev, {
-			// 	role: 'assistant',
-			// 	content: 'New version created successfully!'
-			// }])
+				
+			// } else {
+			// 	console.error('Failed to retrieve UI data');
+			// 	setMessages(prev => [...prev, {
+			// 		role: 'assistant',
+			// 		content: 'Failed to update UI version. Please try again.'
+			// 	}])
+			// }
 		},
 		onError: (error) => {
 			console.error('Create version error:', error)
@@ -195,6 +277,7 @@ const StudioTestPage = () => {
 		onSuccess: (response) => {
 			console.log('Generate UI success:', response)
 			if (response.success && response.data) {
+				
 				const ui_schema = response.data.ui;
 				const ui_data = response.data.data;
 				
@@ -224,19 +307,6 @@ const StudioTestPage = () => {
 				}
 				// Create a new version when UI is generated
 				createVersionMutation.mutate(new_version);
-				
-				setMessages(prev => [...prev, {
-					role: 'assistant',
-					content: 'UI generated successfully!'
-				}])
-
-
-
-
-				// setMessages(prev => [...prev, {
-				// 	role: 'assistant',
-				// 	content: 'UI generated successfully!'
-				// }])
 			} else {
 				setMessages(prev => [
                     ...prev,
@@ -272,80 +342,7 @@ const StudioTestPage = () => {
 		}
 	}, [healthQuery.data, healthQuery.error])
 
-	// Load existing UI DSL on component mount
-	useEffect(() => {
-		const loadExistingUI = async () => {
-			try {
-				console.log('Loading existing UI for projectId:', projectId, 'uiId:', uiId);
-				
-				// Fetch UI data using the existing query
-				const result = await getUiQuery.refetch();
-				if (result.data && result.data.uis) {
-					const uis = result.data.uis;
-					const uiData = Array.isArray(uis) ? uis.find(ui => ui.uiId === uiId) : null;
-					
-					if (uiData && uiData.uiVersion) {
-						console.log('Found UI data:', uiData);
-						
-						let dslToUse = null;
-						
-						// First check if DSL is directly available on the UI
-						if (uiData.dsl) {
-							dslToUse = uiData.dsl;
-						} else if (uiData.uiVersion) {
-							// Fetch version data to get the DSL
-							try {
-								const versionResult = await getVersionQuery.refetch();
-								console.log('version result', versionResult);
-								if (versionResult.data && versionResult.data.versions) {
-									const versions = versionResult.data.versions;
-									const versionData = Array.isArray(versions) ? 
-										versions.find(v => v.id === uiData.uiVersion) : null;
-										console.log('version data', versionData);
-									if (versionData && versionData.dsl) {
-										dslToUse = versionData.dsl;
-									}
-								}
-							} catch (versionError) {
-								console.error('Failed to fetch version data:', versionError);
-							}
-						}
-						
-						console.log('dsl to use', dslToUse);
-						// Parse and set the DSL if we found it
-						if (dslToUse) {
-							try {
-								const parsedDSL = JSON.parse(dslToUse);
-								
-								if (parsedDSL.ui) {
-									console.log('Setting current schema from DSL:', parsedDSL.ui);
-									setCurrentSchema(parsedDSL.ui as T_UI_Component);
-								}
-								
-								if (parsedDSL.data) {
-									console.log('Setting data from DSL:', parsedDSL.data);
-									const ui_schema = parsedDSL.ui as T_UI_Component;
-									if (ui_schema.query?.id && parsedDSL.data[ui_schema.query.id]) {
-										setData(parsedDSL.data[ui_schema.query.id]);
-									} else {
-										setData(parsedDSL.data);
-									}
-								}
-								
-							} catch (parseError) {
-								console.error('Failed to parse DSL:', parseError);
-							}
-						} else {
-							console.log('No DSL found for this UI');
-						}
-					}
-				}
-			} catch (error) {
-				console.error('Failed to load existing UI:', error);
-			}
-		};
-		loadExistingUI();
-	}, [projectId, uiId]); // Run when projectId or uiId changes
+	
 
 	// Define handlers that can be used in generated UI
 	const handlers = {
@@ -357,6 +354,15 @@ const StudioTestPage = () => {
 
 	const handleSend = async () => {
 		if (!input.trim()) return
+		
+		if (!projectId || projectId === "") {
+			console.error('ProjectId not available yet');
+			setMessages(prev => [...prev, {
+				role: 'assistant',
+				content: 'Please wait for the project to load before generating UI.'
+			}])
+			return;
+		}
 
 		const currentInput = input
 		
@@ -382,8 +388,30 @@ const StudioTestPage = () => {
 			<div className="flex-1 bg-white bg-opacity-90 border-r border-gray-300 shadow-xl">
 				<div className="h-full flex flex-col">					
 					{/* Preview Content */}
-					<div className="flex-1 overflow-auto">
-						{currentSchema ? (
+					<div className="flex-1 overflow-auto relative">
+						{isDSLLoading ? (
+							<div className="min-h-full flex items-center justify-center bg-white rounded-xl shadow-lg border border-slate-200">
+								<div className="text-center space-y-6">
+									<div className="relative w-20 h-20 mx-auto">
+										<div className="absolute inset-0 bg-gradient-to-r from-indigo-400 via-purple-500 to-pink-500 rounded-full opacity-75 animate-spin"></div>
+										<div className="absolute inset-2 bg-white rounded-full flex items-center justify-center">
+											<svg className="w-8 h-8 text-indigo-600 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+												<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+											</svg>
+										</div>
+									</div>
+									<div className="space-y-2">
+										<h3 className="text-xl font-semibold text-slate-700">Loading Your UI</h3>
+										<p className="text-slate-500 max-w-sm mx-auto">Fetching and setting up the DSL data...</p>
+									</div>
+									<div className="flex justify-center space-x-1">
+										<div className="w-2 h-2 bg-indigo-500 rounded-full animate-bounce"></div>
+										<div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+										<div className="w-2 h-2 bg-pink-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+									</div>
+								</div>
+							</div>
+						) : currentSchema ? (
 							<div className="min-h-full bg-white rounded-xl shadow-lg border border-slate-200">
 								
 								<FLOWUIRenderer schema={currentSchema} data={data} handlers={handlers} />
@@ -404,7 +432,7 @@ const StudioTestPage = () => {
 					</div>
 
 					{/* JSON Preview (optional - for debugging) */}
-					{/* {currentSchema && (
+					{currentSchema && (
 						<div className="absolute bottom-6 left-6 max-w-md">
 							<details className="bg-slate-900/95 backdrop-blur-sm text-emerald-400 p-3 rounded-xl text-xs shadow-2xl border border-slate-700">
 								<summary className="cursor-pointer font-medium hover:text-emerald-300 transition-colors">
@@ -415,7 +443,7 @@ const StudioTestPage = () => {
 								</pre>
 							</details>
 						</div>
-					)} */}
+					)}
 				</div>
 			</div>
 
