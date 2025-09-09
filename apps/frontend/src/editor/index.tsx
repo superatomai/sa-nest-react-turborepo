@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 import { T_UI_Component } from '../types/ui-schema'
 import FLOWUIRenderer from './components/ui-renderer'
 import { trpc } from '../utils/trpc'
-import TestWithYourSchema from './components/ui-renderer'
 
 const default_ui_schema:T_UI_Component = {
 	id: "ui_33O2Hf",
@@ -10,7 +9,7 @@ const default_ui_schema:T_UI_Component = {
 	props: {
 		className: "min-h-screen bg-gray-50 py-8"
 	},
-	children: [],
+	children: ["Welcome to Superatom"],
 }
 		
 const StudioTestPage = () => {

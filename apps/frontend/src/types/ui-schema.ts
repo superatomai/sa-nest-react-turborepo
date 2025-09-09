@@ -41,7 +41,7 @@ export type T_UI_Component = {
 	query?: {
 		id?: string
 		graphql?: string
-		vars?: Record<string, unknown>
+		vars?: Record<string, any>
 	}
 	dataPath?: string
 	binding?: string

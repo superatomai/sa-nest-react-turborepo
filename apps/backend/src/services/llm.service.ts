@@ -3,13 +3,8 @@ import OpenAI from 'openai';
 import { T_UI_Component, Z_UI_Component } from '../types/ui-schema';
 import { ProjectSchemaCacheService } from './project-schema-cache.service';
 import { OPENROUTER_API_KEY } from '../env';
+import { t_llm_query_response, z_llm_query_response } from 'src/types/llm';
 
-// Types for better type safety
-interface GraphQLQueryResult {
-    query: string;
-    variables?: Record<string, any>;
-    explanation?: string;
-}
 
 @Injectable()
 export class LlmService {
@@ -22,7 +17,7 @@ export class LlmService {
         apiKey: OPENROUTER_API_KEY,
         baseURL: 'https://openrouter.ai/api/v1'
       });
-      console.log('✅ OpenRouter client initialized');
+    //   console.log('✅ OpenRouter client initialized');
     } else {
       console.warn('⚠️ OPENROUTER_API_KEY not found, OpenRouter client not initialized');
     }
@@ -30,7 +25,7 @@ export class LlmService {
     async generateGraphQLFromPromptForProject(
         prompt: string,
         projectId: string,
-    ): Promise<GraphQLQueryResult> {
+    ): Promise<t_llm_query_response> {
         try {
             if (!this.openai) {
                 throw new Error('OpenRouter API key not configured. Please set OPENROUTER_API_KEY environment variable.');
@@ -49,7 +44,7 @@ export class LlmService {
 
             // Generate GraphQL query using schema
             const completion = await this.openai.chat.completions.create({
-                model: "openai/gpt-4o",
+                model: "openai/gpt-5",
                 messages: [
                     {
                         role: "system",
@@ -63,13 +58,9 @@ CRITICAL INSTRUCTIONS:
 - Generate valid GraphQL queries using ONLY the exact table and column names from the schema
 - DO NOT invent or assume any columns that aren't explicitly listed in the "EXACT COLUMNS AVAILABLE" sections
 - DO NOT use nested object fields unless explicitly shown as available in the relationships section
-- For the posts table: ONLY use post_id, user_id, content, created_at, deleted_at, content_tsv
-- For the users table: ONLY use user_id, username, email, join_ts  
-- DO NOT use: user.username, posts.user, likes_count, comments_count, or any nested fields not explicitly documented
-- If you need related data (like username for a post), use the foreign key (user_id) and suggest a separate query
-- Use the root_fields provided for each table (e.g., "posts", "users", "comments", etc.)
+- Use the root_fields provided for each table
 
-- Use Hasura GraphQL syntax:
+- Use GraphQL syntax:
   * Filters: where: {field: {_eq: "value"}} 
   * Comparison: _eq, _neq, _gt, _lt, _gte, _lte, _like, _ilike
   * Null checks: _is_null: true/false
@@ -107,27 +98,39 @@ when no query is required set the query value to empty string ("").
             // Clean up any potential markdown formatting
             const cleanResult = result.replace(/```json\n?/g, '').replace(/```\n?/g, '');
 
-            const parsedResult: GraphQLQueryResult = JSON.parse(cleanResult);
-
-            console.log('parsedResult', JSON.stringify(parsedResult, null, 2))
-
-            // Replace user placeholders with actual values if needed
-            parsedResult.variables &&
-                Object.keys(parsedResult.variables).forEach(key => {
-                    const value = parsedResult.variables?.[key];
-                    if (typeof value === "string") {
-                        if (value.includes("USER_ID") || value.includes("CURRENT_USER")) {
-                            parsedResult.variables![key] = parseInt(projectId) || 1;
-                        }
-                        if (value.includes("PROJECT_ID")) {
-                            parsedResult.variables![key] = projectId;
-                        }
-                    }
-                });
-
-            if (!parsedResult.query || typeof parsedResult.query !== 'string') {
-                throw new Error('Invalid query in response');
+            let parsedResult;
+            try {
+                parsedResult = JSON.parse(cleanResult);
+            }   catch (e) {
+                console.error('Failed to parse JSON response from OpenRouter:', e);
+                throw new Error('Failed to parse JSON response from OpenRouter');
             }
+
+            console.log("llm query gen res:", JSON.stringify(parsedResult,null,2));
+
+            const p = z_llm_query_response.safeParse(parsedResult);
+            if (!p.success) {
+                console.error('Failed tozod  parse JSON response from OpenRouter:', p.error);
+                throw new Error('Failed to zod parse JSON response from OpenRouter');
+            }
+
+            parsedResult = p.data;
+            // Replace user placeholders with actual values if needed
+            // parsedResult.variables &&
+            //     Object.keys(parsedResult.variables).forEach(key => {
+            //         const value = parsedResult.variables?.[key];
+            //         if (typeof value === "string") {
+            //             if (value.includes("USER_ID") || value.includes("CURRENT_USER")) {
+            //                 parsedResult.variables![key] = parseInt(projectId) || 1;
+            //             }
+            //             if (value.includes("PROJECT_ID")) {
+            //                 parsedResult.variables![key] = projectId;
+            //             }
+            //         }
+            //     });
+            // query can be "" for prompts that does not require query
+            // if (!parsedResult.query || typeof parsedResult.query !== 'string') {
+            //     throw new Error('Invalid query in response');
 
             return parsedResult;
 
@@ -138,7 +141,7 @@ when no query is required set the query value to empty string ("").
     }
 
     private formatDocsForLLM(schemaData: any): string {
-        let schemaInfo = `HASURA GRAPHQL SCHEMA\n\n`;
+        let schemaInfo = `GRAPHQL SCHEMA\n\n`;
 
         if (!schemaData.tables || !Array.isArray(schemaData.tables)) {
             return "No valid schema data provided";
@@ -170,34 +173,6 @@ when no query is required set the query value to empty string ("").
                 });
             }
 
-            // Add what columns are NOT available - table specific
-            schemaInfo += `\nNOT AVAILABLE - DO NOT USE:\n`;
-            if (tableName === 'posts') {
-                schemaInfo += `  ✗ user (use user_id only, no nested user object)\n`;
-                schemaInfo += `  ✗ author (use user_id only)\n`;
-                schemaInfo += `  ✗ likes_count (use likes_aggregate instead)\n`;
-                schemaInfo += `  ✗ comments_count (use comments_aggregate instead)\n`;
-                schemaInfo += `  ✗ username (not in posts table, use user_id to join with users)\n`;
-            }
-            if (tableName === 'users') {
-                schemaInfo += `  ✗ posts (no direct posts field, use posts table with user_id filter)\n`;
-                schemaInfo += `  ✗ followers (no direct followers field, use follows table)\n`;
-                schemaInfo += `  ✗ following (no direct following field, use follows table)\n`;
-            }
-            if (tableName === 'comments') {
-                schemaInfo += `  ✗ user (use user_id only, no nested user object)\n`;
-                schemaInfo += `  ✗ post (use post_id only, no nested post object)\n`;
-                schemaInfo += `  ✗ author (use user_id only)\n`;
-            }
-            if (tableName === 'likes') {
-                schemaInfo += `  ✗ user (use user_id only, no nested user object)\n`;
-                schemaInfo += `  ✗ post (use post_id only, no nested post object)\n`;
-            }
-            if (tableName === 'follows') {
-                schemaInfo += `  ✗ user (use user_id and follower_user_id only)\n`;
-                schemaInfo += `  ✗ follower (use follower_user_id only)\n`;
-            }
-
             // Add foreign key relationships
             if (table.foreign_keys && Array.isArray(table.foreign_keys)) {
                 schemaInfo += `\nForeign Key Relationships:\n`;
@@ -212,7 +187,7 @@ when no query is required set the query value to empty string ("").
 
         // Add relationship handling instructions
         schemaInfo += `\n\n=== RELATIONSHIPS (HOW TO JOIN TABLES) ===\n`;
-        schemaInfo += `Since Hasura auto-relationships are not configured, you must use foreign keys manually:\n`;
+        schemaInfo += `Since auto-relationships are not configured, you must use foreign keys manually:\n`;
 
         schemaData.tables.forEach((table: any) => {
             if (table.foreign_keys && Array.isArray(table.foreign_keys)) {
@@ -226,54 +201,51 @@ when no query is required set the query value to empty string ("").
             }
         });
 
-        // Add correct query examples
-        schemaInfo += `\n=== CORRECT QUERY EXAMPLES ===\n`;
-
         return schemaInfo;
     }
 
    
     private fixDoubleBindings(component: T_UI_Component): T_UI_Component {
-    const fixed = { ...component };
-    
-    const processComponent = (comp: T_UI_Component): T_UI_Component => {
-        const processed = { ...comp };
+        const fixed = { ...component };
         
-        // Move binding from props to top-level if it exists
-        if (processed.props?.binding) {
-            console.log(`🔧 Moving binding from props to top-level in ${processed.type}#${processed.id}`);
-            if (!processed.binding && typeof processed.props.binding === 'string') {
-                processed.binding = processed.props.binding;
+        const processComponent = (comp: T_UI_Component): T_UI_Component => {
+            const processed = { ...comp };
+            
+            // Move binding from props to top-level if it exists
+            if (processed.props?.binding) {
+                console.log(`🔧 Moving binding from props to top-level in ${processed.type}#${processed.id}`);
+                if (!processed.binding && typeof processed.props.binding === 'string') {
+                    processed.binding = processed.props.binding;
+                }
+                delete processed.props.binding;
             }
-            delete processed.props.binding;
-        }
+            
+            // CRITICAL FIX: Remove binding from table row elements
+            // TR elements should never have array bindings - only their container (tbody) should
+            if (processed.type === 'tr' && processed.binding) {
+                console.log(`🔧 Removing array binding from TR element ${processed.id} (type: ${processed.type})`);
+                delete processed.binding;
+            }
+            
+            // Also remove from other elements that shouldn't have array bindings
+            if (['td', 'th'].includes(processed.type) && processed.binding) {
+                console.log(`🔧 Removing array binding from ${processed.type} element ${processed.id}`);
+                delete processed.binding;
+            }
+            
+            // Process children recursively
+            if (processed.children && Array.isArray(processed.children)) {
+                processed.children = processed.children.map(child => {
+                    if (typeof child === 'string') return child;
+                    return processComponent(child);
+                });
+            }
+            
+            return processed;
+        };
         
-        // CRITICAL FIX: Remove binding from table row elements
-        // TR elements should never have array bindings - only their container (tbody) should
-        if (processed.type === 'tr' && processed.binding) {
-            console.log(`🔧 Removing array binding from TR element ${processed.id} (type: ${processed.type})`);
-            delete processed.binding;
-        }
-        
-        // Also remove from other elements that shouldn't have array bindings
-        if (['td', 'th'].includes(processed.type) && processed.binding) {
-            console.log(`🔧 Removing array binding from ${processed.type} element ${processed.id}`);
-            delete processed.binding;
-        }
-        
-        // Process children recursively
-        if (processed.children && Array.isArray(processed.children)) {
-            processed.children = processed.children.map(child => {
-                if (typeof child === 'string') return child;
-                return processComponent(child);
-            });
-        }
-        
-        return processed;
-    };
-    
-    return processComponent(fixed);
-}
+        return processComponent(fixed);
+    }
 
 
 
@@ -291,7 +263,7 @@ when no query is required set the query value to empty string ("").
             }
 
             const completion = await this.openai.chat.completions.create({
-                model: "openai/gpt-4o",
+                model: "openai/gpt-5-mini",
                 messages: [
                     {
                         role: "system",
