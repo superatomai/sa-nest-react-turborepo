@@ -1,5 +1,5 @@
 import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
-import { DocsMessage, GetDocsMessage, GetProdUIMessage, GraphQLQueryMessage, PendingRequest, ProdUIResponseMessage, QueryResponseMessage, WebSocketMessage } from 'src/types/websocket';
+import { DocsMessage, GetDocsMessage, GetProdUIMessage, GraphQLQueryMessage, PendingRequest, ProdUIResponseMessage, QueryResponseMessage, WebSocketMessage, CheckAgentsMessage, AgentStatusResponse } from 'src/types/websocket';
 import WebSocket from 'ws';
 import { UiUtilsService } from './ui-utils.service';
 import { Z_UI_Component } from 'src/types/ui-schema';
@@ -103,6 +103,9 @@ class WebSocketRuntimeClient {
 				case 'docs':
 					this.handleDocsResponse(message as DocsMessage);
 					break;
+				case 'agent_status_response':
+					this.handleAgentStatusResponse(message as any);
+					break;
 				case 'get_prod_ui':
 					this.handleGetProdUI(message as GetProdUIMessage);
 					break;
@@ -153,6 +156,30 @@ class WebSocketRuntimeClient {
 			pendingRequest.reject(new Error(message.error));
 		} else {
 			pendingRequest.resolve(message);
+		}
+	}
+
+	private handleAgentStatusResponse(message: AgentStatusResponse): void {
+		const pendingRequest = this.pendingRequests.get(message.requestId);
+		if (!pendingRequest) {
+			console.error(`No pending agent status request found for ID: ${message.requestId}`);
+			return;
+		}
+
+		clearTimeout(pendingRequest.timeout);
+		this.pendingRequests.delete(message.requestId);
+
+		if (message.error) {
+			console.error(`Agent status error: ${message.error}`);
+			pendingRequest.reject(new Error(message.error));
+		} else {
+			// Handle the response format from your Durable Object
+			const agents = message.agents || [];
+			pendingRequest.resolve({
+				hasAgent: agents.length > 0,
+				agentCount: agents.length,
+				agents: agents
+			});
 		}
 	}
 
@@ -358,6 +385,36 @@ class WebSocketRuntimeClient {
 				requestId,
 				query,
 				variables: variables || {},
+				projectId: this.projectId,
+				timestamp: Date.now()
+			};
+
+			this.ws!.send(JSON.stringify(message));
+		});
+	}
+
+	async checkAgentConnection(): Promise<{ hasAgent: boolean; agentCount: number }> {
+		if (!this.connected || !this.ws) {
+			throw new Error(`WebSocket not connected for project ${this.projectId}`);
+		}
+
+		return new Promise((resolve, reject) => {
+			const requestId = crypto.randomUUID();
+			const timeout = setTimeout(() => {
+				this.pendingRequests.delete(requestId);
+				reject(new Error(`Agent status check timeout for project ${this.projectId}`));
+			}, 10000); // 10 second timeout
+
+			this.pendingRequests.set(requestId, {
+				requestId,
+				resolve,
+				reject,
+				timeout
+			});
+
+			const message = {
+				type: 'check_agents',
+				requestId,
 				projectId: this.projectId,
 				timestamp: Date.now()
 			};
@@ -635,6 +692,19 @@ export class WebSocketManagerService implements OnModuleInit, OnModuleDestroy {
 		} catch (error) {
 			console.error(`Failed to get docs for project ${projectId}:`, error);
 			throw error;
+		}
+	}
+
+	/**
+	 * Check if data agents are connected to a specific project
+	 */
+	async checkAgentConnectionForProject(projectId: string): Promise<{ hasAgent: boolean; agentCount: number; agents?: string[] }> {
+		try {
+			const client = await this.getClientForUser(projectId);
+			return await client.checkAgentConnection();
+		} catch (error) {
+			console.error(`Failed to check agent connection for project ${projectId}:`, error);
+			return { hasAgent: false, agentCount: 0 };
 		}
 	}
 

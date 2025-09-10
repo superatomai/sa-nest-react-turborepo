@@ -34,6 +34,33 @@ const EditorSSE = () => {
 		{ enabled: !!uiId } // only run query if uiId exists
 	);
 
+
+	useEffect(() => {
+		//initialising the project
+		(async () => {
+
+			// 1.check docs are present for the project in the database
+
+
+			//2.if not check get the docs from the web socket
+
+				//check if the project is already connected to the data agent
+
+				//if connected get the docs from the data agent
+
+				//store the docs in the database
+
+			//3.check for uislist in the project in the database.
+
+				//if not get the uislist from the llm service
+
+				//store the uislist in the database
+
+
+		}) ();
+
+	}, [])
+
 	useEffect(() => {
 		if (uiId && uidata) {
 			const ui = uidata.ui;

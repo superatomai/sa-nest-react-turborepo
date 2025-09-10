@@ -3,9 +3,10 @@ import OpenAI from 'openai';
 import { T_UI_Component, Z_UI_Component } from '../types/ui-schema';
 import { ProjectSchemaCacheService } from './project-schema-cache.service';
 import { OPENROUTER_API_KEY } from '../env';
-import { t_llm_query_response, z_llm_query_response } from 'src/types/llm';
+import { t_llm_query_response, t_uis_list_response, z_llm_query_response, z_uis_list_response } from 'src/types/llm';
 import { UI_PROMPT } from './ui-gen-prompts';
 import { QUERY_PROMPT } from './query-gen-prompts';
+import { UI_LIST_PROMPT } from 'src/prompts/uilist-gen';
 
 
 @Injectable()
@@ -917,6 +918,64 @@ Requirements:
                 };
                 return { success: true, data: fallback_ui };
             }
+        }
+    }
+
+    /**
+     * Generate UI suggestions based on docs/schema information
+     */
+    async generateUISuggestions(docsInfo: any): Promise<{ success: boolean; data?: t_uis_list_response; error?: string }> {
+        if (!this.openai) {
+            return { success: false, error: 'OpenRouter client not initialized' };
+        }
+
+        try {
+            const prompt = UI_LIST_PROMPT(docsInfo)
+
+            const completion = await this.openai.chat.completions.create({
+                model: "anthropic/claude-sonnet-4",
+                messages: [
+                    {
+                        role: "user",
+                        content: prompt
+                    }
+                ],
+                temperature: 0.7,
+                max_tokens: 2000
+            });
+
+            const result = completion.choices[0].message.content?.trim();
+            if (!result) {
+                return { success: false, error: 'No response from OpenRouter' };
+            }
+
+            // Clean up any potential markdown formatting
+            const cleanResult = result.replace(/```json\n?/g, '').replace(/```\n?/g, '');
+
+            let parsedResult;
+            try {
+                parsedResult = JSON.parse(cleanResult);
+            } catch (e) {
+                console.error('Failed to parse UI suggestions JSON:', e);
+                console.error('Received response:', cleanResult.substring(0, 500) + (cleanResult.length > 500 ? '...' : ''));
+                return { success: false, error: 'Failed to parse JSON response: ' + (e instanceof Error ? e.message : 'Unknown error') };
+            }
+
+            // Validate with Zod
+            const validationResult = z_uis_list_response.safeParse(parsedResult);
+            if (!validationResult.success) {
+                console.error('UI suggestions validation failed:', validationResult.error);
+                return { success: false, error: 'Invalid response format from LLM' };
+            }
+
+            return { success: true, data: validationResult.data };
+
+        } catch (error) {
+            console.error('Error generating UI suggestions:', error);
+            return { 
+                success: false, 
+                error: error instanceof Error ? error.message : 'Unknown error occurred'
+            };
         }
     }
 }
