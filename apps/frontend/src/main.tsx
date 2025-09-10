@@ -22,7 +22,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
       signUpFallbackRedirectUrl="/"
       afterSignOutUrl="/login"
       signInUrl="/login"
-      signUpUrl="/login"
+      signUpUrl="/sign-up" 
     >
       <QueryClientProvider client={queryClient}>
         <trpc.Provider client={trpcClient} queryClient={queryClient}>

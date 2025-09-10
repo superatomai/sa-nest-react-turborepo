@@ -12,7 +12,7 @@ const AddNewUI = ( { projectId } : Props) => {
     <>
       <div className="flex flex-col gap-3">
             <button
-                className="flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-all duration-200 shadow-sm w-fit bg-white text-blue-800 outline hover:from-blue-700 hover:to-purple-700 hover:shadow-md"
+                className="flex cursor-pointer rounded-md items-center gap-2 px-4 py-2 font-medium transition-all duration-200 shadow-sm w-fit bg-white text-blue-800 border border-blue-800 hover:text-white hover:bg-blue-800 outline "
                 onClick={() => setShowAddUiModal(true)}
             >
                 <Plus className="w-4 h-4" />

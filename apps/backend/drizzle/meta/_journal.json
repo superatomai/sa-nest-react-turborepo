@@ -8,6 +8,13 @@
       "when": 1757166755359,
       "tag": "0000_dapper_dagger",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1757487357333,
+      "tag": "0001_groovy_blackheart",
+      "breakpoints": true
     }
   ]
 }

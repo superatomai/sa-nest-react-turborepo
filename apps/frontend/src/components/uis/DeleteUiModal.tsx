@@ -13,6 +13,7 @@ import {
 import { uisStore } from '@/stores/mobx_uis_store'
 import { observer } from 'mobx-react-lite'
 import { trpc } from '@/utils';
+import toast from 'react-hot-toast';
 
 type Props = {
     setShowDeleteUiModal: React.Dispatch<React.SetStateAction<boolean>>,
@@ -25,13 +26,7 @@ const DeleteUiModal = ({ setShowDeleteUiModal, showDeleteUiModal, ui_name, id }:
 
     const [isDeleting, setIsDeleting] = React.useState(false);
 
-    // TRPC mutation for deleting UI
     const deleteUiMutation = trpc.uisDelete.useMutation({
-        onSuccess: () => {
-            uisStore.removeUiFromStore(id);
-            setShowDeleteUiModal(false);
-            setIsDeleting(false);
-        },
         onError: (error) => {
             console.error("Failed to delete UI:", error);
             setIsDeleting(false);
@@ -42,9 +37,18 @@ const DeleteUiModal = ({ setShowDeleteUiModal, showDeleteUiModal, ui_name, id }:
         setIsDeleting(true);
 
         try {
-            await deleteUiMutation.mutateAsync({
+            const res = await deleteUiMutation.mutateAsync({
                 id: uiId
             });
+
+            console.log("ui deleted:", res);
+            uisStore.removeUiFromStore(id, res.ui.projectId);
+            setIsDeleting(false);
+            toast.success('UI deleted successfully.');
+            setTimeout(() => {
+                setShowDeleteUiModal(false);
+                }, 50);
+
         } catch (err) {
             // Error is already handled in onError callback
             console.error("Delete UI error:", err);
@@ -84,7 +88,7 @@ const DeleteUiModal = ({ setShowDeleteUiModal, showDeleteUiModal, ui_name, id }:
                     <AlertDialogAction
                         onClick={() => handleDeleteUi(id)}
                         disabled={isDeleting}
-                        className="bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                     >
                         {isDeleting ? (
                             <div className="flex items-center gap-2">

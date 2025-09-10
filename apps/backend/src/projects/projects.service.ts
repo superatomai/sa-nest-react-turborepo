@@ -2,79 +2,58 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { DrizzleService } from '../../drizzle/drizzle.service';
 import { projects, uis } from '../../drizzle/schema';
-import { eq, and, sql, inArray, desc } from 'drizzle-orm';
+import { eq, and, sql, inArray, desc, count } from 'drizzle-orm';
 import { User } from '@superatom-turbo/trpc';
+import { time, timeStamp } from 'console';
 
 @Injectable()
 export class ProjectsService {
   constructor(private readonly drizzleService: DrizzleService) {}
 
-  async getAllProjects(orgId: string, user?: User, limit = 8, skip = 0) {
+// Optimized projects.service.ts
+async getAllProjects(orgId: string, user?: User, limit = 8, skip = 0) {
   if (!orgId) {
     throw new BadRequestException("Organization ID is required");
   }
 
-  // --- Total count query (efficient)
-  const [{ count: totalCount }] = await this.drizzleService.db
-    .select({ count: sql<number>`COUNT(*)` })
-    .from(projects)
-    .where(and(eq(projects.orgId, orgId), eq(projects.deleted, false)));
+  console.log("fetching all projects...", new Date().toLocaleString());
 
-  // --- Paginated query
-  const results = await this.drizzleService.db
-    .select({
-      id: projects.id,
-      name: projects.name,
-      description: projects.description,
-      createdAt: sql<string>`to_char(${projects.createdAt}, 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')`,
-      updatedAt: sql<string>`to_char(${projects.updatedAt}, 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')`,
-      deleted: projects.deleted,
-      orgId: projects.orgId,
-      createdBy: projects.createdBy,
-      updatedBy: projects.updatedBy,
-    })
-    .from(projects)
-    .where(and(eq(projects.orgId, orgId), eq(projects.deleted, false)))
-    .orderBy(desc(projects.updatedAt))
-    .limit(limit)
-    .offset(skip);
-
-  // --- Fetch uis_count for these projects
-  const projectIds = results.map((p: { id: any; }) => p.id);
-  let uisCounts: Record<string, number> = {};
-
-  if (projectIds.length > 0) {
-    const uisCountRows = await this.drizzleService.db
+  try {
+    // Single query: projects + count of UIs per project
+    const results = await this.drizzleService.db
       .select({
-        projectId: uis.projectId,
-        count: sql<number>`COUNT(*)`.as("count"),
+        ...projects,
+        uis_count: sql<number>`COALESCE(u_count.count, 0)` // use lateral join result
       })
-      .from(uis)
-      .where(and(inArray(uis.projectId, projectIds), eq(uis.deleted, false)))
-      .groupBy(uis.projectId);
+      .from(projects)
+      // Lateral join to safely count UIs per project
+      .leftJoin(
+        sql`LATERAL (
+          SELECT COUNT(*) AS count
+          FROM ${uis} u
+          WHERE u.project_id = ${projects.id} AND u.deleted = false
+        ) u_count ON true`
+      )
+      .where(and(eq(projects.orgId, orgId), eq(projects.deleted, false)))
+      .orderBy(desc(projects.updatedAt))
+      .limit(limit)
+      .offset(skip);
+ 
+    const totalCount = results.length; 
 
-    uisCounts = uisCountRows.reduce(
-      (acc: any, row: { projectId: any; count: any; }) => ({ ...acc, [row.projectId]: row.count }),
-      {}
-    );
+    console.log("projects fetched:" + "time:" + new Date().toLocaleString());
+    return {
+      message: `Projects for organization ${orgId}`,
+      organizationId: orgId,
+      userId: user?.id || "anonymous",
+      totalCount,
+      projects: results,
+    };
+  } catch (error) {
+    console.error("Error fetching projects:", error);
+    return error;
   }
-
-  // --- Merge counts
-  const projectsWithCounts = results.map((project: { id: string | number; }) => ({
-    ...project,
-    uis_count: uisCounts[project.id] ?? 0,
-  }));
-
-  return {
-    message: `Projects for organization ${orgId}`,
-    organizationId: orgId,
-    userId: user?.id || "anonymous",
-    totalCount,
-    projects: projectsWithCounts,
-  };
 }
-
-
 
 
   async getProjectById(id: number, orgId: string, user?: User) {
@@ -119,6 +98,8 @@ export class ProjectsService {
       throw new BadRequestException('Project name is required');
     }
 
+    console.log("started project creation..." + new Date().toLocaleString());
+
     const newProject = await this.drizzleService.db
       .insert(projects)
       .values({
@@ -129,6 +110,8 @@ export class ProjectsService {
         updatedBy: user?.id || null,
       })
       .returning();
+
+      console.log("project created..." + new Date().toLocaleString());
 
     return {
       message: 'Project created successfully',

@@ -1,6 +1,7 @@
 import { makeAutoObservable, runInAction } from "mobx";
 
 export interface Project {
+  uis_count: number;
   id: number;
   name?: string;
   description?: string | null;
@@ -16,7 +17,7 @@ class ProjectStore {
   projects: Project[] = [];
   totalProjects = 0;
   hasInitialized = false;
-  selectedProjectId: number | null = null;
+  selectedProjectId: number | undefined;
 
   // Pagination state
   skip = 0;
@@ -32,7 +33,7 @@ class ProjectStore {
   setProjects(projects: Project[], total: number) {
     runInAction(() => {
       this.projects = projects;
-      this.totalProjects = total;
+      this.totalProjects = Number(total);
       this.hasInitialized = true;
       this.skip = projects.length; // move skip forward
     });
@@ -58,11 +59,11 @@ class ProjectStore {
       this.totalProjects = 0;
       this.skip = 0;
       this.hasInitialized = false;
-      this.selectedProjectId = null;
+      this.selectedProjectId = undefined;
     });
   }
 
-  selectProject(id: number | null) {
+  selectProject(id: number | undefined) {
     this.selectedProjectId = id;
   }
 
@@ -75,9 +76,14 @@ class ProjectStore {
   }
 
   addProjectToStore(project: Project) {
+    console.log("project store called, adding project:", project);
     runInAction(() => {
       this.projects.unshift(project);
+      console.log("added project to the start:", JSON.stringify(this.projects));
+      console.log("uupdating the total projects count to ", this.totalProjects + 1);
       this.totalProjects += 1;
+      this.selectedProjectId = project.id;
+      console.log("selected project id:" +  this.selectedProjectId + " project id:" + project.id);
     });
   }
 
@@ -87,6 +93,7 @@ class ProjectStore {
       this.projects = this.projects.map((p) =>
         p.id === updated.id ? { ...p, ...updated } : p
       );
+      this.sortProjectsInStore();
     });
   }
 
@@ -97,6 +104,24 @@ class ProjectStore {
       const dateA = new Date(a.updatedAt || 0);
       const dateB = new Date(b.updatedAt || 0);
       return dateB.getTime() - dateA.getTime();
+    });
+  }
+
+  increaseUiCount(projectId : number){
+    runInAction(() => {
+      this.projects = this.projects.map((p) =>
+        p.id === projectId ? { ...p, uis_count: Number(p.uis_count) + 1, updatedAt: new Date().toISOString() } : p
+      );
+      this.sortProjectsInStore();
+    });
+  }
+
+  decreaseUiCount(projecId : number){
+    runInAction(() => {
+      this.projects = this.projects.map((p) =>
+        p.id === projecId ? { ...p, uis_count: p.uis_count - 1, updatedAt: new Date().toISOString() } : p
+      );
+      this.sortProjectsInStore();
     });
   }
 
