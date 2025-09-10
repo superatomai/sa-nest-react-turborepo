@@ -10,7 +10,7 @@ export default function Projects() {
   const orgId = 'org_31uTzqysPFiCJMtjTMdfSGkdxSj';
 
   // tRPC queries and mutations
-  const projectsQuery = trpc.projectsGetAll.useQuery({ orgId });
+  const projectsQuery : any = trpc.projectsGetAll.useQuery({ orgId });
   const createProjectMutation = trpc.projectsCreate.useMutation({
     onSuccess: () => {
       // Reset form

@@ -1,1 +1,0 @@
--- empty initial migration (schema already created by Prisma)

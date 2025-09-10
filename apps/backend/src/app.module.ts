@@ -17,6 +17,8 @@ import { UisModule } from './uis/uis.module';
 import { TrpcSSEService } from './trpc/trpc-sse.service';
 import tr from 'zod/v4/locales/tr.cjs';
 import { TrpcModule } from './trpc/trpc-module';
+import { UiListModule } from './ui_list/ui_list.module';
+import { DocsModule } from './docs/docs.module';
 
 @Module({
   imports: [
@@ -27,6 +29,8 @@ import { TrpcModule } from './trpc/trpc-module';
     DrizzleModule,
     ProjectsModule,
     UisModule,
+    UiListModule,
+    DocsModule,
     TrpcModule
   ],
   controllers: [AppController],

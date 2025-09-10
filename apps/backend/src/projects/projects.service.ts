@@ -55,6 +55,38 @@ async getAllProjects(orgId: string, user?: User, limit = 8, skip = 0) {
   }
 }
 
+async getProjectWithDocsAndUi(projId: number, user?: User){
+    if (!projId) {
+    throw new BadRequestException("Project ID is required");
+  }
+
+  console.log("Fetching minimal projects...", new Date().toLocaleString());
+
+  try {
+    const result = await this.drizzleService.db
+      .select({
+        id: projects.id,
+        name: projects.name,
+        docs: projects.docs,
+        uiList: projects.uiList,
+      })
+      .from(projects)
+      .where(and(eq(projects.id, projId), eq(projects.deleted, false)))
+      .orderBy(desc(projects.updatedAt))
+
+    console.log("Minimal projects fetched:" + " time: " + new Date().toLocaleString());
+    return {
+      message: `Minimal project data for project ${result[0].name}`,
+      projectId: projId,
+      userId: user?.id || "anonymous",
+      project: result,
+    };
+  } catch (error) {
+    console.error("Error fetching minimal projects:", error);
+    throw error;
+  }
+}
+
 
   async getProjectById(id: number, orgId: string, user?: User) {
     if (!orgId) {
