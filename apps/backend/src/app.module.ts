@@ -8,7 +8,10 @@ import { DrizzleModule } from '../drizzle/drizzle.module';
 import { ProjectsModule } from './projects/projects.module';
 import { TrpcSSEService } from './trpc/trpc-sse.service';
 import { TrpcModule } from './trpc/trpc-module';
+import { UiListModule } from './ui_list/ui_list.module';
+import { DocsModule } from './docs/docs.module';
 import { CoreModule } from './core/core.module';
+import { UisModule } from './uis/uis.module';
 
 @Module({
   imports: [
@@ -19,6 +22,9 @@ import { CoreModule } from './core/core.module';
     AuthModule,
     DrizzleModule,
     ProjectsModule,
+    UisModule,
+    UiListModule,
+    DocsModule,
     TrpcModule
   ],
   controllers: [AppController],

@@ -1,11 +1,11 @@
 // apps/backend/src/projects/projects.module.ts
 import { Module } from '@nestjs/common';
-import { ProjectsService } from './projects.service';
 import { DrizzleModule } from '../../drizzle/drizzle.module';
+import { DocsService } from './docs.service';
 
 @Module({
   imports: [DrizzleModule],
-  providers: [ProjectsService],
-  exports: [ProjectsService], 
+  providers: [DocsService],
+  exports: [DocsService], 
 })
-export class ProjectsModule {}
+export class DocsModule {}

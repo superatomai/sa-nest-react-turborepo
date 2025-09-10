@@ -1,6 +1,5 @@
-import { pgTable, serial, text, timestamp, boolean, varchar, integer, foreignKey } from "drizzle-orm/pg-core"
+import { pgTable, serial, text, timestamp, boolean, varchar, integer, foreignKey, jsonb } from "drizzle-orm/pg-core"
 import { sql } from "drizzle-orm"
-
 
 
 export const page = pgTable("Page", {
@@ -32,6 +31,29 @@ export const prismaMigrations = pgTable("_prisma_migrations", {
 	appliedStepsCount: integer("applied_steps_count").default(0).notNull(),
 });
 
+export const docs = pgTable("docs",{
+	id: serial().primaryKey().notNull(),
+	createdAt: timestamp("created_at", { precision: 6, withTimezone: true, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`),
+	updatedAt: timestamp("updated_at", { precision: 6, withTimezone: true, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`),
+	deleted: boolean().default(false).notNull(),
+	createdBy: varchar("created_by"),
+	updatedBy: varchar("updated_by"),
+	docs: jsonb("docs").notNull().$type<any[]>(),
+	version: integer("version").notNull(),
+});
+
+export const uiList = pgTable("ui_list",{
+	id: serial().primaryKey().notNull(),
+	createdAt: timestamp("created_at", { precision: 6, withTimezone: true, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`),
+	updatedAt: timestamp("updated_at", { precision: 6, withTimezone: true, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`),
+	deleted: boolean().default(false).notNull(),
+	createdBy: varchar("created_by"),
+	updatedBy: varchar("updated_by"),
+	uiList: jsonb("ui_list").notNull().$type<any[]>(),
+	version: integer("version").notNull(),
+}
+);
+
 export const projects = pgTable("projects", {
 	id: serial().primaryKey().notNull(),
 	name: varchar({ length: 255 }).notNull(),
@@ -42,7 +64,24 @@ export const projects = pgTable("projects", {
 	orgId: varchar("org_id", { length: 255 }).notNull(),
 	createdBy: varchar("created_by"),
 	updatedBy: varchar("updated_by"),
-});
+	docs: integer("docs"),
+	uiList: integer("ui_list"),
+}, (table) => [
+	foreignKey({
+		columns: [table.docs],
+		foreignColumns: [docs.id],
+		name: "projects_docs_fkey"
+	}).onUpdate("cascade").onDelete("restrict"),
+
+	foreignKey({
+		columns: [table.uiList],
+		foreignColumns: [uiList.id],
+		name: "projects_ui_list_fkey"
+	}).onUpdate("cascade").onDelete("restrict"),
+	
+]);
+
+
 
 export const uis = pgTable("uis", {
 	id: serial().primaryKey().notNull(),

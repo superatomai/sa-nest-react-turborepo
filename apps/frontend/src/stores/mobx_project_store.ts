@@ -110,7 +110,7 @@ class ProjectStore {
   increaseUiCount(projectId : number){
     runInAction(() => {
       this.projects = this.projects.map((p) =>
-        p.id === projectId ? { ...p, uis_count: Number(p.uis_count) + 1, updatedAt: new Date().toISOString() } : p
+        p.id === projectId ? { ...p,  uis_count: Number(p.uis_count) + 1, updatedAt: new Date().toISOString() } : p
       );
       this.sortProjectsInStore();
     });

@@ -1,0 +1,1 @@
+ALTER TABLE "docs" ADD COLUMN "version" integer NOT NULL;

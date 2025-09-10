@@ -15,6 +15,20 @@
       "when": 1757487357333,
       "tag": "0001_groovy_blackheart",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1757513402180,
+      "tag": "0002_mysterious_korg",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1757513665743,
+      "tag": "0003_loud_saracen",
+      "breakpoints": true
     }
   ]
 }
