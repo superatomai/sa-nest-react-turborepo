@@ -39,6 +39,46 @@ export class AppController {
     }
   }
 
+  @Post('execute-query')
+  async executeQuery(
+    @Body() body: {
+      projectId: string;
+      query: string;
+      variables?: Record<string, any>;
+    }
+  ): Promise<any> {
+    if (!body.projectId) {
+      throw new HttpException('projectId is required', HttpStatus.BAD_REQUEST);
+    }
+
+    if (!body.query) {
+      throw new HttpException('query is required', HttpStatus.BAD_REQUEST);
+    }
+
+    try {
+      const result = await this.webSocketManagerService.executeQueryForUser(
+        body.projectId,
+        body.query,
+        body.variables || {}
+      );
+
+      return {
+        success: true,
+        data: result.data,
+        projectId: body.projectId,
+        query: body.query,
+        variables: body.variables || {},
+        timestamp: new Date().toISOString()
+      };
+    } catch (error) {
+      console.error('Error executing query:', error);
+      throw new HttpException(
+        error instanceof Error ? error.message : 'Failed to execute query',
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
   @Post('generate-ui-sse')
   async generateUISSE(
     @Body() body: {
