@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo } from 'react'
 import { T_UI_Component } from '../types/ui-schema'
 import FLOWUIRenderer from './components/ui-renderer'
-import { trpc } from '../utils/trpc'
+import { trpc, trpcClient } from '../utils/trpc'
 import { observer } from 'mobx-react-lite'
 import { useParams } from 'react-router-dom'
 
@@ -35,31 +35,187 @@ const EditorSSE = () => {
 	);
 
 
+	// New state for storing UI suggestions and project docs
+	const [uiSuggestions, setUiSuggestions] = useState<any[]>([]);
+	const [projectDocs, setProjectDocs] = useState<any>(null);
+
+	// tRPC mutation for creating UI list
+
+	const createUiListMutation = trpc.createUiList.useMutation({
+		onSuccess: (response) => {
+			console.log('✅ UI suggestions stored in database:', response);
+			setSSEEvents(prev => [...prev, {
+				type: 'success',
+				message: 'UI suggestions saved to database',
+				timestamp: new Date()
+			}]);
+		},
+		onError: (error) => {
+			console.error('❌ Failed to store UI suggestions:', error);
+			setSSEEvents(prev => [...prev, {
+				type: 'warning',
+				message: 'Generated UI suggestions but failed to save to database',
+				timestamp: new Date()
+			}]);
+		}
+	});
+
+	const createDocsMutation = trpc.createDocs.useMutation({
+		onSuccess: (response) => {
+			console.log('✅ Docs created successfully:', response);
+		},
+		onError: (error) => {
+			console.error('❌ Failed to store docs:', error);
+		}
+	});	
+
 	useEffect(() => {
-		//initialising the project
+		//initialising the project using tRPC services
 		(async () => {
+			if (!projectId || projectId === "") return;
 
-			// 1.check docs are present for the project in the database
+			console.log('🚀 Initializing project: ', projectId);
+
+			try {
+				// 1. Check if data agent is connected to the project (still via HTTP since it's WebSocket related)
+				console.log('📡 Checking data agent connection...');
+				const agentStatusResponse = await fetch(`http://localhost:3000/agent-status/${projectId}`);
+				const agentStatusData = await agentStatusResponse.json();
+				
+				if (!agentStatusData.success || !agentStatusData.data.hasAgent) {
+					console.warn('⚠️ No data agent connected to project', projectId);
+					return ;
+				} 
+
+				console.log('✅ Data agent connected:', agentStatusData.data);
+
+				// 2. Get project with docs and UI list using tRPC
+				console.log('📚 Fetching project, docs and UI list via tRPC...');
+
+				const projectResult = await trpcClient.projectWithDocsAndUi.query({ projId: parseInt(projectId) });
+				let docsData = null;
+				let existingUiList = null;
+
+				if (projectResult && projectResult.project && projectResult.project.length > 0) {
+					const project = projectResult.project[0];
+					console.log('✅ Project data loaded:', project);
+					
+					// 3. Load docs if project has docs reference  
+					if (project.docs) {
+						console.log('📖 Loading documentation from database...');
+						try {
+							// Use trpcClient for direct calls instead of hooks
+							const dbDocsData = await trpcClient.getDocs.query({ id: project.docs });
+							if (dbDocsData) {
+								docsData = dbDocsData;
+								setProjectDocs(docsData);
+								console.log('✅ Documentation loaded from database');
+							}
+						} catch (docsError) {
+							console.warn('⚠️ Failed to load docs from database:', docsError);
+							return;
+						}
+					} else {
+						console.warn('⚠️ No docs found');
+					}
+					
+					// Fallback to WebSocket docs if not loaded from database
+					if (!docsData) {
+						console.log('📡 Fetching documentation from WebSocket...');
+						const docsResponse = await fetch(`http://localhost:3000/init-docs?projectId=${projectId}`);
+						if (docsResponse.ok) {
+							docsData = await docsResponse.json();
+							setProjectDocs(docsData);
+							console.log('✅ Docs fetched from WebSocket');
 
 
-			//2.if not check get the docs from the web socket
+							//save the docs to the database
+							if (docsData.success) {
+								console.log('💾 Saving docs to database...');
+								createDocsMutation.mutate({
+									projId: parseInt(projectId),
+									docs: docsData.data
+								})
+							}
+						} else {
+							console.warn('⚠️ Failed to fetch docs from WebSocket');
+							return;
+						}
+					}
 
-				//check if the project is already connected to the data agent
+					// 4. Load existing UI list if project has one
+					if (project.uiList) {
+						console.log('🎨 Loading existing UI suggestions from database...');
+						try {
+							const uiListData = await trpcClient.getUiList.query({ id: project.uiList });
+							if (uiListData && (uiListData as any).uiList && (uiListData as any).uiList.length > 0) {
+								const dbUiList = (uiListData as any).uiList[0];
+								if (dbUiList && dbUiList.uiList) {
+									existingUiList = dbUiList.uiList;
+									setUiSuggestions(existingUiList);
+									console.log('✅ Existing UI suggestions loaded:', existingUiList);
+								}
+							}
+						} catch (uiListError) {
+							console.warn('⚠️ Failed to load UI suggestions from database:', uiListError);
+							return;
+						}
+					}
+				}  else {
+					console.warn('⚠️ No project data found');
+					return;
+				}
 
-				//if connected get the docs from the data agent
+				// 5. Generate new UI suggestions if we don't have them and have docs
+				if (!existingUiList && docsData && agentStatusData.data.hasAgent) {
+					console.log('🤖 Generating new UI suggestions from docs...');
 
-				//store the docs in the database
+					try {
+						const suggestionsResponse = await fetch('http://localhost:3000/init-ui', {
+							method: 'POST',
+							headers: {
+								'Content-Type': 'application/json',
+							},
+							body: JSON.stringify({
+								docsInfo: docsData.data || docsData,
+								projectId: projectId
+							})
+						});
 
-			//3.check for uislist in the project in the database.
+						if (suggestionsResponse.ok) {
+							const suggestionsData = await suggestionsResponse.json();
+							const suggestions = suggestionsData.data || [];
+							setUiSuggestions(suggestions);
+							console.log('✅ UI suggestions generated:', suggestions);
 
-				//if not get the uislist from the llm service
+							// 6. Save suggestions to database using tRPC
+							if (suggestions.length > 0) {
+								console.log('💾 Saving UI suggestions to database...');
+								createUiListMutation.mutate({
+									projId: parseInt(projectId),
+									uiList: suggestions
+								})
+							}
+						} else {
+							console.warn('⚠️ Failed to generate UI suggestions:', suggestionsResponse.statusText);
+							return;
+						}
+					} catch (error) {
+						console.error('❌ Error generating UI suggestions:', error);
+						return;
+					}
+				}
 
-				//store the uislist in the database
+				console.log('✅ Project initialization complete');
 
 
-		}) ();
+			} catch (error) {
+				console.error('❌ Error during project initialization:', error);
+				return;
+			}
+		})();
 
-	}, [])
+	}, [projectId])
 
 	useEffect(() => {
 		if (uiId && uidata) {
@@ -496,9 +652,10 @@ const EditorSSE = () => {
 						)}
 					</div>
 
-					{/* JSON Preview (optional - for debugging) */}
-					{currentSchema && (
-						<div className="absolute bottom-6 left-6 max-w-md">
+					{/* Debug Information */}
+					<div className="absolute bottom-6 left-6 max-w-md space-y-2">
+						{/* Schema Preview */}
+						{currentSchema && (
 							<details className="bg-slate-900/95 backdrop-blur-sm text-emerald-400 p-3 rounded-xl text-xs shadow-2xl border border-slate-700">
 								<summary className="cursor-pointer font-medium hover:text-emerald-300 transition-colors">
 									🔍 View Schema
@@ -507,8 +664,37 @@ const EditorSSE = () => {
 									{JSON.stringify(currentSchema, null, 2)}
 								</pre>
 							</details>
-						</div>
-					)}
+						)}
+						
+						{/* UI Suggestions Preview */}
+						{uiSuggestions.length > 0 && (
+							<details className="bg-blue-900/95 backdrop-blur-sm text-blue-300 p-3 rounded-xl text-xs shadow-2xl border border-blue-700">
+								<summary className="cursor-pointer font-medium hover:text-blue-200 transition-colors">
+									💡 UI Suggestions ({uiSuggestions.length})
+								</summary>
+								<div className="mt-3 overflow-auto max-h-48 space-y-2">
+									{uiSuggestions.map((suggestion, idx) => (
+										<div key={idx} className="text-slate-300 bg-slate-800/50 p-2 rounded text-xs">
+											<div className="font-medium text-blue-300">{suggestion.name}</div>
+											<div className="text-xs text-slate-400">{suggestion.description}</div>
+										</div>
+									))}
+								</div>
+							</details>
+						)}
+						
+						{/* Project Docs Info */}
+						{projectDocs && (
+							<details className="bg-purple-900/95 backdrop-blur-sm text-purple-300 p-3 rounded-xl text-xs shadow-2xl border border-purple-700">
+								<summary className="cursor-pointer font-medium hover:text-purple-200 transition-colors">
+									📚 Project Docs
+								</summary>
+								<div className="mt-3 text-slate-300 bg-slate-800/50 p-3 rounded-lg text-xs">
+									Docs loaded: {projectDocs.success ? '✅' : '❌'}
+								</div>
+							</details>
+						)}
+					</div>
 				</div>
 			</div>
 
