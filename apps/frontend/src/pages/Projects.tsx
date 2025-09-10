@@ -87,7 +87,7 @@ const Projects = () => {
 
   // Show projects page with consistent header
   return (
-    <div className="container">
+    <div className="">
       <Header />
       <div className="mx-4">
         <div className="flex flex-col gap-3 w-full">
