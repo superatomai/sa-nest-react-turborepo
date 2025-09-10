@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { T_UI_Component } from '../types/ui-schema'
 import FLOWUIRenderer from './components/ui-renderer'
 import { trpc } from '../utils/trpc'
@@ -145,6 +145,12 @@ const EditorSSE = () => {
 	const [promptHistory, setPromptHistory] = useState<string[]>([])
 	const [historyIndex, setHistoryIndex] = useState(-1)
 
+		// Health check query (optional - to test tRPC connection)
+	const healthQuery = trpc.health.useQuery(undefined, {
+		refetchInterval: false, // Don't auto-refetch
+		retry: false
+	})
+
 	// Local storage key for prompt history
 	const PROMPT_HISTORY_KEY = 'prompt_history'
 
@@ -162,6 +168,16 @@ const EditorSSE = () => {
 			}
 		}
 	}, [])
+
+	useEffect(() => {
+		// Optional: Log health check result
+		if (healthQuery.data) {
+			console.log('tRPC Health check:', healthQuery.data)
+		}
+		if (healthQuery.error) {
+			console.error('tRPC connection error:', healthQuery.error)
+		}
+	}, [healthQuery.data, healthQuery.error])
 
 	// Save prompt to history and localStorage
 	const savePromptToHistory = (prompt: string) => {
@@ -366,31 +382,20 @@ const EditorSSE = () => {
 			setIsGenerating(false);
 		}
 	};
-
-	// Health check query (optional - to test tRPC connection)
-	const healthQuery = trpc.health.useQuery(undefined, {
-		refetchInterval: false, // Don't auto-refetch
-		retry: false
-	})
-	
-	useEffect(() => {
-		// Optional: Log health check result
-		if (healthQuery.data) {
-			console.log('tRPC Health check:', healthQuery.data)
-		}
-		if (healthQuery.error) {
-			console.error('tRPC connection error:', healthQuery.error)
-		}
-	}, [healthQuery.data, healthQuery.error])
-
 	
 	// Define handlers that can be used in generated UI
-	const handlers = {
+	const handlers = useMemo(() => ({
 		handleClick: () => alert('Button clicked!'),
 		handleSubmit: (e: React.FormEvent) => {
 			e.preventDefault()
 		}
-	}
+	}), [])
+
+	// Memoize the renderer to prevent unnecessary re-renders
+	const memoizedRenderer = useMemo(() => {
+		if (!currentSchema) return null
+		return <FLOWUIRenderer schema={currentSchema} data={data} handlers={handlers} />
+	}, [currentSchema, data, handlers])
 
 	const handleSend = async () => {
 		if (!input.trim()) return
@@ -447,8 +452,7 @@ const EditorSSE = () => {
 							</div>
 						) : currentSchema ? (
 							<div className="min-h-full bg-white rounded-xl shadow-lg border border-slate-200">
-								
-								<FLOWUIRenderer schema={currentSchema} data={data} handlers={handlers} />
+								{memoizedRenderer}
 							</div>
 						) : (
 							<div className="min-h-full flex items-center justify-center">

@@ -28,8 +28,7 @@ class WebSocketRuntimeClient {
 				// This URL automatically routes to the user-specific Durable Object
 				const wsUrl = `${this.websocketUrl}/websocket?type=runtime&projectId=${this.projectId}`;
 
-				console.log(`Connecting to WebSocket: ${wsUrl}`);
-				this.ws = new WebSocket(wsUrl, {
+						this.ws = new WebSocket(wsUrl, {
 					family: 4, // force IPv4
 					handshakeTimeout: 30000, // 30 seconds
 					timeout: 30000,
@@ -88,15 +87,13 @@ class WebSocketRuntimeClient {
 	}
 
 	private handleMessage(data: string): void {
-		// console.log('data received on runtime', data);
 		try {
 			const message: WebSocketMessage = JSON.parse(data);
-			console.log(`Runtime received message for project ${this.projectId}:`, message.type);
 
 			switch (message.type) {
 				case 'connected':
 					this.clientId = message.clientId || null;
-					console.log(`Runtime connected with ID: ${this.clientId} for project ${this.projectId} (dedicated DO)`);
+					console.log(`✅ Runtime WebSocket connected for project ${this.projectId}`);
 					break;
 
 				case 'query_response':
@@ -144,7 +141,7 @@ class WebSocketRuntimeClient {
 	private handleDocsResponse(message: DocsMessage): void {
 		const pendingRequest = this.pendingRequests.get(message.requestId);
 		if (!pendingRequest) {
-			console.warn(`No pending docs request found for ID: ${message.requestId}`);
+			console.error(`No pending docs request found for ID: ${message.requestId}`);
 			return;
 		}
 
@@ -152,6 +149,7 @@ class WebSocketRuntimeClient {
 		this.pendingRequests.delete(message.requestId);
 
 		if (message.error) {
+			console.error(`Docs response error: ${message.error}`);
 			pendingRequest.reject(new Error(message.error));
 		} else {
 			pendingRequest.resolve(message);
@@ -296,21 +294,41 @@ class WebSocketRuntimeClient {
 			throw new Error('WebSocket not connected');
 		}
 
-		// Check if connection is actually healthy
-		if (!this.isHealthy()) {
-			console.warn(`Connection unhealthy for project ${this.projectId}, attempting reconnection...`);
+		// Only reconnect if connection is actually broken
+		if (!this.ws || this.ws.readyState !== WebSocket.OPEN || !this.connected) {
+			console.warn(`Connection not ready for project ${this.projectId}, attempting reconnection for query...`);
 			try {
 				await this.connect();
 			} catch (error) {
-				throw new Error(`Failed to reconnect: ${error instanceof Error ? error.message : error}`);
+				throw new Error(`Failed to reconnect for query: ${error instanceof Error ? error.message : error}`);
 			}
+		} else {
+			console.log(`✅ Using healthy connection for query execution (project ${this.projectId})`);
 		}
+
+		// Store the current clientId to detect connection changes
+		const currentClientId = this.clientId;
 
 		return new Promise((resolve, reject) => {
 			const requestId = crypto.randomUUID();
 
 			const timeout = setTimeout(async () => {
 				this.pendingRequests.delete(requestId);
+				
+				// Check if connection changed during the request (indicates reconnection happened)
+				if (this.clientId !== currentClientId) {
+					console.log(`🔄 Connection changed during query request (${currentClientId} -> ${this.clientId}), retrying...`);
+					if (retryCount < 3) { // Allow more retries for connection changes
+						try {
+							const result = await this.executeGraphQLQuery(query, variables, retryCount + 1);
+							resolve(result);
+							return;
+						} catch (retryError) {
+							reject(new Error(`Query request failed after connection change: ${retryError instanceof Error ? retryError.message : retryError}`));
+							return;
+						}
+					}
+				}
 				
 				// Retry logic for timeouts
 				if (retryCount < 2) {
@@ -345,7 +363,6 @@ class WebSocketRuntimeClient {
 			};
 
 			this.ws!.send(JSON.stringify(message));
-			console.log(`Sent GraphQL query for project ${this.projectId} with ID: ${requestId} query: ${query} variables: ${JSON.stringify(variables)}`);
 		});
 	}
 
@@ -354,9 +371,9 @@ class WebSocketRuntimeClient {
 			throw new Error(`WebSocket not connected for project ${this.projectId}`);
 		}
 
-		// Check if connection is actually healthy
-		if (!this.isHealthy()) {
-			console.warn(`Connection unhealthy for project ${this.projectId}, attempting reconnection for docs...`);
+		// Only reconnect if connection is actually broken
+		if (!this.ws || this.ws.readyState !== WebSocket.OPEN || !this.connected) {
+			console.warn(`Connection not ready for project ${this.projectId}, attempting reconnection for docs...`);
 			try {
 				await this.connect();
 			} catch (error) {
@@ -364,11 +381,28 @@ class WebSocketRuntimeClient {
 			}
 		}
 
+		// Store the current clientId to detect connection changes
+		const currentClientId = this.clientId;
+
 		return new Promise((resolve, reject) => {
 			const requestId = crypto.randomUUID();
 
 			const timeout = setTimeout(async () => {
 				this.pendingRequests.delete(requestId);
+				
+				// Check if connection changed during the request (indicates reconnection happened)
+				if (this.clientId !== currentClientId) {
+						if (retryCount < 3) { // Allow more retries for connection changes
+						try {
+							const result = await this.getDocs(retryCount + 1);
+							resolve(result);
+							return;
+						} catch (retryError) {
+							reject(new Error(`Docs request failed after connection change: ${retryError instanceof Error ? retryError.message : retryError}`));
+							return;
+						}
+					}
+				}
 				
 				// Retry logic for docs timeout
 				if (retryCount < 2) {
@@ -383,8 +417,8 @@ class WebSocketRuntimeClient {
 					}
 				}
 				
-				reject(new Error(`Docs request timeout after 45000ms for project ${this.projectId} (${retryCount + 1} attempts)`));
-			}, 45000);
+				reject(new Error(`Docs request timeout after 15000ms for project ${this.projectId} (${retryCount + 1} attempts)`));
+			}, 15000);
 
 			this.pendingRequests.set(requestId, {
 				requestId,
@@ -401,7 +435,6 @@ class WebSocketRuntimeClient {
 			};
 
 			this.ws!.send(JSON.stringify(message));
-			console.log(`Sent docs request for project ${this.projectId} with ID: ${requestId}`);
 		});
 	}
 
@@ -483,18 +516,30 @@ class WebSocketRuntimeClient {
 
 @Injectable()
 export class WebSocketManagerService implements OnModuleInit, OnModuleDestroy {
+	private static instance: WebSocketManagerService | null = null;
 	private clients = new Map<string, WebSocketRuntimeClient>();
 	private connectionPromises = new Map<string, Promise<void>>();
+	private autoConnectInProgress = false;
+	private autoConnectCompleted = false;
 
 	constructor(
 		private readonly uiUtilsService: UiUtilsService,   // 👈 inject utils instead of UiDataService
-	) { }
+	) {
+		// Debug: Check for multiple instances
+		if (WebSocketManagerService.instance) {
+			console.error(`🚨 [WebSocketManager] MULTIPLE INSTANCES DETECTED! This will cause connection issues.`);
+			console.error(`🚨 [WebSocketManager] Existing instance:`, WebSocketManagerService.instance);
+			console.error(`🚨 [WebSocketManager] New instance:`, this);
+		} else {
+			console.log(`✅ [WebSocketManager] Single instance created successfully`);
+		}
+		WebSocketManagerService.instance = this;
+	}
 
 	/**
 	 * Get WebSocket client for a specific user/project
 	 */
 	async getClientForUser(projectId: string): Promise<WebSocketRuntimeClient> {
-
 		// Return existing client if already connected
 		if (this.clients.has(projectId)) {
 			const client = this.clients.get(projectId)!;
@@ -512,29 +557,26 @@ export class WebSocketManagerService implements OnModuleInit, OnModuleDestroy {
 			throw new Error('WEBSOCKET_URL not set');
 		}
 
-		// Create new client for user
-		console.log(` Creating new WebSocket runtime client for project ${projectId}`);
-		const client = new WebSocketRuntimeClient(
-			WEBSOCKET_URL,
-			projectId,
-			this.uiUtilsService
-		);
-
 		// Ensure only one connection attempt per user
 		if (!this.connectionPromises.has(projectId)) {
+			const client = new WebSocketRuntimeClient(
+				WEBSOCKET_URL,
+				projectId,
+				this.uiUtilsService
+			);
+
+			this.clients.set(projectId, client);
+
 			const connectionPromise = client.connect().then(() => {
-				this.clients.set(projectId, client);
 				this.connectionPromises.delete(projectId);
-				console.log(`✅ [WebSocketManager] Successfully connected to dedicated Durable Object for project: ${projectId}`);
 			}).catch((error: any) => {
+				this.clients.delete(projectId);
 				this.connectionPromises.delete(projectId);
-				console.error(`❌ [WebSocketManager] Failed to connect to DO for project ${projectId}:`, error instanceof Error ? error.message : error);
+				console.error(`❌ Failed to connect WebSocket for project ${projectId}:`, error instanceof Error ? error.message : error);
 				throw error;
 			});
 
 			this.connectionPromises.set(projectId, connectionPromise);
-		} else {
-			console.log(`⏳ [WebSocketManager] Connection attempt already in progress for project ${projectId}`);
 		}
 
 		await this.connectionPromises.get(projectId);
@@ -548,12 +590,23 @@ export class WebSocketManagerService implements OnModuleInit, OnModuleDestroy {
 			return;
 		}
 
-		console.log(`🚀 Auto-connecting runtime WebSocket for project ${runtimeProjectId}`);
+		if (this.autoConnectInProgress) {
+			return;
+		}
+
+		if (this.autoConnectCompleted) {
+			return;
+		}
+
+		this.autoConnectInProgress = true;
 		try {
 			await this.getClientForUser(runtimeProjectId);
-			console.log(`✅ Runtime WebSocket is now connected for project ${runtimeProjectId}`);
+			console.log(`✅ Runtime WebSocket connected for project ${runtimeProjectId}`);
+			this.autoConnectCompleted = true;
 		} catch (err) {
 			console.error(`❌ Failed to auto-connect runtime project ${runtimeProjectId}:`, err);
+		} finally {
+			this.autoConnectInProgress = false;
 		}
 	}
 
