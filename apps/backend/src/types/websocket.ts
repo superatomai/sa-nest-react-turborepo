@@ -99,6 +99,24 @@ export interface ErrorMessage extends BaseMessage {
     projectId?: string;
 }
 
+export interface CheckAgentsMessage extends BaseMessage {
+    type: 'check_agents';
+    requestId: string;
+    projectId: string;
+}
+
+export interface AgentStatusResponse extends BaseMessage {
+    type: 'agent_status_response';
+    requestId: string;
+    projectId: string;
+    agents?: Array<{
+        id: string;
+        connectedAt: number;
+        projectId: string;
+    }>;
+    error?: string;
+}
+
 export type WebSocketMessage =
     | ConnectedMessage
     | GraphQLQueryMessage
@@ -110,7 +128,9 @@ export type WebSocketMessage =
     | GetDocsMessage
     | DocsMessage
     | GetProdUIMessage
-    | ProdUIResponseMessage;
+    | ProdUIResponseMessage
+    | CheckAgentsMessage
+    | AgentStatusResponse;
 
 
 export interface UserConnections {

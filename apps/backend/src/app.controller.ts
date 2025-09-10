@@ -1,7 +1,8 @@
-import { Controller, Get, Post, Query, Body, HttpException, HttpStatus, Res } from '@nestjs/common';
+import { Controller, Get, Post, Query, Body, HttpException, HttpStatus, Res, Param } from '@nestjs/common';
 import { AppService } from './app.service';
 import { WebSocketManagerService } from './services/websocket-manager.service';
 import { TrpcSSEService } from './trpc/trpc-sse.service';
+import { LlmService } from './services/llm.service';
 import { Response } from 'express';
 
 @Controller()
@@ -9,7 +10,8 @@ export class AppController {
   constructor(
     private readonly appService: AppService,
     private readonly webSocketManagerService: WebSocketManagerService,
-    private readonly trpcSSEService: TrpcSSEService
+    private readonly trpcSSEService: TrpcSSEService,
+    private readonly llmService: LlmService
   ) {}
 
   @Get()
@@ -17,17 +19,12 @@ export class AppController {
     return this.appService.getHello();
   }
 
-  @Get('get')
+  @Get('init-docs')
   async getDocs(
     @Query('projectId') projectId: string,
-    @Query('type') type: string,
   ): Promise<any> {
     if (!projectId) {
       throw new HttpException('projectId is required', HttpStatus.BAD_REQUEST);
-    }
-
-    if (type !== 'get_docs') {
-      throw new HttpException('type must be "get_docs"', HttpStatus.BAD_REQUEST);
     }
 
     try {
@@ -61,6 +58,150 @@ export class AppController {
           message: error instanceof Error ? error.message : 'Unknown error'
         });
       }
+    }
+  }
+
+  @Get('agent-status/:projectId')
+  async getAgentStatus(@Param('projectId') projectId: string) {
+    if (!projectId) {
+      throw new HttpException('projectId is required', HttpStatus.BAD_REQUEST);
+    }
+
+    try {
+      const agentStatus = await this.webSocketManagerService.checkAgentConnectionForProject(projectId);
+      return {
+        success: true,
+        data: agentStatus,
+        projectId: projectId,
+        timestamp: new Date().toISOString()
+      };
+    } catch (error) {
+      console.error('Error checking agent status:', error);
+      throw new HttpException(
+        error instanceof Error ? error.message : 'Failed to check agent status',
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  @Get('agent-status')
+  async getAllAgentStatus() {
+    try {
+      const connectionStatus = this.webSocketManagerService.getStatus();
+      const connectedProjects = this.webSocketManagerService.getConnectedUsers();
+      
+      // Get agent status for all connected projects
+      const agentStatusPromises = connectedProjects.map(async (projectId) => {
+        try {
+          const agentStatus = await this.webSocketManagerService.checkAgentConnectionForProject(projectId);
+          return {
+            projectId,
+            ...agentStatus
+          };
+        } catch (error) {
+          return {
+            projectId,
+            hasAgent: false,
+            agentCount: 0,
+            error: error instanceof Error ? error.message : 'Unknown error'
+          };
+        }
+      });
+
+      const agentStatuses = await Promise.all(agentStatusPromises);
+
+      return {
+        success: true,
+        data: {
+          connectionSummary: connectionStatus,
+          agentStatuses: agentStatuses
+        },
+        timestamp: new Date().toISOString()
+      };
+    } catch (error) {
+      console.error('Error checking all agent statuses:', error);
+      throw new HttpException(
+        error instanceof Error ? error.message : 'Failed to check agent statuses',
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  @Post('init-ui')
+  async generateUISuggestions(
+    @Body() body: {
+      docsInfo: any;
+      projectId?: string;
+    }
+  ) {
+    if (!body.docsInfo) {
+      throw new HttpException('docsInfo is required', HttpStatus.BAD_REQUEST);
+    }
+
+    try {
+      const suggestions = await this.llmService.generateUISuggestions(body.docsInfo);
+      
+      if (!suggestions.success) {
+        throw new HttpException(
+          suggestions.error || 'Failed to generate UI suggestions',
+          HttpStatus.INTERNAL_SERVER_ERROR
+        );
+      }
+
+      return {
+        success: true,
+        data: suggestions.data || [],
+        projectId: body.projectId || null,
+        timestamp: new Date().toISOString()
+      };
+    } catch (error) {
+      console.error('Error generating UI suggestions:', error);
+      throw new HttpException(
+        error instanceof Error ? error.message : 'Failed to generate UI suggestions',
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  @Post('init-ui/from-project')
+  async generateUISuggestionsFromProject(
+    @Body() body: {
+      projectId: string;
+    }
+  ) {
+    if (!body.projectId) {
+      throw new HttpException('projectId is required', HttpStatus.BAD_REQUEST);
+    }
+
+    try {
+      // First get the docs for the project
+      const docs = await this.webSocketManagerService.getDocsForUser(body.projectId);
+
+      const docsInfo = docs.data;
+      
+      // Then generate UI suggestions based on those docs
+      const suggestions = await this.llmService.generateUISuggestions(docsInfo);
+      
+      if (!suggestions.success) {
+        throw new HttpException(
+          suggestions.error || 'Failed to generate UI suggestions',
+          HttpStatus.INTERNAL_SERVER_ERROR
+        );
+      }
+
+      return {
+        success: true,
+        data: suggestions.data || [],
+        projectId: body.projectId,
+        docsUsed: docs,
+        timestamp: new Date().toISOString()
+      };
+    } catch (error) {
+      console.error('Error generating UI suggestions from project:', error);
+      throw new HttpException(
+        error instanceof Error ? error.message : 'Failed to generate UI suggestions from project',
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
     }
   }
 }

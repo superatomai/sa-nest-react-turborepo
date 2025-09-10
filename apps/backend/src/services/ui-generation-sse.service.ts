@@ -65,15 +65,25 @@ export class UiGenerationSSEService {
 			console.log(`Processing  prompt for project ${projectId}: "${prompt}"`);
 
 			// Step 1: Get docs schema
-			sseController.sendMessage('status', '📋 Getting docs schema...');
-			const schemaData = await this.projectSchemaCacheService.getProjectSchema(projectId);
-			if (!schemaData.success) {
-				sseController.sendError('Failed to fetch project schema', {
-					originalError: schemaData.error
+			sseController.sendMessage('status', '📋 Getting docs schema via WebSocket...');
+			let schemaData;
+			try {
+				schemaData = await this.projectSchemaCacheService.getProjectSchema(projectId);
+				if (!schemaData.success) {
+					sseController.sendError('Failed to fetch project schema via WebSocket', {
+						originalError: schemaData.error,
+						suggestion: 'The WebSocket connection may be unstable. Please try again.'
+					});
+					return;
+				}
+				sseController.sendMessage('status', '✅ Received schema from WebSocket');
+			} catch (error) {
+				sseController.sendError('WebSocket connection failed for docs retrieval', {
+					originalError: error instanceof Error ? error.message : 'Unknown error',
+					suggestion: 'Please check your project WebSocket connection and try again.'
 				});
 				return;
 			}
-			sseController.sendMessage('status', '✅ Received schema');
 
 			// Step 2: Generate GraphQL query from prompt
 			sseController.sendMessage('status', '🔍 Generating GraphQL query...');
@@ -96,7 +106,7 @@ export class UiGenerationSSEService {
 			});
 
 			// Step 3: Execute query via WebSocket to user's data agent
-			sseController.sendMessage('status', '⚡ Executing the query...');
+			sseController.sendMessage('status', '⚡ Executing query via WebSocket...');
 			console.log('Executing query for project', projectId, query, JSON.stringify(variables || {}, null, 2));
 
 			let exec_query:any = {
@@ -127,9 +137,10 @@ export class UiGenerationSSEService {
 				const ws_data = await this.executeQuery(projectId, exec_query.graphql, exec_query.vars);
 
 				if (!ws_data.success) {
-					sseController.sendError('Failed to execute query', {
+					sseController.sendError('Failed to execute query via WebSocket', {
 						originalError: ws_data.error,
-						query: query.substring(0, 200) + '...'
+						query: query.length > 200 ? query.substring(0, 200) + '...' : query,
+						suggestion: 'The WebSocket query execution failed. Please check your data connection and try again.'
 					});
 					return;
 				}
