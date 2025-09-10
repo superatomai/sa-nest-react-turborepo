@@ -9,6 +9,7 @@ import { projectStore } from "../../stores/mobx_project_store";
 import { truncateText } from "@/lib/utils/truncate-text";
 import ToolTip from "../Tooltip";
 import { trpc } from '@/utils';
+import toast from "react-hot-toast";
 
 type props = {
     setShowUpdateModal: (open: boolean) => void;
@@ -40,14 +41,9 @@ const UpdateProjectModal = ({
 
     // TRPC mutation for updating project
     const updateProjectMutation = trpc.projectsUpdate.useMutation({
-        onSuccess: (updatedProject) => {
-            // Update project in store after successful update
-            projectStore.updateProjectInStore(updatedProject.project);
-            setShowUpdateModal(false);
-            setIsLoading(false);
-        },
         onError: (error) => {
             console.error("Failed to update project:", error);
+            toast.error('Failed to update project.');
             setIsLoading(false);
         }
     });
@@ -76,7 +72,6 @@ const UpdateProjectModal = ({
         setIsLoading(true);
 
         try {
-            // Prepare data object with only the fields that should be updated
             const updateData: { name?: string; description?: string } = {};
             
             if (formData.name.trim() !== projectDetails.name) {
@@ -89,16 +84,24 @@ const UpdateProjectModal = ({
 
             // Only proceed if there are changes to make
             if (Object.keys(updateData).length === 0) {
+                toast('No changes made!', {
+                icon: '👏',
+                });
                 setShowUpdateModal(false);
                 setIsLoading(false);
                 return;
             }
 
-            await updateProjectMutation.mutateAsync({
+            const updatedProject = await updateProjectMutation.mutateAsync({
                 id: projectDetails.id,
                 data: updateData,
                 orgId
             });
+
+            projectStore.updateProjectInStore(updatedProject.project);
+            setIsLoading(false);
+            setShowUpdateModal(false);
+
         } catch (error) {
             // Error is already handled in onError callback
             console.error("Update project error:", error);
@@ -133,7 +136,7 @@ const UpdateProjectModal = ({
                         size="icon"
                         onClick={handleClose}
                         disabled={isLoading}
-                        className="h-6 w-6 p-0"
+                        className="h-6 w-6 p-0 cursor-pointer"
                     >
                         <Icon icon="material-symbols:close" className="h-4 w-4" />
                     </Button>
@@ -171,12 +174,14 @@ const UpdateProjectModal = ({
                             variant="outline"
                             onClick={handleClose}
                             disabled={isLoading}
+                            className="cursor-pointer"
                         >
                             Cancel
                         </Button>
                         <Button
                             onClick={handleSubmit}
                             disabled={isLoading || !formData.name.trim()}
+                            className="cursor-pointer"
                         >
                             {isLoading && (
                                 <Icon 

@@ -1,0 +1,697 @@
+"item_container_types",
+                "schema": "public",
+                "columns": [
+                    {
+                        "name": "id",
+                        "data_type": "integer",
+                        "is_nullable": false,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "Container Type ID",
+                        "data_type": "text",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "Description",
+                        "data_type": "text",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "Container Type Group",
+                        "data_type": "text",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "Active",
+                        "data_type": "text",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "Pallet Type ID",
+                        "data_type": "text",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "Memo",
+                        "data_type": "text",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "created_at",
+                        "data_type": "timestamp without time zone",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "updated_at",
+                        "data_type": "timestamp without time zone",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    }
+
+
+                     "name": "item_contianer_type_groups",
+                "schema": "public",
+                "columns": [
+                    {
+                        "name": "id",
+                        "data_type": "integer",
+                        "is_nullable": false,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "Container Type Group ID",
+                        "data_type": "text",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "Description",
+                        "data_type": "text",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "Referenced By Customer",
+                        "data_type": "text",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "Memo",
+                        "data_type": "text",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "created_at",
+                        "data_type": "timestamp without time zone",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "updated_at",
+                        "data_type": "timestamp without time zone",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    }
+
+
+                     {
+                "name": "item_item_groups",
+                "schema": "public",
+                "columns": [
+                    {
+                        "name": "id",
+                        "data_type": "integer",
+                        "is_nullable": false,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "Item Group ID",
+                        "data_type": "text",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "Description",
+                        "data_type": "text",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "NMFC Required",
+                        "data_type": "text",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "Harmonized Tariff Required",
+                        "data_type": "text",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "Referenced By Customer",
+                        "data_type": "text",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "Memo",
+                        "data_type": "text",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "created_at",
+                        "data_type": "timestamp without time zone",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "updated_at",
+                        "data_type": "timestamp without time zone",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    }
+                ],
+
+                 {
+                "name": "item_item_package_levels",
+                "schema": "public",
+                "columns": [
+                    {
+                        "name": "id",
+                        "data_type": "integer",
+                        "is_nullable": false,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "Item Number",
+                        "data_type": "text",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "Item Description",
+                        "data_type": "text",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "Item Group ID",
+                        "data_type": "text",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "Item Group Description",
+                        "data_type": "text",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "Item Package Level ID",
+                        "data_type": "text",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "Active",
+                        "data_type": "text",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "Content Level",
+                        "data_type": "text",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "Units",
+                        "data_type": "numeric",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "Weight",
+                        "data_type": "numeric",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "Weight UOM",
+                        "data_type": "text",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "Volume",
+                        "data_type": "numeric",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "Volume UOM",
+                        "data_type": "text",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "Length",
+                        "data_type": "numeric",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "Length UOM",
+                        "data_type": "text",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "Width",
+                        "data_type": "numeric",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "Height",
+                        "data_type": "numeric",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "Carrier Packaging Region",
+                        "data_type": "text",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "Laden Length",
+                        "data_type": "numeric",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "Display Name",
+                        "data_type": "text",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "External ID",
+                        "data_type": "text",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "Weight - User UOM (LB)",
+                        "data_type": "numeric",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "Volume - User UOM (CU. FT)",
+                        "data_type": "numeric",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "created_at",
+                        "data_type": "timestamp without time zone",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "updated_at",
+                        "data_type": "timestamp without time zone",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    }
+                ],
+
+                 {
+                "name": "item_items",
+                "schema": "public",
+                "columns": [
+                    {
+                        "name": "id",
+                        "data_type": "integer",
+                        "is_nullable": false,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "Item Number",
+                        "data_type": "text",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "Description",
+                        "data_type": "text",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "Item Type",
+                        "data_type": "text",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "Item Group ID",
+                        "data_type": "text",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "Active",
+                        "data_type": "text",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "Nominal Weight",
+                        "data_type": "numeric",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "Nominal Weight UOM",
+                        "data_type": "text",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "Commodity",
+                        "data_type": "text",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "Freight Class",
+                        "data_type": "timestamp without time zone",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "NMFC Code",
+                        "data_type": "text",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "Harmonized Tariff Code",
+                        "data_type": "text",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "Memo",
+                        "data_type": "text",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "Country of Origin",
+                        "data_type": "text",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "created_at",
+                        "data_type": "timestamp without time zone",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "updated_at",
+                        "data_type": "timestamp without time zone",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    }
+
+                      {
+                "name": "principal_docks",
+                "schema": "public",
+                "columns": [
+                    {
+                        "name": "id",
+                        "data_type": "integer",
+                        "is_nullable": false,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "Dock ID",
+                        "data_type": "text",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "Description",
+                        "data_type": "text",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "Dock Type",
+                        "data_type": "text",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "Dock Status",
+                        "data_type": "text",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "Shipping Location ID",
+                        "data_type": "text",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "Shipping Location Type",
+                        "data_type": "text",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "Created By",
+                        "data_type": "text",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "Created Date/Time (MM/DD/YYYY HH:MM) UTC",
+                        "data_type": "timestamp without time zone",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "Updated By",
+                        "data_type": "text",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "Updated Date/Time (MM/DD/YYYY HH:MM) UTC",
+                        "data_type": "text",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "created_at",
+                        "data_type": "timestamp without time zone",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "updated_at",
+                        "data_type": "timestamp without time zone",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    }
+                ],
+                {
+                "name": "tariff_masterconditions",
+                "schema": "public",
+                "columns": [
+                    {
+                        "name": "id",
+                        "data_type": "integer",
+                        "is_nullable": false,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "Charge ID",
+                        "data_type": "text",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "Charge Description",
+                        "data_type": "text",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "Condition",
+                        "data_type": "text",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "Unit Type",
+                        "data_type": "text",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "created_at",
+                        "data_type": "timestamp without time zone",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "updated_at",
+                        "data_type": "timestamp without time zone",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    }
+                ],
+
+                 {
+                "name": "tariff_tariffs",
+                "schema": "public",
+                "columns": [
+                    {
+                        "name": "id",
+                        "data_type": "integer",
+                        "is_nullable": false,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "Tariff Number",
+                        "data_type": "integer",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "Tariff ID",
+                        "data_type": "text",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "Description",
+                        "data_type": "text",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "Carrier ID",
+                        "data_type": "text",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "Customer ID",
+                        "data_type": "text",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "Status",
+                        "data_type": "text",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "Attribute",
+                        "data_type": "text",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "Effective Date (MM/DD/YYYY) UTC",
+                        "data_type": "timestamp without time zone",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "Expiration Date (MM/DD/YYYY) UTC",
+                        "data_type": "timestamp without time zone",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "Memo",
+                        "data_type": "text",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "Referential Tariff",
+                        "data_type": "text",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "Tariff Group",
+                        "data_type": "text",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "created_at",
+                        "data_type": "timestamp without time zone",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "updated_at",
+                        "data_type": "timestamp without time zone",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    }
+                ],
+
+                {
+                "name": "zone_zones",
+                "schema": "public",
+                "columns": [
+                    {
+                        "name": "id",
+                        "data_type": "integer",
+                        "is_nullable": false,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "Zone ID",
+                        "data_type": "text",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "Description",
+                        "data_type": "text",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "Country",
+                        "data_type": "text",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "State/Province",
+                        "data_type": "text",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "created_at",
+                        "data_type": "timestamp without time zone",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    },
+                    {
+                        "name": "updated_at",
+                        "data_type": "timestamp without time zone",
+                        "is_nullable": true,
+                        "is_primary_key": false
+                    }
+                ],

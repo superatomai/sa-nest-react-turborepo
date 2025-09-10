@@ -28,6 +28,7 @@ export class VersionsService {
   if (!data.dsl) {
     throw new BadRequestException('DSL is required');
   }
+  console.log("creating version for UI:", data.uiId + " " + new Date().toLocaleString());
 
   // Find the latest version for this uiId
   const latestVersion = await this.drizzleService.db
@@ -36,6 +37,8 @@ export class VersionsService {
     .where(eq(versions.uiId, data.uiId))
     .orderBy(desc(versions.versionId))
     .limit(1);
+  
+    console.log("found the latest version for UI:", data.uiId + " " + new Date().toLocaleString());
 
   // Increment or set to 1 if no version exists
   const nextVersionId = (latestVersion[0]?.versionId ?? 0) + 1;
@@ -52,6 +55,8 @@ export class VersionsService {
       updatedBy: user?.id || null,
     })
     .returning();
+
+    console.log("created version for UI:", data.uiId + " " + new Date().toLocaleString());
 
   return {
     message: `Version ${nextVersionId} created successfully for UI ${data.uiId}`,

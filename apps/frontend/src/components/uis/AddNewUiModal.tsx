@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { X, Loader2 } from "lucide-react";
 import { nanoid } from "nanoid";
 import { default_dsl } from "@/lib/utils/default-dsl";
+import toast from "react-hot-toast";
 
 type Props = {
   setShowAddUiModal: (open: boolean) => void;
@@ -63,6 +64,8 @@ const AddNewUiModal = ({ setShowAddUiModal, projectId }: Props) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    console.log("started to create UI...");
+
     if (!formData.name.trim()) {
       alert("UI name is required.");
       return;
@@ -72,6 +75,7 @@ const AddNewUiModal = ({ setShowAddUiModal, projectId }: Props) => {
 
         const ui_id = "ui_" + nanoid(6)
 
+        console.log("creating version first for UI:", ui_id);
       // 1. Create version first
       const version : any = await createVersionMutation.mutateAsync({
         uiId: ui_id, 
@@ -81,6 +85,8 @@ const AddNewUiModal = ({ setShowAddUiModal, projectId }: Props) => {
 
       console.log("Version created:", JSON.stringify(version));
       
+      console.log("creating UI with versionId:", version.version.id);
+
       // 2. Then create UI with versionId
       const newUi : any = await createUiMutation.mutateAsync({
         uiId: version.version.uiId,
@@ -90,15 +96,20 @@ const AddNewUiModal = ({ setShowAddUiModal, projectId }: Props) => {
         projectId,
       });
 
+      console.log("UI created:", JSON.stringify(newUi));
+
       const uiWithVersion = {
         ...newUi.ui,
         version_id: 1,
       };
+
+      console.log("adding Ui to store : ", uiWithVersion);
       // 3. Add to MobX store
       uisStore.addUiToStore(uiWithVersion);
 
-      // 4. Reset + close modal
+    
       resetForm();
+      toast.success("UI created successfully");
       setShowAddUiModal(false);
 
     } catch (error) {
@@ -162,12 +173,14 @@ const AddNewUiModal = ({ setShowAddUiModal, projectId }: Props) => {
                 variant="outline"
                 onClick={handleClose}
                 disabled={isPending}
+                className="cursor-pointer"
               >
                 Cancel
               </Button>
               <Button
                 type="submit"
                 disabled={isPending || !formData.name.trim()}
+                className="cursor-pointer"
               >
                 {isPending && (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />

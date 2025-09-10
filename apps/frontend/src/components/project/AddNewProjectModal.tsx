@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { X, Loader2 } from "lucide-react";
+import toast from "react-hot-toast";
 
 type Props = {
   setNewProjModalOpen: (open: boolean) => void;
@@ -19,38 +20,7 @@ const AddNewProjectModal = ({ setNewProjModalOpen, orgId }: Props) => {
     description: '',
   });
 
-  // Get the projects query to refetch after creation
-  const projectsQuery = trpc.projectsGetAll.useQuery({ orgId });
-
-  // Create the mutation
-  const createProjectMutation : any = trpc.projectsCreate.useMutation({
-    onSuccess: (response) => {
-      // Extract the actual project from the response
-      const newProject = response.project;
-      
-      // Add the new project to the store
-      projectStore.addProjectToStore(newProject);
-      
-      // Reset form
-      setFormData({
-        name: '',
-        description: '',
-      });
-      
-      // Close modal
-      setNewProjModalOpen(false);
-      
-      // Refetch projects to keep everything in sync
-      projectsQuery.refetch();
-      
-      // Optional: Show success message
-      console.log('Project created:', response.message);
-    },
-    onError: (error) => {
-      console.error("Error creating project:", error);
-      alert("Failed to create project. Please try again.");
-    },
-  });
+  const createProjectMutation : any = trpc.projectsCreate.useMutation();
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -74,14 +44,30 @@ const AddNewProjectModal = ({ setNewProjModalOpen, orgId }: Props) => {
     }
 
     try {
-      await createProjectMutation.mutateAsync({
+      const newProject = await createProjectMutation.mutateAsync({
         name: formData.name.trim(),
-        description: formData.description.trim() || null,
+        description: formData.description.trim() || "",
         orgId,
       });
+
+      console.log("new Project created:", newProject);
+
+      console.log("adding this new proj to store...")
+      projectStore.addProjectToStore(newProject.project);
+
+      setFormData({
+        name: '',
+        description: '',
+      });
+      
+      toast.success('Project created successfully!');
+      // Close modal
+      setNewProjModalOpen(false);
+
+
     } catch (error) {
-      // Error handling is done in onError callback
       console.error("Mutation failed:", error);
+      alert("Failed to create project. Please try again.");
     }
   };
 
@@ -159,12 +145,14 @@ const AddNewProjectModal = ({ setNewProjModalOpen, orgId }: Props) => {
                 variant="outline"
                 onClick={handleClose}
                 disabled={createProjectMutation.isPending}
+                className="cursor-pointer" 
               >
                 Cancel
               </Button>
               <Button
                 type="submit"
                 disabled={createProjectMutation.isPending || !formData.name.trim()}
+                className="cursor-pointer"
               >
                 {createProjectMutation.isPending && (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />

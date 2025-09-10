@@ -12,14 +12,19 @@ type Props = {
 };
 
 function AllUis({ projectId, selectedProject }: Props) {
+
   const uisQuery = trpc.uisGetAll.useQuery({ projectId });
 
-  // Hydrate store only when query data changes
+
   useEffect(() => {
     if (uisQuery.isSuccess && uisQuery.data) {
       uisStore.setUis(uisQuery.data.uis);
     }
   }, [uisQuery.isSuccess, uisQuery.data]);
+
+  useEffect(()=>{
+    console.log("uisStore.uis changed, mapping these uis:", JSON.stringify(uisStore.uis));
+  },[uisStore.uis])
 
   const uis = uisStore.uis;
   const isLoading = uisQuery.isLoading;
@@ -41,7 +46,7 @@ function AllUis({ projectId, selectedProject }: Props) {
       {/* Content Area - Conditional based on state */}
       <div className="mt-5">
         {isLoading ? (
-          <div className="flex items-center justify-center py-8 h-[300px]">
+          <div className="flex items-center justify-center py-8 h-[250px]">
             <div className="text-center">
               <div className="text-lg text-gray-600 mb-2 flex felx-col">
                 Loading UIs...
@@ -62,7 +67,7 @@ function AllUis({ projectId, selectedProject }: Props) {
             </div>
           </div>
         ) : uis.length === 0 ? (
-          <div className="flex items-center justify-center py-8 h-[300px]">
+          <div className="flex items-center justify-center py-8 h-[250px]">
             <div className="text-center">
               <div className="text-lg text-gray-600 mb-2">No UIs found</div>
               <div className="text-sm text-gray-500">

@@ -175,6 +175,9 @@ export class UisService {
       throw new BadRequestException('UI ID is required');
     }
 
+    console.log("creating UI... with name: " + data.name +  new Date().toLocaleString());
+
+    console.log("checking if project exists..." + new Date().toLocaleString());
     // Verify project exists
     const project = await this.drizzleService.db
       .select()
@@ -185,7 +188,10 @@ export class UisService {
     if (!project.length) {
       throw new NotFoundException(`Project with ID ${data.projectId} not found`);
     }
+    console.log("found the project..." + new Date().toLocaleString());
 
+
+    console.log("creating the ui..." + new Date().toLocaleString());
     // Create the UI
     const newUi = await this.drizzleService.db
       .insert(uis)
@@ -200,6 +206,8 @@ export class UisService {
       })
       .returning();
 
+    console.log("created the ui..." + new Date().toLocaleString());
+
     // Update project's updated_at timestamp
     await this.drizzleService.db
       .update(projects)
@@ -208,6 +216,7 @@ export class UisService {
         updatedBy: user?.id || null,
       })
       .where(eq(projects.id, data.projectId));
+    console.log("updated the project..." + new Date().toLocaleString() + " and sending back the response..." + new Date().toLocaleString());
 
     return {
       message: 'UI created successfully',

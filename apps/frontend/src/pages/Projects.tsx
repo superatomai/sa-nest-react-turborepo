@@ -16,14 +16,13 @@ const LIMIT = 8;
 const Projects = () => {
   const { organization } = useOrganization();
   const orgId: string | undefined = organization?.id;
-  const [selectedId, setSelectedId] = useState<number>();
   const [page, setPage] = useState(0);
 
   if (!orgId) {
     return <div>No organization selected</div>;
   }
 
-  const projectsQuery = trpc.projectsGetAll.useQuery(
+  const projectsQuery : any = trpc.projectsGetAll.useQuery(
     { orgId, skip: page * LIMIT, limit: LIMIT },
     {
       ...(undefined as any),
@@ -33,6 +32,7 @@ const Projects = () => {
 
   const isProjectsActive = window.location.pathname === "/projects";
   const projectList = projectStore.projects;
+  const selectedId = projectStore.selectedProjectId;
   const selectedProject = projectList.find((p) => p.id === selectedId);
   
   // Fix the loading logic - only show full loading screen for initial load
@@ -47,6 +47,8 @@ const Projects = () => {
           projectsQuery.data.projects,
           projectsQuery.data.totalCount
         );
+
+        console.log("the data is ", JSON.stringify(projectsQuery.data));
       } else {
         projectStore.addProjects(
           projectsQuery.data.projects,
@@ -65,8 +67,7 @@ const Projects = () => {
   }, [selectedId]);
 
   const handleProjectSelect = (projectId: number) => {
-    setSelectedId(projectId);
-    projectStore.selectProject(projectId);
+     projectStore.selectProject(projectId);
   };
 
   const handleLoadMore = () => {

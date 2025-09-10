@@ -27,7 +27,7 @@ const [newProjModalOpen, setNewProjModalOpen] = useState(false)
         className={`${baseClasses} ${variantClasses[variant]}`}
         onClick={() => setNewProjModalOpen(true)}
       >
-        <Icon icon="material-symbols:add-rounded" className={`${variant === "transparentLarge" ? "text-8xl text-gray-400 font-bold" : "text-2xl text-blue-800"}`} />
+        <Icon icon="material-symbols:add-rounded" className={`${variant === "transparentLarge" ? "text-8xl text-gray-400 font-bold" : "text-2xl text-white-800"}`} />
         {variant !== "transparentLarge" && "Add new project"}
       </button>
 

@@ -1,4 +1,5 @@
 import { makeAutoObservable, runInAction } from "mobx";
+import { projectStore } from "./mobx_project_store";
 
 export interface Ui {
   id: number;
@@ -48,8 +49,11 @@ class UisStore {
 //   }
 
   addUiToStore(ui: Ui) {
+    console.log("called the addUiToStore function mobx ui store...");
     runInAction(() => {
+      projectStore.increaseUiCount(ui.projectId);
       this.uis.unshift(ui);
+      console.log("added ui to the start:", JSON.stringify(this.uis));
       this.totalUis += 1;
     });
   }
@@ -62,8 +66,9 @@ class UisStore {
     });
   }
 
-  removeUiFromStore(id: number) {
+  removeUiFromStore(id: number, projectId: number) {
     runInAction(() => {
+      projectStore.decreaseUiCount(projectId);
       this.uis = this.uis.filter((u) => u.id !== id);
       this.totalUis -= 1;
     });
