@@ -19,14 +19,19 @@ async getAllProjects(orgId: string, user?: User, limit = 8, skip = 0) {
   console.log("fetching all projects...", new Date().toLocaleString());
 
   try {
-    // Single query: projects + count of UIs per project
+    // Select only the columns you need
     const results = await this.drizzleService.db
       .select({
-        ...projects,
-        uis_count: sql<number>`COALESCE(u_count.count, 0)` // use lateral join result
+        id: projects.id,
+        name: projects.name,
+        description: projects.description,
+        createdAt: projects.createdAt,
+        updatedAt: projects.updatedAt,
+        orgId: projects.orgId,
+        uis_count: sql<number>`COALESCE(u_count.count, 0)` // count of UIs per project
       })
       .from(projects)
-      // Lateral join to safely count UIs per project
+      // LATERAL join to count UIs
       .leftJoin(
         sql`LATERAL (
           SELECT COUNT(*) AS count
@@ -38,10 +43,10 @@ async getAllProjects(orgId: string, user?: User, limit = 8, skip = 0) {
       .orderBy(desc(projects.updatedAt))
       .limit(limit)
       .offset(skip);
- 
-    const totalCount = results.length; 
 
-    console.log("projects fetched:" + "time:" + new Date().toLocaleString());
+    const totalCount = results.length;
+
+    console.log("projects fetched:" + " time:" + new Date().toLocaleString());
     return {
       message: `Projects for organization ${orgId}`,
       organizationId: orgId,
@@ -54,6 +59,7 @@ async getAllProjects(orgId: string, user?: User, limit = 8, skip = 0) {
     return error;
   }
 }
+
 
 async getProjectWithDocsAndUi(projId: number, user?: User){
     if (!projId) {
