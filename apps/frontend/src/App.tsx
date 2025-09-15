@@ -19,7 +19,6 @@ import { useOrganization } from "@clerk/clerk-react";
 import orgStore from "./stores/mobx_org_store";
 import SignUpPage from "./pages/SignUp";
 import { Toaster } from "react-hot-toast";
-import Schema from "./pages/Schema";
 
 export function App() {
   const { organization, isLoaded } = useOrganization();
@@ -77,7 +76,7 @@ export function App() {
             }
           />
 
-          <Route path="/Schema" element={<Schema />} />
+          {/* <Route path="/Schema" element={<Schema />} /> */}
 
           <Route
             path="/editor"

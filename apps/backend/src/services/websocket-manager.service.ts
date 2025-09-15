@@ -9,7 +9,7 @@ class WebSocketRuntimeClient {
 	private ws: WebSocket | null = null;
 	private connected = false;
 	private reconnectAttempts = 0;
-	private maxReconnectAttempts = 5;
+	private maxReconnectAttempts = 3;
 	private reconnectTimeout: NodeJS.Timeout | null = null;
 	private pendingRequests = new Map<string, PendingRequest>();
 	private clientId: string | null = null;
@@ -22,13 +22,43 @@ class WebSocketRuntimeClient {
 		private uiUtilsService: UiUtilsService, // 👈 inject her
 	) { }
 
+	private async checkExistingRuntime(): Promise<boolean> {
+		try {
+			const statusUrl = `https://user-websocket.ashish-91e.workers.dev/status?projectId=${this.projectId}`;
+			const response = await fetch(statusUrl);
+
+			const status = await response.json() as any;
+			const hasRuntime = status.hasRuntime === true;
+			
+			if (hasRuntime) {
+				console.log(`🔍 Found existing runtime for project ${this.projectId}:`, {
+					runtimeId: status.connections?.runtime?.id,
+					connectedFor: status.connections?.runtime?.connectedFor,
+					socketState: status.connections?.runtime?.socketState
+				});
+			}
+			
+			return hasRuntime;
+		} catch (error) {
+			console.error(`Error checking existing runtime for project ${this.projectId}:`, error);
+			return false; // If error occurs, assume no runtime and proceed
+		}
+	}
+
 	async connect(): Promise<void> {
+		// Check if runtime already exists before attempting connection
+		const hasExistingRuntime = await this.checkExistingRuntime();
+		if (hasExistingRuntime) {
+			console.log(`✅ Runtime already connected for project ${this.projectId}, skipping connection attempt`);
+			throw new Error('Runtime already connected - no need to connect again');
+		}
+
 		return new Promise((resolve, reject) => {
 			try {
 				// This URL automatically routes to the user-specific Durable Object
 				const wsUrl = `${this.websocketUrl}/websocket?type=runtime&projectId=${this.projectId}`;
 
-						this.ws = new WebSocket(wsUrl, {
+				this.ws = new WebSocket(wsUrl, {
 					family: 4, // force IPv4
 					handshakeTimeout: 30000, // 30 seconds
 					timeout: 30000,
@@ -56,6 +86,13 @@ class WebSocketRuntimeClient {
 				this.ws.on('error', (error) => {
 					clearTimeout(connectTimeout);
 					console.error(`Runtime WebSocket error for project ${this.projectId}:`, error);
+
+					// Handle 409 Conflict specifically
+					if (error.message.includes('409')) {
+						console.log(`🔄 Connection rejected (409) - another runtime may already be connected for project ${this.projectId}`);
+						reject(new Error(`Connection conflict: Another runtime already connected`));
+						return;
+					}
 
 					// Provide more specific error messages
 					let errorMessage = 'WebSocket connection failed';
@@ -307,7 +344,33 @@ class WebSocketRuntimeClient {
 					await this.connect();
 					console.log(`✅ Successfully reconnected project ${this.projectId} after ${this.reconnectAttempts} attempts`);
 				} catch (error) {
-					console.error(`❌ Reconnection attempt ${this.reconnectAttempts} failed for project ${this.projectId}:`, error instanceof Error ? error.message : error);
+					const errorMsg = error instanceof Error ? error.message : String(error);
+					
+					// If it's a 409 conflict, increase delay significantly
+					if (errorMsg.includes('conflict') || errorMsg.includes('409')) {
+						console.warn(`❌ Connection conflict for project ${this.projectId} - another runtime may already be connected. Increasing retry delay.`);
+						
+						// Stop aggressive reconnection on conflicts
+						if (this.reconnectAttempts >= 2) {
+							console.log(`🛑 Stopping reconnection attempts for project ${this.projectId} due to persistent conflicts. Manual intervention may be needed.`);
+							return;
+						}
+						
+						// Use much longer delay for conflicts
+						clearTimeout(this.reconnectTimeout!);
+						this.reconnectTimeout = setTimeout(async () => {
+							try {
+								await this.connect();
+								console.log(`✅ Successfully connected after conflict resolution for project ${this.projectId}`);
+							} catch (retryError) {
+								console.error(`❌ Final reconnection attempt failed for project ${this.projectId}:`, retryError instanceof Error ? retryError.message : retryError);
+							}
+						}, 30000); // Wait 30 seconds before retry
+
+						return;
+					}
+					
+					console.error(`❌ Reconnection attempt ${this.reconnectAttempts} failed for project ${this.projectId}:`, errorMsg);
 					// handleDisconnection will be called again if connection fails
 				}
 			}, delay);
@@ -627,9 +690,19 @@ export class WebSocketManagerService implements OnModuleInit, OnModuleDestroy {
 			const connectionPromise = client.connect().then(() => {
 				this.connectionPromises.delete(projectId);
 			}).catch((error: any) => {
+				const errorMsg = error instanceof Error ? error.message : String(error);
+				
+				// Handle "already connected" as a special case - don't treat as error
+				if (errorMsg.includes('Runtime already connected')) {
+					console.log(`✅ Skipping connection for project ${projectId} - runtime already active`);
+					this.clients.delete(projectId);
+					this.connectionPromises.delete(projectId);
+					return; // Don't throw error, just return
+				}
+				
 				this.clients.delete(projectId);
 				this.connectionPromises.delete(projectId);
-				console.error(`❌ Failed to connect WebSocket for project ${projectId}:`, error instanceof Error ? error.message : error);
+				console.error(`❌ Failed to connect WebSocket for project ${projectId}:`, errorMsg);
 				throw error;
 			});
 
@@ -661,7 +734,15 @@ export class WebSocketManagerService implements OnModuleInit, OnModuleDestroy {
 			console.log(`✅ Runtime WebSocket connected for project ${runtimeProjectId}`);
 			this.autoConnectCompleted = true;
 		} catch (err) {
-			console.error(`❌ Failed to auto-connect runtime project ${runtimeProjectId}:`, err);
+			const errorMsg = err instanceof Error ? err.message : String(err);
+			
+			// Don't log "already connected" as an error
+			if (errorMsg.includes('Runtime already connected')) {
+				console.log(`✅ Runtime already connected for project ${runtimeProjectId} - skipping auto-connect`);
+				this.autoConnectCompleted = true;
+			} else {
+				console.error(`❌ Failed to auto-connect runtime project ${runtimeProjectId}:`, errorMsg);
+			}
 		} finally {
 			this.autoConnectInProgress = false;
 		}
