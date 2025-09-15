@@ -55,13 +55,8 @@ const resolveDataBinding = (text: string, data: any): string => {
 const FLOWUIRenderer = ({
     schema,
     data = null,
-    handlers = {},
-    isStreaming = false,
-    onRefresh
+    handlers = {}
 }: UIRendererProps) => {
-
-    // Track which bindings have been processed to prevent double processing
-    const processedBindings = new Set<string>()
 
     const renderComponent = (
         component: any,
@@ -138,7 +133,7 @@ const FLOWUIRenderer = ({
             let renderedChildren: React.ReactNode[] = []
 
             // Create a unique binding identifier for this path
-            const bindingId = binding ? `${bindingPath.join('.')}.${binding}` : null
+            // const bindingId = binding ? `${bindingPath.join('.')}.${binding}` : null
 
             // SIMPLIFIED BINDING LOGIC: Only process binding if it hasn't been processed in this path
             const shouldProcessBinding = binding && 
@@ -236,37 +231,12 @@ const FLOWUIRenderer = ({
         )
     }
 
-    try {
-        return (
-            <div className="generated-ui relative">
-                {schema.query && onRefresh && (
-                    <button
-                        onClick={onRefresh}
-                        className="absolute top-2 right-2 z-10 px-3 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
-                        type="button"
-                    >
-                        🔄 Refresh
-                    </button>
-                )}
-                {renderComponent(schema, data, 'root')}
-            </div>
-        )
-    } catch (error) {
-        console.error('UIRenderer top-level error:', error)
-        return (
-            <div className="generated-ui p-4 border border-red-300 bg-red-50 rounded">
-                <p className="text-red-600 font-medium">Error rendering UI</p>
-                <p className="text-red-500 text-sm mt-1">Check console for details</p>
-                <details className="mt-2">
-                    <summary className="cursor-pointer text-sm">Debug Info</summary>
-                    <pre className="text-xs bg-gray-100 p-2 mt-1 rounded overflow-auto">
-                        Schema: {JSON.stringify(schema, null, 2)}
-                        {'\n'}Data: {JSON.stringify(data, null, 2)}
-                    </pre>
-                </details>
-            </div>
-        )
-    }
+    return (
+        <div className="generated-ui relative">
+            {renderComponent(schema, data, 'root')}
+        </div>
+    )
+    
 }
 
-export default FLOWUIRenderer
+export default FLOWUIRenderer;
