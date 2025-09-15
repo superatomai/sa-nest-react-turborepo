@@ -15,8 +15,39 @@ export class AppController {
   ) {}
 
   @Get()
-  getHello(): string {
-    return this.appService.getHello();
+  getSystemHealth(): any {
+    return {
+      server: 'SuperAtom Runtime Backend',
+      status: 'healthy',
+      timestamp: new Date().toISOString(),
+      version: '1.0.0',
+      endpoints: {
+        system: {
+          'GET /': 'System health and API documentation',
+          'GET /agent-status': 'Get all agent connection statuses',
+          'GET /agent-status/:projectId': 'Get agent status for specific project'
+        },
+        docs: {
+          'GET /init-docs': 'Get GraphQL docs for a project (requires projectId query param)'
+        },
+        execution: {
+          'POST /execute-query': 'Execute GraphQL query for a project'
+        },
+        ui: {
+          'POST /generate-ui-sse': 'Generate UI with Server-Sent Events streaming',
+          'POST /init-ui': 'Generate UI suggestions from docs',
+          'POST /init-ui/from-project': 'Generate UI suggestions from project ID'
+        },
+        deployment: {
+          'GET /deployment/pull-reload': 'Pull latest code and reload PM2 process'
+        },
+        websocket: {
+          'WS /': 'WebSocket connection for real-time communication'
+        }
+      },
+      connectedProjects: this.webSocketManagerService.getConnectedUsers().length,
+      uptime: process.uptime()
+    };
   }
 
   @Get('init-docs')
