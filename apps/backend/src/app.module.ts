@@ -12,6 +12,8 @@ import { UiListModule } from './ui_list/ui_list.module';
 import { DocsModule } from './docs/docs.module';
 import { CoreModule } from './core/core.module';
 import { UisModule } from './uis/uis.module';
+import { DeploymentController } from './controllers/deployment.controller';
+import { DeploymentService } from './services/deployment.service';
 
 @Module({
   imports: [
@@ -27,11 +29,12 @@ import { UisModule } from './uis/uis.module';
     DocsModule,
     TrpcModule
   ],
-  controllers: [AppController],
+  controllers: [AppController, DeploymentController],
   providers: [
     AppService,
     UiDataService,
     TrpcSSEService,
+    DeploymentService,
   ],
 })
 export class AppModule {}
