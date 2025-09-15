@@ -12,7 +12,10 @@
     "outDir": "./dist",
     "baseUrl": "./",
     "paths": {
-      "@superatom-turbo/trpc": ["../../packages/trpc"]
+      "@superatom-turbo/trpc": ["../../packages/trpc"],
+      "drizzle/drizzle.service": ["./drizzle/drizzle.service"],
+      "drizzle/schema": ["./drizzle/schema"],
+      "src/*": ["./src/*"]
     },
     "incremental": true,
     "skipLibCheck": true,

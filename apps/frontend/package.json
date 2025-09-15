@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "tsc --noEmit && vite build",
     "lint": "eslint .",
     "preview": "vite preview"
   },
@@ -17,13 +17,13 @@
     "@radix-ui/react-separator": "^1.1.7",
     "@radix-ui/react-slot": "^1.2.3",
     "@radix-ui/react-tooltip": "^1.2.8",
+    "@superatom-turbo/trpc": "workspace:*",
     "@tanstack/react-query": "^5.87.1",
     "@trpc/client": "^11.5.1",
     "@trpc/react-query": "^11.5.1",
     "ai": "^5.0.34",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "httpBatchLink": "link:@trpc/client/links/httpBatchLink",
     "lucide-react": "^0.542.0",
     "mobx": "^6.13.7",
     "mobx-react-lite": "^4.1.0",

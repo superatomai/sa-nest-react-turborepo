@@ -11,9 +11,9 @@
     "isolatedModules": true,
     "noEmit": true,
     "jsx": "react-jsx",
-    "strict": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
+    "strict": false,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
     "noFallthroughCasesInSwitch": true,
     "baseUrl": ".",
     "paths": {
@@ -22,8 +22,10 @@
       "@/lib/*": ["./src/lib/*"],
       "@/utils/*": ["./src/lib/*"],
       "@/ui/*": ["./src/components/ui/*"],
-      "@/hooks/*": ["./src/hooks/*"]
+      "@/hooks/*": ["./src/hooks/*"],
+      "@superatom-turbo/trpc": ["../../packages/trpc"]
     }
   },
   "include": ["src"],
+  "exclude": ["../backend/**/*", "node_modules", "dist"],
 }

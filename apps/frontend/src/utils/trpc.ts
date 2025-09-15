@@ -1,8 +1,6 @@
 import { createTRPCReact } from '@trpc/react-query';
 import { createTRPCClient, httpBatchLink } from '@trpc/client';
-import { appRouter } from '../../../../packages/trpc';
-
-type AppRouter = typeof appRouter;
+import type { AppRouter } from '@superatom-turbo/trpc/types';
 
 export const trpc = createTRPCReact<AppRouter>();
 
