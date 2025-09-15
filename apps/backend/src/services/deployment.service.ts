@@ -12,8 +12,8 @@ export class DeploymentService {
     try {
       this.logger.log('Starting pull and reload process...');
 
-      // Get the root directory (go up from apps/backend to project root)
-      const rootDir = path.resolve(__dirname, '../../../../');
+      // Get the root directory (go up from dist/apps/backend/src/services to project root)
+      const rootDir = path.resolve(__dirname, '../../../../../');
       const scriptPath = path.join(rootDir, 'pull-reload.sh');
 
       this.logger.log(`Executing script: ${scriptPath}`);
