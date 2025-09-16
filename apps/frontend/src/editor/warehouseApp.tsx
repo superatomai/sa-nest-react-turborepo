@@ -232,18 +232,43 @@ const WarehouseApp = () => {
         // Action handlers
         escalate_to_supervisor: () => {
             console.log('🚨 Escalating to supervisor');
+
+            // Show escalation confirmation
+            alert(`🚨 ESCALATION INITIATED\n\n` +
+                `📋 Discrepancy: ${warehouseFlowData.discrepancy.productName}\n` +
+                `📍 Location: ${warehouseFlowData.discrepancy.zoneId}\n` +
+                `⚡ Priority: HIGH\n\n` +
+                `✅ Actions completed:\n` +
+                `• Supervisor notification sent\n` +
+                `• Escalation ticket created\n` +
+                `• Investigation report prepared\n` +
+                `• Case marked for immediate review\n\n` +
+                `📞 Supervisor will be contacted within 15 minutes\n` +
+                `📧 Email notification sent to management team\n` +
+                `🔄 Case status updated to "Escalated"`);
+
             updateFlowState((prev: any) => ({
                 ...prev,
                 resolution: {
                     ...prev.resolution,
                     status: 'escalated',
                     message: 'Critical discrepancy escalated to supervisor for immediate review',
-                    supervisor_notified: true
+                    supervisor_notified: true,
+                    investigation_conducted: false, // No investigation done for immediate escalation
+                    actions_taken: [
+                        'Discrepancy alert received',
+                        'High severity detected',
+                        'Case escalated to supervisor',
+                        'Management team notified',
+                        'Awaiting supervisor review'
+                    ],
+                    escalation_reason: 'High priority discrepancy requires immediate supervisor review',
+                    escalated_at: new Date().toLocaleString()
                 },
                 currentFlow: {
                     ...prev.currentFlow,
                     step: 'resolution',
-                    breadcrumb: 'Home > Discrepancy Alert > Escalation'
+                    breadcrumb: 'Home > Discrepancy Alert > Escalated to Supervisor'
                 }
             }));
         },
@@ -315,6 +340,7 @@ const WarehouseApp = () => {
                         ...prev.resolution,
                         status,
                         message,
+                        investigation_conducted: true, // Recount investigation was completed
                         final_quantity: count,
                         actions_taken: [
                             'Physical recount conducted',
@@ -569,6 +595,7 @@ const WarehouseApp = () => {
                 resolution: {
                     status: "resolved",
                     message: "Scanner malfunction identified and system inventory corrected.",
+                    investigation_conducted: true, // Full investigation was completed
                     actions_taken: [
                         "Investigation conducted - scanner malfunction found",
                         "System quantity updated from 8 to 15 units",
@@ -796,12 +823,71 @@ const WarehouseApp = () => {
         // Final resolution handlers
         start_new_investigation: () => {
             console.log('🔄 Starting new investigation');
-            setFlowData(warehouseFlowData); // Reset to initial state
+            // Reset to initial state with proper flow reset
+            const resetData = {
+                ...warehouseFlowData,
+                currentFlow: {
+                    step: 'alert',
+                    breadcrumb: 'Home > Discrepancy Alert'
+                }
+            };
+            setFlowData(resetData);
+
+            // Also reset preview messages if in preview mode
+            if (mode === 'preview') {
+                setPreviewMessages([]);
+            }
         },
 
         view_full_report: () => {
             console.log('📊 Viewing full report');
-            alert('Full report would include:\n- Complete timeline\n- All actions taken\n- Evidence collected\n- Final resolution\n- Recommendations');
+
+            // Generate comprehensive report data
+            const reportId = `RPT-${Date.now()}`;
+            const generatedAt = new Date().toLocaleString();
+
+            updateFlowState((prev: any) => ({
+                ...prev,
+                reportModal: {
+                    isOpen: true,
+                    data: {
+                        title: "Warehouse Discrepancy Investigation Report",
+                        reportId: reportId,
+                        generatedAt: generatedAt,
+                        generatedBy: "System Administrator",
+                        investigationType: "Inventory Discrepancy",
+                        status: prev.resolution?.status === 'escalated' ? 'escalated' : 'completed',
+                        sections: [
+                            {
+                                title: "Executive Summary",
+                                content: prev.resolution?.status === 'escalated'
+                                    ? `Investigation escalated for ${prev.discrepancy?.productName || 'Product'}. Supervisor review required for discrepancy of ${prev.discrepancy?.discrepancyAmount || 'N/A'} units.`
+                                    : `Investigation completed for ${prev.discrepancy?.productName || 'Product'}. Discrepancy of ${prev.discrepancy?.discrepancyAmount || 'N/A'} units resolved through physical recount and system adjustment.`
+                            },
+                            {
+                                title: "Initial Discrepancy Details",
+                                content: `Product: ${prev.discrepancy?.productName || 'N/A'}\nLocation: ${prev.discrepancy?.zoneId || 'N/A'}\nExpected Quantity: ${prev.discrepancy?.expectedQuantity || 'N/A'} units\nSystem Quantity: ${prev.discrepancy?.systemQuantity || 'N/A'} units\nDiscrepancy: ${prev.discrepancy?.discrepancyAmount || 'N/A'} units missing`
+                            },
+                            {
+                                title: "Investigation Actions Taken",
+                                content: prev.resolution?.actions_taken?.join('\n• ') || "Physical recount conducted\n• System quantity updated\n• Worker training scheduled\n• Discrepancy report generated"
+                            },
+                            {
+                                title: prev.resolution?.status === 'escalated' ? "Escalation Details" : "Final Resolution",
+                                content: prev.resolution?.status === 'escalated'
+                                    ? `Status: Escalated to Supervisor\nReason: ${prev.resolution?.message || 'Requires supervisor review'}\nSupervisor Notified: ${prev.resolution?.supervisor_notified ? 'Yes' : 'No'}\nEscalation Date: ${generatedAt}`
+                                    : `Status: ${prev.resolution?.status || 'Resolved'}\nFinal Quantity: ${prev.resolution?.final_quantity || prev.discrepancy?.expectedQuantity || 'N/A'} units\nSystem Updated: Yes\nSupervisor Notified: ${prev.resolution?.supervisor_notified ? 'Yes' : 'No'}`
+                            },
+                            {
+                                title: "Recommendations",
+                                content: prev.resolution?.status === 'escalated'
+                                    ? "• Supervisor to conduct detailed review\n• Consider additional investigation resources\n• Evaluate need for process improvements\n• Schedule follow-up meeting with warehouse team"
+                                    : "• Implement regular cycle counts for this product category\n• Review scanning procedures with warehouse staff\n• Monitor for similar discrepancies in the coming weeks\n• Consider barcode quality audit for this product line"
+                            }
+                        ]
+                    }
+                }
+            }));
         },
 
         // Report modal handlers
@@ -947,6 +1033,33 @@ const WarehouseApp = () => {
         email_report: () => {
             console.log('📧 Emailing report');
             alert('Report emailed successfully!\n- Recipients: supervisor@warehouse.com, manager@warehouse.com\n- Subject: Discrepancy Report - Immediate Review Required');
+        },
+
+        // Worker details handlers
+        show_worker_details: (event: any) => {
+            console.log('👤 Showing worker details');
+            const workerId = event?.target?.getAttribute?.('data-worker-id') || 'W2847';
+            const workerName = event?.target?.getAttribute?.('data-worker-name') || 'John Smith';
+
+            updateFlowState((prev: any) => ({
+                ...prev,
+                workerDetails: {
+                    isVisible: true,
+                    workerId: workerId,
+                    workerName: workerName
+                }
+            }));
+        },
+
+        hide_worker_details: () => {
+            console.log('❌ Hiding worker details');
+            updateFlowState((prev: any) => ({
+                ...prev,
+                workerDetails: {
+                    ...prev.workerDetails,
+                    isVisible: false
+                }
+            }));
         }
     };
 

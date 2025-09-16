@@ -58,7 +58,7 @@ export const warehouseFlowDSL = {
                             "id": "warning-icon",
                             "type": "div",
                             "props": {
-                              "className": "{{discrepancy.severity === 'high' ? 'ds-icon-lg bg-red-600' : 'ds-icon-lg'}} rounded-full flex items-center justify-center text-white ds-font-semibold ds-text-xl"
+                              "className": "{{discrepancy.severity === 'high' ? 'w-10 h-10 bg-red-600' : 'w-10 h-10 bg-slate-600'}} rounded-full flex items-center justify-center text-white font-bold text-lg flex-shrink-0"
                             },
                             "children": ["⚠"]
                           },
@@ -66,7 +66,7 @@ export const warehouseFlowDSL = {
                             "id": "alert-title",
                             "type": "h2",
                             "props": {
-                              "className": "{{discrepancy.severity === 'high' ? 'ds-h2 ds-text-error' : 'ds-h2'}}"
+                              "className": "{{discrepancy.severity === 'high' ? 'text-xl font-bold text-red-600' : 'text-xl font-bold text-slate-700'}} leading-tight"
                             },
                             "children": ["{{discrepancy.severity === 'high' ? 'CRITICAL ' : ''}}Discrepancy Alert Detected"]
                           }
@@ -86,7 +86,7 @@ export const warehouseFlowDSL = {
                     "id": "alert-message",
                     "type": "div",
                     "props": {
-                      "className": "{{discrepancy.severity === 'high' ? 'text-gray-800 text-base' : 'text-gray-800 text-base'}} mb-6"
+                      "className": "ds-text-sm ds-text-secondary mb-6 leading-relaxed"
                     },
                     "children": ["INVENTORY MISMATCH: {{discrepancy.productName}} in {{discrepancy.zoneId}} — Physical count shows {{discrepancy.expectedQuantity}} units but system shows {{discrepancy.systemQuantity}} units ({{discrepancy.discrepancyAmount}} units missing from physical inventory)"]
                   },
@@ -116,7 +116,7 @@ export const warehouseFlowDSL = {
                             "id": "product-value",
                             "type": "div",
                             "props": {
-                              "className": "ds-font-semibold ds-text-primary ds-text-sm"
+                              "className": "ds-font-bold ds-text-primary ds-text-base"
                             },
                             "children": ["{{discrepancy.productName}}"]
                           },
@@ -149,7 +149,7 @@ export const warehouseFlowDSL = {
                             "id": "zone-value",
                             "type": "div",
                             "props": {
-                              "className": "ds-font-semibold ds-text-primary"
+                              "className": "ds-font-bold ds-text-primary ds-text-base"
                             },
                             "children": ["{{discrepancy.zoneId}}"]
                           }
@@ -562,26 +562,15 @@ export const warehouseFlowDSL = {
                                 },
                                 "children": [
                                   {
-                                    "id": "worker-info",
-                                    "type": "div",
-                                    "children": [
-                                      {
-                                        "id": "worker-name",
-                                        "type": "div",
-                                        "props": {
-                                          "className": "font-medium text-gray-900"
-                                        },
-                                        "children": ["{{workerName}}"]
-                                      },
-                                      {
-                                        "id": "worker-id",
-                                        "type": "div",
-                                        "props": {
-                                          "className": "text-gray-500 text-xs"
-                                        },
-                                        "children": ["ID: {{workerId}}"]
-                                      }
-                                    ]
+                                    "id": "worker-id-link",
+                                    "type": "button",
+                                    "props": {
+                                      "className": "text-blue-600 hover:text-blue-800 font-medium underline cursor-pointer transition-colors",
+                                      "onClick": "show_worker_details",
+                                      "data-worker-id": "{{workerId}}",
+                                      "data-worker-name": "{{workerName}}"
+                                    },
+                                    "children": ["{{workerId}}"]
                                   }
                                 ]
                               },
@@ -738,6 +727,174 @@ export const warehouseFlowDSL = {
                       }
                     ]
                   }
+                ]
+              }
+            ]
+          },
+
+          // Worker Details Modal (shown when worker ID is clicked in transactions)
+          {
+            "id": "worker-details-modal-overlay",
+            "type": "div",
+            "props": {
+              "className": "{{workerDetails.isVisible ? 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50' : 'hidden'}}"
+            },
+            "children": [
+              {
+                "id": "worker-details-modal-content",
+                "type": "div",
+                "props": {
+                  "className": "bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[80vh] overflow-auto"
+                },
+                "children": [
+                  {
+                    "id": "worker-details-header",
+                "type": "div",
+                "props": {
+                  "className": "flex justify-between items-center p-6 border-b border-gray-200"
+                },
+                "children": [
+                  {
+                    "id": "worker-details-title",
+                    "type": "h3",
+                    "props": {
+                      "className": "ds-text-lg ds-font-semibold ds-text-primary"
+                    },
+                    "children": ["Worker Details - {{workerDetails.workerId}}"]
+                  },
+                  {
+                    "id": "close-worker-details",
+                    "type": "button",
+                    "props": {
+                      "className": "text-gray-500 hover:text-gray-700 text-xl font-bold",
+                      "onClick": "hide_worker_details"
+                    },
+                    "children": ["×"]
+                  }
+                ]
+              },
+              {
+                "id": "worker-details-content",
+                "type": "div",
+                "props": {
+                  "className": "grid grid-cols-2 gap-4 p-6"
+                },
+                "children": [
+                  {
+                    "id": "worker-name-detail",
+                    "type": "div",
+                    "children": [
+                      {
+                        "id": "worker-name-label",
+                        "type": "div",
+                        "props": {
+                          "className": "ds-text-sm ds-text-muted mb-1"
+                        },
+                        "children": ["Worker Name"]
+                      },
+                      {
+                        "id": "worker-name-value",
+                        "type": "div",
+                        "props": {
+                          "className": "ds-font-bold ds-text-primary"
+                        },
+                        "children": ["{{workerDetails.workerName}}"]
+                      }
+                    ]
+                  },
+                  {
+                    "id": "worker-shift-detail",
+                    "type": "div",
+                    "children": [
+                      {
+                        "id": "worker-shift-label",
+                        "type": "div",
+                        "props": {
+                          "className": "ds-text-sm ds-text-muted mb-1"
+                        },
+                        "children": ["Current Shift"]
+                      },
+                      {
+                        "id": "worker-shift-value",
+                        "type": "div",
+                        "props": {
+                          "className": "ds-font-bold ds-text-primary"
+                        },
+                        "children": ["Morning (6:00 AM - 2:00 PM)"]
+                      }
+                    ]
+                  },
+                  {
+                    "id": "worker-experience-detail",
+                    "type": "div",
+                    "children": [
+                      {
+                        "id": "worker-experience-label",
+                        "type": "div",
+                        "props": {
+                          "className": "ds-text-sm ds-text-muted mb-1"
+                        },
+                        "children": ["Experience"]
+                      },
+                      {
+                        "id": "worker-experience-value",
+                        "type": "div",
+                        "props": {
+                          "className": "ds-font-bold ds-text-primary"
+                        },
+                        "children": ["3.5 years"]
+                      }
+                    ]
+                  },
+                  {
+                    "id": "worker-performance-detail",
+                    "type": "div",
+                    "children": [
+                      {
+                        "id": "worker-performance-label",
+                        "type": "div",
+                        "props": {
+                          "className": "ds-text-sm ds-text-muted mb-1"
+                        },
+                        "children": ["Performance Rating"]
+                      },
+                      {
+                        "id": "worker-performance-value",
+                        "type": "div",
+                        "props": {
+                          "className": "ds-font-bold ds-text-success"
+                        },
+                        "children": ["4.2/5.0 (Excellent)"]
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "worker-recent-activity",
+                "type": "div",
+                "props": {
+                  "className": "mx-6 mb-6 pt-4 border-t border-gray-200"
+                },
+                "children": [
+                  {
+                    "id": "recent-activity-title",
+                    "type": "div",
+                    "props": {
+                      "className": "ds-text-sm ds-font-semibold ds-text-secondary mb-2"
+                    },
+                    "children": ["Recent Activity"]
+                  },
+                  {
+                    "id": "recent-activity-list",
+                    "type": "div",
+                    "props": {
+                      "className": "ds-text-sm ds-text-muted"
+                    },
+                    "children": ["• Completed 15 tasks today\n• Last login: 6:00 AM\n• Average task completion: 12 min\n• No recent violations"]
+                  }
+                ]
+              }
                 ]
               }
             ]
@@ -3215,7 +3372,7 @@ export const warehouseFlowDSL = {
                     "id": "view-report-btn",
                     "type": "button",
                     "props": {
-                      "className": "ds-btn ds-btn-secondary ds-btn-lg",
+                      "className": "{{resolution.investigation_conducted ? 'ds-btn ds-btn-secondary ds-btn-lg' : 'hidden'}}",
                       "onClick": "view_full_report"
                     },
                     "children": ["View Full Report"]
@@ -4359,5 +4516,12 @@ export const warehouseFlowData = {
     ],
     final_quantity: 16,
     supervisor_notified: false
+  },
+
+  // Worker details card state
+  workerDetails: {
+    isVisible: false,
+    workerId: "",
+    workerName: ""
   }
 };
