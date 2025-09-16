@@ -20,15 +20,15 @@ import SignUpPage from "./pages/SignUp";
 import { Toaster } from "react-hot-toast";
 
 export function App() {
-  const { organization, isLoaded } = useOrganization();
-  const { isSignedIn } = useAuth();
+  const { organization, isLoaded: orgLoaded } = useOrganization();
+  const { isSignedIn, isLoaded: authLoaded } = useAuth();
   const location = useLocation();
 
   useEffect(() => {
-    if (isLoaded) {
+    if (orgLoaded) {
       orgStore.setOrgId(organization?.id ?? null);
     }
-  }, [isLoaded, organization]);
+  }, [orgLoaded, organization]);
 
   const hideSidebar = location.pathname.startsWith("/editor");
   const isPublicRoute = [
@@ -39,6 +39,16 @@ export function App() {
     "/sign-up/sso-callback",
   ].some(path => location.pathname.startsWith(path));
 
+  // Show loading state while Clerk is initializing
+  if (!authLoaded || !orgLoaded) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
+      </div>
+    );
+  }
+
+  // Now we know for sure the auth state is loaded
   if (!isSignedIn) {
     if (isPublicRoute) {
       return (
