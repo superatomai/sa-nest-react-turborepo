@@ -1,9 +1,8 @@
-import { Routes, Route, useLocation } from "react-router-dom";
+import { Routes, Route, useLocation, Navigate } from "react-router-dom";
 import {
-  OrganizationProfile,
-  SignIn,
-  SignUp,
+  OrganizationProfile, 
   useAuth,
+  SignedIn,
 } from "@clerk/clerk-react";
 import Home from "./pages/Home";
 import Editor from "./pages/Editor";
@@ -34,31 +33,23 @@ export function App() {
   const hideSidebar = location.pathname.startsWith("/editor");
   const isPublicRoute = [
     "/login",
+    "/sign-up",
     "/login/sso-callback",
     "/sign-in/sso-callback",
     "/sign-up/sso-callback",
-  ].includes(location.pathname);
+  ].some(path => location.pathname.startsWith(path));
 
-  if (isPublicRoute || !isSignedIn) {
-    return (
-      <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="/sign-up" element={<SignUpPage />} />
-        <Route
-          path="/login/sso-callback"
-          element={<SignIn routing="path" path="/login" />}
-        />
-        <Route
-          path="/sign-in/sso-callback"
-          element={<SignIn routing="path" path="/login" />}
-        />
-        <Route
-          path="/sign-up/sso-callback"
-          element={<SignUp routing="path" path="/sign-up" />}
-        />
-        <Route path="*" element={<Login />} />
-      </Routes>
-    );
+  if (!isSignedIn) {
+    if (isPublicRoute) {
+      return (
+        <Routes>
+          <Route path="/login/*" element={<Login />} />
+          <Route path="/sign-up/*" element={<SignUpPage />} />
+          <Route path="*" element={<Navigate to="/login" replace />} />
+        </Routes>
+      );
+    }
+    return <Navigate to="/login" replace />;
   }
 
   return (
@@ -67,6 +58,8 @@ export function App() {
       {/* {!hideNavbar && <Navbar />} */}
       <div className="h-screen overflow-auto w-full flex-1">
         <Routes>
+          <Route path="/login" element={<Navigate to="/" replace />} />
+          <Route path="/sign-up" element={<Navigate to="/" replace />} />
           <Route
             path="/"
             element={
@@ -108,9 +101,9 @@ export function App() {
           <Route
             path="/create-organization"
             element={
-              <ProtectedRoute>
+              <SignedIn>
                 <CreateOrganizationWrapper />
-              </ProtectedRoute>
+              </SignedIn>
             }
           />
 
