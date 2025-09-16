@@ -3,14 +3,14 @@ export const warehouseFlowDSL = {
     "id": "warehouse-flow-container",
     "type": "div",
     "props": {
-      "className": "min-h-screen bg-gray-50 p-4"
+      "className": "min-h-screen bg-gray-50 p-6"
     },
     "children": [
       {
         "id": "flow-header",
         "type": "div",
         "props": {
-          "className": "max-w-6xl mx-auto mb-6"
+          "className": "max-w-6xl mx-auto mb-8"
         },
         "children": [
         ]
@@ -37,28 +37,28 @@ export const warehouseFlowDSL = {
                 "id": "discrepancy-card",
                 "type": "div",
                 "props": {
-                  "className": "{{discrepancy.severity === 'high' ? 'bg-red-50 border-red-200' : discrepancy.severity === 'medium' ? 'bg-orange-50 border-orange-200' : 'bg-yellow-50 border-yellow-200'}} border rounded-lg p-6 mb-6"
+                  "className": "{{discrepancy.severity === 'high' ? 'bg-red-50 border-red-200' : 'bg-slate-50 border-slate-200'}} bg-white border rounded-xl p-6 mb-8 shadow-md"
                 },
                 "children": [
                   {
                     "id": "alert-header",
                     "type": "div",
                     "props": {
-                      "className": "flex items-center justify-between mb-4"
+                      "className": "flex items-center justify-between mb-6"
                     },
                     "children": [
                       {
                         "id": "alert-icon-title",
                         "type": "div",
                         "props": {
-                          "className": "flex items-center space-x-3"
+                          "className": "flex items-center gap-3"
                         },
                         "children": [
                           {
                             "id": "warning-icon",
                             "type": "div",
                             "props": {
-                              "className": "{{discrepancy.severity === 'high' ? 'w-10 h-10 bg-red-600' : discrepancy.severity === 'medium' ? 'w-10 h-10 bg-orange-600' : 'w-10 h-10 bg-yellow-600'}} rounded-full flex items-center justify-center text-white font-bold text-xl"
+                              "className": "{{discrepancy.severity === 'high' ? 'w-10 h-10 bg-red-600' : 'w-10 h-10 bg-slate-600'}} rounded-full flex items-center justify-center text-white font-semibold text-xl"
                             },
                             "children": ["⚠"]
                           },
@@ -66,7 +66,7 @@ export const warehouseFlowDSL = {
                             "id": "alert-title",
                             "type": "h2",
                             "props": {
-                              "className": "{{discrepancy.severity === 'high' ? 'text-xl font-bold text-red-800' : discrepancy.severity === 'medium' ? 'text-xl font-bold text-orange-800' : 'text-xl font-bold text-yellow-800'}}"
+                              "className": "{{discrepancy.severity === 'high' ? 'text-2xl font-semibold text-red-600' : 'text-2xl font-semibold text-slate-700'}}"
                             },
                             "children": ["{{discrepancy.severity === 'high' ? 'CRITICAL ' : ''}}Discrepancy Alert Detected"]
                           }
@@ -76,7 +76,7 @@ export const warehouseFlowDSL = {
                         "id": "severity-badge",
                         "type": "span",
                         "props": {
-                          "className": "{{discrepancy.severity === 'high' ? 'bg-red-600 text-white' : discrepancy.severity === 'medium' ? 'bg-orange-500 text-white' : 'bg-yellow-500 text-black'}} px-3 py-1 rounded-full text-sm font-medium"
+                          "className": "{{discrepancy.severity === 'high' ? 'bg-red-600 text-white' : 'bg-slate-600 text-white'}} px-3 py-1 rounded-lg text-sm font-medium"
                         },
                         "children": ["{{discrepancy.severity === 'high' ? 'HIGH PRIORITY' : discrepancy.severity === 'medium' ? 'MEDIUM PRIORITY' : 'LOW PRIORITY'}}"]
                       }
@@ -86,15 +86,15 @@ export const warehouseFlowDSL = {
                     "id": "alert-message",
                     "type": "div",
                     "props": {
-                      "className": "{{discrepancy.severity === 'high' ? 'text-red-800 text-lg font-medium' : discrepancy.severity === 'medium' ? 'text-orange-800 text-lg font-medium' : 'text-yellow-800 text-lg font-medium'}} mb-4"
+                      "className": "{{discrepancy.severity === 'high' ? 'text-gray-800 text-base' : 'text-gray-800 text-base'}} mb-6"
                     },
-                    "children": ["Discrepancy Alert: {{discrepancy.productId}} — {{discrepancy.zoneId}} — {{discrepancy.discrepancyAmount}} units {{discrepancy.discrepancyAmount > 0 ? 'missing' : 'excess'}}."]
+                    "children": ["INVENTORY MISMATCH: {{discrepancy.productName}} in {{discrepancy.zoneId}} — Physical count shows {{discrepancy.expectedQuantity}} units but system shows {{discrepancy.systemQuantity}} units ({{discrepancy.discrepancyAmount}} units missing from physical inventory)"]
                   },
                   {
                     "id": "discrepancy-details-grid",
                     "type": "div",
                     "props": {
-                      "className": "grid grid-cols-4 gap-4 mb-4"
+                      "className": "grid grid-cols-5 gap-4 mb-6"
                     },
                     "children": [
                       {
@@ -116,9 +116,17 @@ export const warehouseFlowDSL = {
                             "id": "product-value",
                             "type": "div",
                             "props": {
-                              "className": "font-semibold text-gray-900"
+                              "className": "font-semibold text-gray-900 text-sm"
                             },
-                            "children": ["{{discrepancy.productId}}"]
+                            "children": ["{{discrepancy.productName}}"]
+                          },
+                          {
+                            "id": "product-sku",
+                            "type": "div",
+                            "props": {
+                              "className": "text-xs text-gray-500 mt-1"
+                            },
+                            "children": ["SKU: {{discrepancy.productId}}"]
                           }
                         ]
                       },
@@ -135,7 +143,7 @@ export const warehouseFlowDSL = {
                             "props": {
                               "className": "text-sm text-gray-600 mb-1"
                             },
-                            "children": ["Zone"]
+                            "children": ["Location"]
                           },
                           {
                             "id": "zone-value",
@@ -148,25 +156,25 @@ export const warehouseFlowDSL = {
                         ]
                       },
                       {
-                        "id": "expected-detail",
+                        "id": "physical-detail",
                         "type": "div",
                         "props": {
                           "className": "text-center"
                         },
                         "children": [
                           {
-                            "id": "expected-label",
+                            "id": "physical-label",
                             "type": "div",
                             "props": {
                               "className": "text-sm text-gray-600 mb-1"
                             },
-                            "children": ["Expected"]
+                            "children": ["Physical Count"]
                           },
                           {
-                            "id": "expected-value",
+                            "id": "physical-value",
                             "type": "div",
                             "props": {
-                              "className": "font-semibold text-green-600"
+                              "className": "font-semibold text-red-600 text-xl"
                             },
                             "children": ["{{discrepancy.expectedQuantity}}"]
                           }
@@ -185,15 +193,48 @@ export const warehouseFlowDSL = {
                             "props": {
                               "className": "text-sm text-gray-600 mb-1"
                             },
-                            "children": ["System Shows"]
+                            "children": ["System Count"]
                           },
                           {
                             "id": "system-value",
                             "type": "div",
                             "props": {
-                              "className": "font-semibold text-red-600"
+                              "className": "font-semibold text-green-600 text-xl"
                             },
                             "children": ["{{discrepancy.systemQuantity}}"]
+                          }
+                        ]
+                      },
+                      {
+                        "id": "value-detail",
+                        "type": "div",
+                        "props": {
+                          "className": "text-center"
+                        },
+                        "children": [
+                          {
+                            "id": "value-label",
+                            "type": "div",
+                            "props": {
+                              "className": "text-sm text-gray-600 mb-1"
+                            },
+                            "children": ["Missing Value"]
+                          },
+                          {
+                            "id": "value-amount",
+                            "type": "div",
+                            "props": {
+                              "className": "font-bold text-red-600 text-lg"
+                            },
+                            "children": ["${{discrepancy.totalValue}}"]
+                          },
+                          {
+                            "id": "unit-price",
+                            "type": "div",
+                            "props": {
+                              "className": "text-xs text-gray-500 mt-1"
+                            },
+                            "children": ["({{discrepancy.discrepancyAmount}} × ${{discrepancy.unitValue}})"]
                           }
                         ]
                       }
@@ -214,7 +255,7 @@ export const warehouseFlowDSL = {
                     "id": "view-transactions-btn",
                     "type": "button",
                     "props": {
-                      "className": "{{discrepancy.severity === 'high' ? 'bg-red-600 hover:bg-red-700 ring-2 ring-red-300' : 'bg-blue-600 hover:bg-blue-700'}} text-white px-6 py-4 rounded-lg font-medium transition-colors text-left",
+                      "className": "bg-slate-700 hover:bg-slate-800 text-white px-4 py-3 rounded-lg font-medium transition-colors text-left shadow-sm",
                       "onClick": "navigate_to_transactions"
                     },
                     "children": [
@@ -243,74 +284,10 @@ export const warehouseFlowDSL = {
                     ]
                   },
                   {
-                    "id": "investigate-movement-btn",
-                    "type": "button",
-                    "props": {
-                      "className": "bg-purple-600 hover:bg-purple-700 text-white px-6 py-4 rounded-lg font-medium transition-colors text-left",
-                      "onClick": "navigate_to_investigation"
-                    },
-                    "children": [
-                      {
-                        "id": "investigation-btn-content",
-                        "type": "div",
-                        "children": [
-                          {
-                            "id": "investigation-btn-title",
-                            "type": "div",
-                            "props": {
-                              "className": "font-semibold text-lg mb-1"
-                            },
-                            "children": ["🔍 Investigate Stock Movement"]
-                          },
-                          {
-                            "id": "investigation-btn-desc",
-                            "type": "div",
-                            "props": {
-                              "className": "text-sm opacity-90"
-                            },
-                            "children": ["Check scan logs, worker profiles, and system errors"]
-                          }
-                        ]
-                      }
-                    ]
-                  },
-                  {
-                    "id": "initiate-recount-btn",
-                    "type": "button",
-                    "props": {
-                      "className": "{{discrepancy.severity === 'high' ? 'bg-orange-600 hover:bg-orange-700 ring-2 ring-orange-300' : 'bg-green-600 hover:bg-green-700'}} text-white px-6 py-4 rounded-lg font-medium transition-colors text-left",
-                      "onClick": "navigate_to_recount"
-                    },
-                    "children": [
-                      {
-                        "id": "recount-btn-content",
-                        "type": "div",
-                        "children": [
-                          {
-                            "id": "recount-btn-title",
-                            "type": "div",
-                            "props": {
-                              "className": "font-semibold text-lg mb-1"
-                            },
-                            "children": ["📊 {{discrepancy.severity === 'high' ? 'IMMEDIATE ' : ''}}Physical Recount"]
-                          },
-                          {
-                            "id": "recount-btn-desc",
-                            "type": "div",
-                            "props": {
-                              "className": "text-sm opacity-90"
-                            },
-                            "children": ["Conduct physical count to verify actual stock"]
-                          }
-                        ]
-                      }
-                    ]
-                  },
-                  {
                     "id": "ignore-alert-btn",
                     "type": "button",
                     "props": {
-                      "className": "{{discrepancy.severity === 'high' ? 'bg-red-700 hover:bg-red-800 ring-2 ring-red-400' : 'bg-gray-500 hover:bg-gray-600'}} text-white px-6 py-4 rounded-lg font-medium transition-colors text-left",
+                      "className": "{{discrepancy.severity === 'high' ? 'bg-red-600 hover:bg-red-700' : 'bg-gray-500 hover:bg-gray-600'}} text-white px-4 py-3 rounded-lg font-medium transition-colors text-left shadow-sm",
                       "onClick": "{{discrepancy.severity === 'high' ? 'escalate_to_supervisor' : 'ignore_alert'}}"
                     },
                     "children": [
@@ -378,20 +355,77 @@ export const warehouseFlowDSL = {
                 ]
               },
               
+              // Investigation Summary
+              {
+                "id": "investigation-summary",
+                "type": "div",
+                "props": {
+                  "className": "bg-slate-50 border border-slate-200 rounded-lg p-4 mb-6"
+                },
+                "children": [
+                  {
+                    "id": "summary-icon",
+                    "type": "div",
+                    "props": {
+                      "className": "flex items-start space-x-3"
+                    },
+                    "children": [
+                      {
+                        "id": "info-icon",
+                        "type": "div",
+                        "props": {
+                          "className": "w-5 h-5 text-blue-600 mt-0.5"
+                        },
+                        "children": ["ℹ️"]
+                      },
+                      {
+                        "id": "summary-text",
+                        "type": "div",
+                        "children": [
+                          {
+                            "id": "summary-title",
+                            "type": "h3",
+                            "props": {
+                              "className": "text-sm font-medium text-blue-800 mb-1"
+                            },
+                            "children": ["Transaction Analysis"]
+                          },
+                          {
+                            "id": "summary-description",
+                            "type": "p",
+                            "props": {
+                              "className": "text-sm text-blue-700"
+                            },
+                            "children": ["Review recent transactions to identify discrepancies. Look for transactions marked with ⚠️ - these indicate scanning errors or quantity mismatches that could explain the inventory difference."]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+
               // Transactions Table
               {
                 "id": "transactions-table-container",
                 "type": "div",
                 "props": {
-                  "className": "bg-white rounded-lg shadow border overflow-hidden mb-6"
+                  "className": "bg-white rounded-lg shadow border mb-6"
                 },
                 "children": [
                   {
-                    "id": "transactions-table",
-                    "type": "table",
+                    "id": "table-scroll-container",
+                    "type": "div",
                     "props": {
-                      "className": "w-full"
+                      "className": "overflow-x-auto"
                     },
+                    "children": [
+                      {
+                        "id": "transactions-table",
+                        "type": "table",
+                        "props": {
+                          "className": "w-full min-w-max"
+                        },
                     "children": [
                       {
                         "id": "transactions-table-header",
@@ -408,7 +442,7 @@ export const warehouseFlowDSL = {
                                 "id": "th-type",
                                 "type": "th",
                                 "props": {
-                                  "className": "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                                  "className": "px-6 py-4 text-left text-sm font-medium text-gray-600"
                                 },
                                 "children": ["Type"]
                               },
@@ -416,7 +450,7 @@ export const warehouseFlowDSL = {
                                 "id": "th-task-id",
                                 "type": "th",
                                 "props": {
-                                  "className": "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                                  "className": "px-6 py-4 text-left text-sm font-medium text-gray-600"
                                 },
                                 "children": ["Task ID"]
                               },
@@ -424,15 +458,23 @@ export const warehouseFlowDSL = {
                                 "id": "th-quantity",
                                 "type": "th",
                                 "props": {
-                                  "className": "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                                  "className": "px-6 py-4 text-left text-sm font-medium text-gray-600"
                                 },
                                 "children": ["Quantity"]
+                              },
+                              {
+                                "id": "th-description",
+                                "type": "th",
+                                "props": {
+                                  "className": "px-6 py-4 text-left text-sm font-medium text-gray-600"
+                                },
+                                "children": ["Description"]
                               },
                               {
                                 "id": "th-worker",
                                 "type": "th",
                                 "props": {
-                                  "className": "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                                  "className": "px-6 py-4 text-left text-sm font-medium text-gray-600"
                                 },
                                 "children": ["Worker"]
                               },
@@ -440,17 +482,17 @@ export const warehouseFlowDSL = {
                                 "id": "th-timestamp",
                                 "type": "th",
                                 "props": {
-                                  "className": "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                                  "className": "px-6 py-4 text-left text-sm font-medium text-gray-600"
                                 },
                                 "children": ["Timestamp"]
                               },
                               {
-                                "id": "th-actions",
+                                "id": "th-status",
                                 "type": "th",
                                 "props": {
-                                  "className": "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                                  "className": "px-6 py-4 text-left text-sm font-medium text-gray-600"
                                 },
-                                "children": ["Actions"]
+                                "children": ["Status"]
                               }
                             ]
                           }
@@ -468,7 +510,7 @@ export const warehouseFlowDSL = {
                             "id": "transaction-row",
                             "type": "tr",
                             "props": {
-                              "className": "{{status === 'error' ? 'bg-red-50 hover:bg-red-100' : 'hover:bg-gray-50'}}"
+                              "className": "{{status === 'discrepancy' ? 'bg-red-50 hover:bg-red-100 border-l-4 border-red-500' : status === 'complete' ? 'hover:bg-gray-50' : 'hover:bg-gray-50'}}"
                             },
                             "children": [
                               {
@@ -482,9 +524,9 @@ export const warehouseFlowDSL = {
                                     "id": "type-badge",
                                     "type": "span",
                                     "props": {
-                                      "className": "{{type === 'putaway' ? 'bg-green-100 text-green-800' : type === 'picking' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'}} px-2 py-1 rounded-full text-sm font-medium"
+                                      "className": "{{type === 'putaway' ? 'bg-green-100 text-green-800' : type === 'picking' ? 'bg-red-100 text-red-800' : 'bg-slate-100 text-slate-800'}} px-2 py-1 rounded-full text-sm font-medium"
                                     },
-                                    "children": ["{{type.charAt(0).toUpperCase() + type.slice(1)}} {{status === 'error' ? '⚠️' : ''}}"]
+                                    "children": ["{{type.charAt(0).toUpperCase() + type.slice(1)}} {{status === 'discrepancy' ? '⚠️' : status === 'complete' ? '✅' : ''}}"]
                                   }
                                 ]
                               },
@@ -492,7 +534,7 @@ export const warehouseFlowDSL = {
                                 "id": "td-task-id",
                                 "type": "td",
                                 "props": {
-                                  "className": "px-6 py-4 whitespace-nowrap font-mono text-sm {{status === 'error' ? 'font-bold text-red-600' : 'text-gray-900'}}"
+                                  "className": "px-6 py-4 whitespace-nowrap font-mono text-sm {{status === 'discrepancy' ? 'font-bold text-red-600' : 'text-gray-900'}}"
                                 },
                                 "children": ["{{taskId}}"]
                               },
@@ -500,25 +542,46 @@ export const warehouseFlowDSL = {
                                 "id": "td-quantity",
                                 "type": "td",
                                 "props": {
-                                  "className": "px-6 py-4 whitespace-nowrap text-sm {{status === 'error' ? 'font-bold text-red-600' : 'font-medium text-gray-900'}}"
+                                  "className": "px-6 py-4 whitespace-nowrap text-sm {{status === 'discrepancy' ? 'font-bold text-red-600' : 'font-medium text-gray-900'}}"
                                 },
-                                "children": ["{{type === 'putaway' || type === 'return' ? '+' : '-'}}{{quantity}}{{expectedQuantity && quantity !== expectedQuantity ? ' (exp. ' + (type === 'putaway' || type === 'return' ? '+' : '-') + expectedQuantity + ')' : ''}}"]
+                                "children": ["{{type === 'putaway' || type === 'return' || type === 'adjustment' ? (quantity >= 0 ? '+' : '') : '-'}}{{Math.abs(quantity)}} units"]
+                              },
+                              {
+                                "id": "td-description",
+                                "type": "td",
+                                "props": {
+                                  "className": "px-6 py-4 text-sm text-gray-700 max-w-xs"
+                                },
+                                "children": ["{{description}}"]
                               },
                               {
                                 "id": "td-worker",
                                 "type": "td",
                                 "props": {
-                                  "className": "px-6 py-4 whitespace-nowrap text-sm text-gray-900"
+                                  "className": "px-6 py-4 whitespace-nowrap text-sm"
                                 },
                                 "children": [
                                   {
-                                    "id": "worker-link",
-                                    "type": "button",
-                                    "props": {
-                                      "className": "text-blue-600 hover:text-blue-800 underline",
-                                      "onClick": "navigate_to_worker_profile"
-                                    },
-                                    "children": ["{{workerId}}"]
+                                    "id": "worker-info",
+                                    "type": "div",
+                                    "children": [
+                                      {
+                                        "id": "worker-name",
+                                        "type": "div",
+                                        "props": {
+                                          "className": "font-medium text-gray-900"
+                                        },
+                                        "children": ["{{workerName}}"]
+                                      },
+                                      {
+                                        "id": "worker-id",
+                                        "type": "div",
+                                        "props": {
+                                          "className": "text-gray-500 text-xs"
+                                        },
+                                        "children": ["ID: {{workerId}}"]
+                                      }
+                                    ]
                                   }
                                 ]
                               },
@@ -531,20 +594,19 @@ export const warehouseFlowDSL = {
                                 "children": ["{{timestamp}}"]
                               },
                               {
-                                "id": "td-actions",
+                                "id": "td-status",
                                 "type": "td",
                                 "props": {
                                   "className": "px-6 py-4 whitespace-nowrap text-sm"
                                 },
                                 "children": [
                                   {
-                                    "id": "action-btn",
-                                    "type": "button",
+                                    "id": "status-badge",
+                                    "type": "span",
                                     "props": {
-                                      "className": "{{status === 'error' ? 'bg-red-100 text-red-700 hover:bg-red-200' : 'bg-blue-100 text-blue-700 hover:bg-blue-200'}} px-3 py-1 rounded-md text-sm font-medium transition-colors",
-                                      "onClick": "{{status === 'error' ? 'investigate_transaction' : 'view_transaction_details'}}"
+                                      "className": "{{status === 'discrepancy' ? 'bg-red-100 text-red-800' : status === 'complete' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}} px-2 py-1 rounded-full text-xs font-medium"
                                     },
-                                    "children": ["{{status === 'error' ? 'Investigate' : 'View Details'}}"]
+                                    "children": ["{{status === 'discrepancy' ? 'SCANNING ERROR' : status === 'complete' ? 'COMPLETED' : status.toUpperCase()}}"]
                                   }
                                 ]
                               }
@@ -554,9 +616,11 @@ export const warehouseFlowDSL = {
                       }
                     ]
                   }
-                ]
-              },
-              
+                      ]
+                    }
+                  ]
+                },
+
               // Transaction Summary Stats
               {
                 "id": "transaction-summary",
@@ -569,14 +633,14 @@ export const warehouseFlowDSL = {
                     "id": "total-transactions-card",
                     "type": "div",
                     "props": {
-                      "className": "bg-blue-50 border border-blue-200 rounded-lg p-4 text-center"
+                      "className": "bg-slate-50 border border-slate-200 rounded-lg p-4 text-center"
                     },
                     "children": [
                       {
                         "id": "total-count",
                         "type": "div",
                         "props": {
-                          "className": "text-3xl font-bold text-blue-600 mb-1"
+                          "className": "text-3xl font-bold text-slate-700 mb-1"
                         },
                         "children": ["{{transactions.length}}"]
                       },
@@ -584,7 +648,7 @@ export const warehouseFlowDSL = {
                         "id": "total-label",
                         "type": "div",
                         "props": {
-                          "className": "text-sm font-medium text-blue-800"
+                          "className": "text-sm font-medium text-slate-600"
                         },
                         "children": ["Total Transactions"]
                       }
@@ -641,10 +705,44 @@ export const warehouseFlowDSL = {
                     ]
                   }
                 ]
+              },
+
+              // Single Investigation Button
+              {
+                "id": "single-investigation-action",
+                "type": "div",
+                "props": {
+                  "className": "text-center"
+                },
+                "children": [
+                  {
+                    "id": "investigate-stock-movement-btn",
+                    "type": "button",
+                    "props": {
+                      "className": "bg-slate-700 hover:bg-slate-800 text-white px-6 py-3 rounded-lg font-medium transition-colors inline-flex items-center gap-3 shadow-sm",
+                      "onClick": "navigate_to_stock_investigation"
+                    },
+                    "children": [
+                      {
+                        "id": "investigate-icon",
+                        "type": "span",
+                        "props": {
+                          "className": "text-xl"
+                        },
+                        "children": ["🔍"]
+                      },
+                      {
+                        "id": "investigate-text",
+                        "type": "span",
+                        "children": ["Investigate Stock Movement"]
+                      }
+                    ]
+                  }
+                ]
               }
             ]
           },
-          
+
           // Step 3: Stock Investigation
           {
             "id": "step-3-stock-investigation",
@@ -666,7 +764,7 @@ export const warehouseFlowDSL = {
                     "props": {
                       "className": "text-xl font-semibold text-gray-800"
                     },
-                    "children": ["Stock Movement Investigation - {{currentInvestigation.taskId}}"]
+                    "children": ["Stock Movement Investigation - PICK5847"]
                   },
                   {
                     "id": "back-to-transactions-from-investigation-btn",
@@ -694,13 +792,13 @@ export const warehouseFlowDSL = {
                     "props": {
                       "className": "text-lg font-semibold text-red-800 mb-4"
                     },
-                    "children": ["⚠️ Task {{currentInvestigation.taskId}} - Discrepancy Details"]
+                    "children": ["⚠️ Task PICK5847 - Scanning Error Detected"]
                   },
                   {
                     "id": "investigation-details-grid",
                     "type": "div",
                     "props": {
-                      "className": "grid grid-cols-4 gap-4"
+                      "className": "grid grid-cols-5 gap-4"
                     },
                     "children": [
                       {
@@ -716,15 +814,15 @@ export const warehouseFlowDSL = {
                             "props": {
                               "className": "text-sm text-gray-600 mb-1"
                             },
-                            "children": ["Expected"]
+                            "children": ["Order Required"]
                           },
                           {
                             "id": "task-expected-value",
                             "type": "div",
                             "props": {
-                              "className": "text-2xl font-bold text-green-600"
+                              "className": "text-2xl font-bold text-blue-600"
                             },
-                            "children": ["{{currentInvestigation.expectedQuantity}} units"]
+                            "children": ["15 units"]
                           }
                         ]
                       },
@@ -749,7 +847,32 @@ export const warehouseFlowDSL = {
                             "props": {
                               "className": "text-2xl font-bold text-red-600"
                             },
-                            "children": ["{{currentInvestigation.actualQuantity}} units"]
+                            "children": ["8 units"]
+                          }
+                        ]
+                      },
+                      {
+                        "id": "task-actually-taken",
+                        "type": "div",
+                        "props": {
+                          "className": "text-center"
+                        },
+                        "children": [
+                          {
+                            "id": "task-taken-label",
+                            "type": "div",
+                            "props": {
+                              "className": "text-sm text-gray-600 mb-1"
+                            },
+                            "children": ["Actually Taken"]
+                          },
+                          {
+                            "id": "task-taken-value",
+                            "type": "div",
+                            "props": {
+                              "className": "text-2xl font-bold text-orange-600"
+                            },
+                            "children": ["15 units"]
                           }
                         ]
                       },
@@ -774,7 +897,7 @@ export const warehouseFlowDSL = {
                             "props": {
                               "className": "text-lg font-semibold text-gray-900"
                             },
-                            "children": ["{{currentInvestigation.workerId}}"]
+                            "children": ["Marcus Rodriguez (W456)"]
                           }
                         ]
                       },
@@ -791,15 +914,15 @@ export const warehouseFlowDSL = {
                             "props": {
                               "className": "text-sm text-gray-600 mb-1"
                             },
-                            "children": ["Difference"]
+                            "children": ["Scanning Error"]
                           },
                           {
                             "id": "task-difference-value",
                             "type": "div",
                             "props": {
-                              "className": "text-2xl font-bold text-orange-600"
+                              "className": "text-2xl font-bold text-red-600"
                             },
-                            "children": ["{{currentInvestigation.expectedQuantity - currentInvestigation.actualQuantity}} units missing"]
+                            "children": ["7 units unscanned"]
                           }
                         ]
                       }
@@ -813,14 +936,14 @@ export const warehouseFlowDSL = {
                 "id": "investigation-options",
                 "type": "div",
                 "props": {
-                  "className": "grid grid-cols-1 md:grid-cols-3 gap-6 mb-8"
+                  "className": "grid grid-cols-1 md:grid-cols-2 gap-6 mb-8"
                 },
                 "children": [
                   {
                     "id": "scan-logs-option",
                     "type": "div",
                     "props": {
-                      "className": "bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow"
+                      "className": "bg-white border border-gray-200 rounded-xl p-6 hover:shadow-md transition-all duration-200"
                     },
                     "children": [
                       {
@@ -834,7 +957,7 @@ export const warehouseFlowDSL = {
                             "id": "scan-logs-icon",
                             "type": "div",
                             "props": {
-                              "className": "w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mr-3"
+                              "className": "w-8 h-8 bg-slate-100 rounded-full flex items-center justify-center mr-3"
                             },
                             "children": ["📊"]
                           },
@@ -844,7 +967,7 @@ export const warehouseFlowDSL = {
                             "props": {
                               "className": "text-lg font-semibold text-gray-900"
                             },
-                            "children": ["Scan Logs Analysis"]
+                            "children": ["📱 Check Scan Logs"]
                           }
                         ]
                       },
@@ -854,14 +977,14 @@ export const warehouseFlowDSL = {
                         "props": {
                           "className": "text-gray-600 mb-4"
                         },
-                        "children": ["Review detailed scan logs for Zone A during the task timeframe"]
+                        "children": ["Review detailed scan logs for Zone B-12 to see the scanning timeline and identify the malfunction during PICK5847"]
                       },
                       {
                         "id": "scan-logs-button",
                         "type": "button",
                         "props": {
-                          "className": "w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors",
-                          "onClick": "view_scan_logs"
+                          "className": "w-full bg-slate-700 hover:bg-slate-800 text-white px-4 py-3 rounded-lg font-medium transition-colors shadow-sm",
+                          "onClick": "navigate_to_scan_logs"
                         },
                         "children": ["View Scan Logs"]
                       }
@@ -871,7 +994,7 @@ export const warehouseFlowDSL = {
                     "id": "duplicate-scan-option",
                     "type": "div",
                     "props": {
-                      "className": "bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow"
+                      "className": "bg-white border border-gray-200 rounded-xl p-6 hover:shadow-md transition-all duration-200"
                     },
                     "children": [
                       {
@@ -885,7 +1008,7 @@ export const warehouseFlowDSL = {
                             "id": "duplicate-scan-icon",
                             "type": "div",
                             "props": {
-                              "className": "w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center mr-3"
+                              "className": "w-8 h-8 bg-slate-100 rounded-full flex items-center justify-center mr-3"
                             },
                             "children": ["🔍"]
                           },
@@ -895,7 +1018,7 @@ export const warehouseFlowDSL = {
                             "props": {
                               "className": "text-lg font-semibold text-gray-900"
                             },
-                            "children": ["Duplicate Scan Check"]
+                            "children": ["📋 Investigate PICK5847"]
                           }
                         ]
                       },
@@ -905,67 +1028,16 @@ export const warehouseFlowDSL = {
                         "props": {
                           "className": "text-gray-600 mb-4"
                         },
-                        "children": ["Check for duplicate or missing scans that might explain the discrepancy"]
+                        "children": ["View detailed information about PICK5847 task - worker performance, timestamps, and exact scanning error details"]
                       },
                       {
                         "id": "duplicate-scan-button",
                         "type": "button",
                         "props": {
-                          "className": "w-full bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg font-medium transition-colors",
-                          "onClick": "check_duplicate_scans"
+                          "className": "w-full bg-slate-600 hover:bg-slate-700 text-white px-4 py-3 rounded-lg font-medium transition-colors shadow-sm",
+                          "onClick": "navigate_to_pick_task_investigation"
                         },
-                        "children": ["Check Duplicates"]
-                      }
-                    ]
-                  },
-                  {
-                    "id": "camera-footage-option",
-                    "type": "div",
-                    "props": {
-                      "className": "bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow"
-                    },
-                    "children": [
-                      {
-                        "id": "camera-footage-header",
-                        "type": "div",
-                        "props": {
-                          "className": "flex items-center mb-4"
-                        },
-                        "children": [
-                          {
-                            "id": "camera-footage-icon",
-                            "type": "div",
-                            "props": {
-                              "className": "w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center mr-3"
-                            },
-                            "children": ["📹"]
-                          },
-                          {
-                            "id": "camera-footage-title",
-                            "type": "h3",
-                            "props": {
-                              "className": "text-lg font-semibold text-gray-900"
-                            },
-                            "children": ["Camera Footage"]
-                          }
-                        ]
-                      },
-                      {
-                        "id": "camera-footage-description",
-                        "type": "p",
-                        "props": {
-                          "className": "text-gray-600 mb-4"
-                        },
-                        "children": ["Review security footage from Zone A during task execution"]
-                      },
-                      {
-                        "id": "camera-footage-button",
-                        "type": "button",
-                        "props": {
-                          "className": "w-full bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg font-medium transition-colors",
-                          "onClick": "view_camera_footage"
-                        },
-                        "children": ["View Footage"]
+                        "children": ["View Task Details"]
                       }
                     ]
                   }
@@ -973,8 +1045,326 @@ export const warehouseFlowDSL = {
               }
             ]
           },
-          
-          // Step 3A: Scan Logs View
+
+          // Step 3A: PICK Task Investigation
+          {
+            "id": "step-3a-pick-task",
+            "type": "div",
+            "props": {
+              "className": "{{currentFlow.step === 'pick_task_investigation' ? 'block' : 'hidden'}}"
+            },
+            "children": [
+              {
+                "id": "pick-task-header",
+                "type": "div",
+                "props": {
+                  "className": "flex justify-between items-center mb-6"
+                },
+                "children": [
+                  {
+                    "id": "pick-task-title",
+                    "type": "h2",
+                    "props": {
+                      "className": "text-xl font-semibold text-gray-800"
+                    },
+                    "children": ["📋 PICK5847 Task Investigation"]
+                  },
+                  {
+                    "id": "back-to-stock-investigation-btn",
+                    "type": "button",
+                    "props": {
+                      "className": "bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg",
+                      "onClick": "navigate_to_stock_investigation"
+                    },
+                    "children": ["← Back to Investigation"]
+                  }
+                ]
+              },
+
+              // Task Details Card
+              {
+                "id": "pick-task-details",
+                "type": "div",
+                "props": {
+                  "className": "bg-white rounded-lg shadow border p-6 mb-6"
+                },
+                "children": [
+                  {
+                    "id": "task-info-grid",
+                    "type": "div",
+                    "props": {
+                      "className": "grid grid-cols-2 gap-6 mb-6"
+                    },
+                    "children": [
+                      {
+                        "id": "task-basic-info",
+                        "type": "div",
+                        "children": [
+                          {
+                            "id": "task-id-field",
+                            "type": "div",
+                            "props": {
+                              "className": "mb-3"
+                            },
+                            "children": [
+                              {
+                                "id": "task-id-label",
+                                "type": "label",
+                                "props": {
+                                  "className": "block text-sm font-medium text-gray-700 mb-1"
+                                },
+                                "children": ["Task ID"]
+                              },
+                              {
+                                "id": "task-id-value",
+                                "type": "div",
+                                "props": {
+                                  "className": "text-lg font-mono font-bold text-red-600"
+                                },
+                                "children": ["PICK5847"]
+                              }
+                            ]
+                          },
+                          {
+                            "id": "task-worker-field",
+                            "type": "div",
+                            "props": {
+                              "className": "mb-3"
+                            },
+                            "children": [
+                              {
+                                "id": "task-worker-label",
+                                "type": "label",
+                                "props": {
+                                  "className": "block text-sm font-medium text-gray-700 mb-1"
+                                },
+                                "children": ["Worker"]
+                              },
+                              {
+                                "id": "task-worker-value",
+                                "type": "div",
+                                "props": {
+                                  "className": "text-lg font-semibold text-gray-900"
+                                },
+                                "children": ["Marcus Rodriguez (W456)"]
+                              }
+                            ]
+                          },
+                          {
+                            "id": "task-timestamp-field",
+                            "type": "div",
+                            "children": [
+                              {
+                                "id": "task-timestamp-label",
+                                "type": "label",
+                                "props": {
+                                  "className": "block text-sm font-medium text-gray-700 mb-1"
+                                },
+                                "children": ["Timestamp"]
+                              },
+                              {
+                                "id": "task-timestamp-value",
+                                "type": "div",
+                                "props": {
+                                  "className": "text-gray-700"
+                                },
+                                "children": ["September 15, 2025 at 2:22 PM"]
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "id": "task-quantity-info",
+                        "children": [
+                          {
+                            "id": "required-qty-field",
+                            "type": "div",
+                            "props": {
+                              "className": "mb-3"
+                            },
+                            "children": [
+                              {
+                                "id": "required-qty-label",
+                                "type": "label",
+                                "props": {
+                                  "className": "block text-sm font-medium text-gray-700 mb-1"
+                                },
+                                "children": ["Order Required"]
+                              },
+                              {
+                                "id": "required-qty-value",
+                                "type": "div",
+                                "props": {
+                                  "className": "text-2xl font-bold text-blue-600"
+                                },
+                                "children": ["15 units"]
+                              }
+                            ]
+                          },
+                          {
+                            "id": "scanned-qty-field",
+                            "type": "div",
+                            "props": {
+                              "className": "mb-3"
+                            },
+                            "children": [
+                              {
+                                "id": "scanned-qty-label",
+                                "type": "label",
+                                "props": {
+                                  "className": "block text-sm font-medium text-gray-700 mb-1"
+                                },
+                                "children": ["Actually Scanned"]
+                              },
+                              {
+                                "id": "scanned-qty-value",
+                                "type": "div",
+                                "props": {
+                                  "className": "text-2xl font-bold text-red-600"
+                                },
+                                "children": ["8 units"]
+                              }
+                            ]
+                          },
+                          {
+                            "id": "taken-qty-field",
+                            "type": "div",
+                            "children": [
+                              {
+                                "id": "taken-qty-label",
+                                "type": "label",
+                                "props": {
+                                  "className": "block text-sm font-medium text-gray-700 mb-1"
+                                },
+                                "children": ["Actually Taken"]
+                              },
+                              {
+                                "id": "taken-qty-value",
+                                "type": "div",
+                                "props": {
+                                  "className": "text-2xl font-bold text-orange-600"
+                                },
+                                "children": ["15 units"]
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  },
+
+                  // Error Analysis
+                  {
+                    "id": "error-analysis",
+                    "type": "div",
+                    "props": {
+                      "className": "bg-red-50 border border-red-200 rounded-lg p-4"
+                    },
+                    "children": [
+                      {
+                        "id": "error-title",
+                        "type": "h3",
+                        "props": {
+                          "className": "text-lg font-semibold text-red-800 mb-2"
+                        },
+                        "children": ["⚠️ Scanning Error Analysis"]
+                      },
+                      {
+                        "id": "error-description",
+                        "type": "p",
+                        "props": {
+                          "className": "text-red-700 mb-3"
+                        },
+                        "children": ["Scanner malfunction detected: Worker took the correct quantity (15 units) but the barcode reader only recorded 8 scans. This created a 7-unit discrepancy in the system."]
+                      },
+                      {
+                        "id": "error-impact",
+                        "type": "div",
+                        "props": {
+                          "className": "bg-red-100 border border-red-300 rounded p-3"
+                        },
+                        "children": [
+                          {
+                            "id": "impact-title",
+                            "type": "div",
+                            "props": {
+                              "className": "font-semibold text-red-800 mb-1"
+                            },
+                            "children": ["Impact:"]
+                          },
+                          {
+                            "id": "impact-text",
+                            "type": "div",
+                            "props": {
+                              "className": "text-red-700"
+                            },
+                            "children": ["System shows 7 fewer units than physically present, causing inventory inaccuracy worth $2,099.93"]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+
+              // Resolution Actions
+              {
+                "id": "pick-task-resolution",
+                "type": "div",
+                "props": {
+                  "className": "bg-green-50 border border-green-200 rounded-lg p-6"
+                },
+                "children": [
+                  {
+                    "id": "resolution-title",
+                    "type": "h3",
+                    "props": {
+                      "className": "text-lg font-semibold text-green-800 mb-4"
+                    },
+                    "children": ["✅ Issue Identified: Scanner Malfunction"]
+                  },
+                  {
+                    "id": "resolution-description",
+                    "type": "p",
+                    "props": {
+                      "className": "text-green-700 mb-4"
+                    },
+                    "children": ["Root cause confirmed: Barcode reader malfunction during PICK5847. Worker took correct quantity but scanner failed to record all items. System adjustment and scanner maintenance required."]
+                  },
+                  {
+                    "id": "resolution-actions",
+                    "type": "div",
+                    "props": {
+                      "className": "grid grid-cols-2 gap-4"
+                    },
+                    "children": [
+                      {
+                        "id": "generate-report-btn",
+                        "type": "button",
+                        "props": {
+                          "className": "bg-slate-700 hover:bg-slate-800 text-white px-6 py-3 rounded-lg font-medium transition-colors",
+                          "onClick": "generate_pick_task_report"
+                        },
+                        "children": ["📄 Generate PICK Task Report"]
+                      },
+                      {
+                        "id": "update-system-inventory-btn",
+                        "type": "button",
+                        "props": {
+                          "className": "bg-slate-600 hover:bg-slate-700 text-white px-6 py-3 rounded-lg font-medium transition-colors",
+                          "onClick": "update_system_inventory"
+                        },
+                        "children": ["🔧 Update System Inventory"]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+
+          // Step 3B: Scan Logs View
           {
             "id": "step-3a-scan-logs",
             "type": "div",
@@ -995,7 +1385,7 @@ export const warehouseFlowDSL = {
                     "props": {
                       "className": "text-xl font-semibold text-gray-800"
                     },
-                    "children": ["Scan Logs - {{discrepancy.zoneId}} ({{currentInvestigation.timestamp}})"]
+                    "children": ["📱 Scan Logs - Zone B-12 (PICK5847 Timeline)"]
                   },
                   {
                     "id": "back-to-investigation-btn",
@@ -1100,14 +1490,14 @@ export const warehouseFlowDSL = {
                     "id": "total-scans-card",
                     "type": "div",
                     "props": {
-                      "className": "bg-blue-50 border border-blue-200 rounded-lg p-4 text-center"
+                      "className": "bg-slate-50 border border-slate-200 rounded-lg p-4 text-center"
                     },
                     "children": [
                       {
                         "id": "total-scans-value",
                         "type": "div",
                         "props": {
-                          "className": "text-3xl font-bold text-blue-600 mb-1"
+                          "className": "text-3xl font-bold text-slate-700 mb-1"
                         },
                         "children": ["{{scanLogs.length}}"]
                       },
@@ -1115,7 +1505,7 @@ export const warehouseFlowDSL = {
                         "id": "total-scans-label",
                         "type": "div",
                         "props": {
-                          "className": "text-sm font-medium text-blue-800"
+                          "className": "text-sm font-medium text-slate-600"
                         },
                         "children": ["Total Scans"]
                       }
@@ -1172,265 +1562,65 @@ export const warehouseFlowDSL = {
                     ]
                   }
                 ]
-              }
-            ]
-          },
-          
-          // Step 3B: Duplicate Scan Check
-          {
-            "id": "step-3b-duplicate-scans",
-            "type": "div",
-            "props": {
-              "className": "{{currentFlow.step === 'duplicate_scans' ? 'block' : 'hidden'}}"
-            },
-            "children": [
-              {
-                "id": "duplicate-scans-header",
-                "type": "div",
-                "props": {
-                  "className": "flex justify-between items-center mb-6"
-                },
-                "children": [
-                  {
-                    "id": "duplicate-scans-title",
-                    "type": "h2",
-                    "props": {
-                      "className": "text-xl font-semibold text-gray-800"
-                    },
-                    "children": ["Duplicate Scan Detection - {{discrepancy.productId}}"]
-                  },
-                  {
-                    "id": "back-to-investigation-duplicate-btn",
-                    "type": "button",
-                    "props": {
-                      "className": "bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg",
-                      "onClick": "navigate_to_stock_investigation"
-                    },
-                    "children": ["← Back to Investigation"]
-                  }
-                ]
               },
-              
-              // Duplicate Detection Results
+
+              // Scan Logs Conclusion
               {
-                "id": "duplicate-detection-results",
+                "id": "scan-logs-conclusion",
                 "type": "div",
                 "props": {
-                  "className": "{{duplicateScans.length > 0 ? 'bg-red-50 border border-red-200' : 'bg-green-50 border border-green-200'}} rounded-lg p-6 mb-6"
+                  "className": "bg-green-50 border border-green-200 rounded-lg p-6"
                 },
                 "children": [
                   {
-                    "id": "duplicate-results-header",
-                    "type": "div",
-                    "props": {
-                      "className": "flex items-center mb-4"
-                    },
-                    "children": [
-                      {
-                        "id": "duplicate-results-icon",
-                        "type": "div",
-                        "props": {
-                          "className": "{{duplicateScans.length > 0 ? 'w-8 h-8 bg-red-600' : 'w-8 h-8 bg-green-600'}} rounded-full flex items-center justify-center text-white mr-3"
-                        },
-                        "children": ["{{duplicateScans.length > 0 ? '⚠️' : '✅'}}"]
-                      },
-                      {
-                        "id": "duplicate-results-title",
-                        "type": "h3",
-                        "props": {
-                          "className": "{{duplicateScans.length > 0 ? 'text-lg font-semibold text-red-800' : 'text-lg font-semibold text-green-800'}}"
-                        },
-                        "children": ["{{duplicateScans.length > 0 ? 'Duplicate Scans Found!' : 'No Duplicate Scans Detected'}}"]
-                      }
-                    ]
-                  },
-                  {
-                    "id": "duplicate-results-summary",
-                    "type": "p",
-                    "props": {
-                      "className": "{{duplicateScans.length > 0 ? 'text-red-700' : 'text-green-700'}}"
-                    },
-                    "children": ["{{duplicateScans.length > 0 ? duplicateScans.length + ' duplicate scan(s) detected. This may explain the inventory discrepancy.' : 'Scan validation passed. No duplicate entries found in the system.'}}"]
-                  }
-                ]
-              },
-              
-              // Duplicate Scans List (if any)
-              {
-                "id": "duplicate-scans-list",
-                "type": "div",
-                "props": {
-                  "className": "{{duplicateScans.length > 0 ? 'block' : 'hidden'}}"
-                },
-                "children": [
-                  {
-                    "id": "duplicate-scans-table-title",
+                    "id": "scan-conclusion-title",
                     "type": "h3",
                     "props": {
-                      "className": "text-lg font-semibold text-gray-900 mb-4"
+                      "className": "text-lg font-semibold text-green-800 mb-4"
                     },
-                    "children": ["Detected Duplicate Scans"]
+                    "children": ["✅ Scan Timeline Analysis Complete"]
                   },
                   {
-                    "id": "duplicate-scans-table",
+                    "id": "scan-conclusion-description",
+                    "type": "p",
+                    "props": {
+                      "className": "text-green-700 mb-4"
+                    },
+                    "children": ["Scan logs confirm: PICK5847 shows scanner malfunction at 14:22. Only 8 units scanned despite 15 units being taken. Clear evidence of barcode reader failure during corporate order processing."]
+                  },
+                  {
+                    "id": "scan-resolution-actions",
                     "type": "div",
                     "props": {
-                      "className": "bg-white rounded-lg shadow border overflow-hidden mb-6"
+                      "className": "grid grid-cols-2 gap-4"
                     },
                     "children": [
                       {
-                        "id": "duplicate-scans-table-content",
-                        "type": "table",
+                        "id": "generate-scan-report-btn",
+                        "type": "button",
                         "props": {
-                          "className": "w-full"
+                          "className": "bg-slate-700 hover:bg-slate-800 text-white px-6 py-3 rounded-lg font-medium transition-colors",
+                          "onClick": "generate_scan_logs_report"
                         },
-                        "children": [
-                          {
-                            "id": "duplicate-scans-table-header",
-                            "type": "thead",
-                            "props": {
-                              "className": "bg-gray-50"
-                            },
-                            "children": [
-                              {
-                                "id": "duplicate-scans-header-row",
-                                "type": "tr",
-                                "children": [
-                                  {
-                                    "id": "th-original-scan",
-                                    "type": "th",
-                                    "props": {
-                                      "className": "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                                    },
-                                    "children": ["Original Scan"]
-                                  },
-                                  {
-                                    "id": "th-duplicate-scan",
-                                    "type": "th",
-                                    "props": {
-                                      "className": "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                                    },
-                                    "children": ["Duplicate Scan"]
-                                  },
-                                  {
-                                    "id": "th-time-difference",
-                                    "type": "th",
-                                    "props": {
-                                      "className": "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                                    },
-                                    "children": ["Time Difference"]
-                                  },
-                                  {
-                                    "id": "th-action",
-                                    "type": "th",
-                                    "props": {
-                                      "className": "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                                    },
-                                    "children": ["Action"]
-                                  }
-                                ]
-                              }
-                            ]
-                          },
-                          {
-                            "id": "duplicate-scans-table-body",
-                            "type": "tbody",
-                            "props": {
-                              "className": "bg-white divide-y divide-gray-200"
-                            },
-                            "binding": "duplicateScans",
-                            "children": [
-                              {
-                                "id": "duplicate-scan-row",
-                                "type": "tr",
-                                "props": {
-                                  "className": "hover:bg-gray-50"
-                                },
-                                "children": [
-                                  {
-                                    "id": "td-original-scan",
-                                    "type": "td",
-                                    "props": {
-                                      "className": "px-6 py-4 whitespace-nowrap text-sm text-gray-900"
-                                    },
-                                    "children": ["{{originalTimestamp}} ({{originalQuantity}} units)"]
-                                  },
-                                  {
-                                    "id": "td-duplicate-scan",
-                                    "type": "td",
-                                    "props": {
-                                      "className": "px-6 py-4 whitespace-nowrap text-sm text-red-600 font-medium"
-                                    },
-                                    "children": ["{{duplicateTimestamp}} ({{duplicateQuantity}} units)"]
-                                  },
-                                  {
-                                    "id": "td-time-difference",
-                                    "type": "td",
-                                    "props": {
-                                      "className": "px-6 py-4 whitespace-nowrap text-sm text-gray-500"
-                                    },
-                                    "children": ["{{timeDifference}}"]
-                                  },
-                                  {
-                                    "id": "td-action",
-                                    "type": "td",
-                                    "props": {
-                                      "className": "px-6 py-4 whitespace-nowrap text-sm"
-                                    },
-                                    "children": [
-                                      {
-                                        "id": "remove-duplicate-btn",
-                                        "type": "button",
-                                        "props": {
-                                          "className": "bg-red-100 text-red-700 hover:bg-red-200 px-3 py-1 rounded-md text-sm font-medium transition-colors",
-                                          "onClick": "remove_duplicate_scan"
-                                        },
-                                        "children": ["Remove Duplicate"]
-                                      }
-                                    ]
-                                  }
-                                ]
-                              }
-                            ]
-                          }
-                        ]
+                        "children": ["📄 Generate Scan Report"]
+                      },
+                      {
+                        "id": "schedule-scanner-maintenance-btn",
+                        "type": "button",
+                        "props": {
+                          "className": "bg-slate-600 hover:bg-slate-700 text-white px-6 py-3 rounded-lg font-medium transition-colors",
+                          "onClick": "schedule_scanner_maintenance"
+                        },
+                        "children": ["🔧 Schedule Scanner Maintenance"]
                       }
                     ]
-                  }
-                ]
-              },
-              
-              // Auto-correction Options
-              {
-                "id": "auto-correction-options",
-                "type": "div",
-                "props": {
-                  "className": "{{duplicateScans.length > 0 ? 'flex space-x-4' : 'hidden'}}"
-                },
-                "children": [
-                  {
-                    "id": "auto-correct-btn",
-                    "type": "button",
-                    "props": {
-                      "className": "bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-medium transition-colors",
-                      "onClick": "auto_correct_duplicates"
-                    },
-                    "children": ["Auto-Correct All Duplicates"]
-                  },
-                  {
-                    "id": "manual-review-btn",
-                    "type": "button",
-                    "props": {
-                      "className": "bg-yellow-600 hover:bg-yellow-700 text-white px-6 py-3 rounded-lg font-medium transition-colors",
-                      "onClick": "request_manual_review"
-                    },
-                    "children": ["Request Manual Review"]
                   }
                 ]
               }
             ]
           },
-          
+
+
           // Step 3C: Camera Footage Review
           {
             "id": "step-3c-camera-footage",
@@ -1647,7 +1837,7 @@ export const warehouseFlowDSL = {
                 "id": "footage-actions",
                 "type": "div",
                 "props": {
-                  "className": "flex space-x-4"
+                  "className": "flex space-x-4 mb-6"
                 },
                 "children": [
                   {
@@ -1676,6 +1866,58 @@ export const warehouseFlowDSL = {
                       "onClick": "share_with_supervisor"
                     },
                     "children": ["📤 Share with Supervisor"]
+                  }
+                ]
+              },
+
+              // Camera Footage Conclusion
+              {
+                "id": "camera-footage-conclusion",
+                "type": "div",
+                "props": {
+                  "className": "bg-green-50 border border-green-200 rounded-lg p-6"
+                },
+                "children": [
+                  {
+                    "id": "camera-conclusion-title",
+                    "type": "h3",
+                    "props": {
+                      "className": "text-lg font-semibold text-green-800 mb-4"
+                    },
+                    "children": ["✅ Camera Footage Analysis Complete"]
+                  },
+                  {
+                    "id": "camera-conclusion-summary",
+                    "type": "div",
+                    "props": {
+                      "className": "space-y-2 text-green-700 mb-4"
+                    },
+                    "children": [
+                      {
+                        "id": "camera-summary-line1",
+                        "type": "p",
+                        "children": ["🎥 Reviewed {{cameraFootage.timeRange}} security footage"]
+                      },
+                      {
+                        "id": "camera-summary-line2",
+                        "type": "p",
+                        "children": ["📋 Identified {{cameraFootage.findings.length}} key findings"]
+                      },
+                      {
+                        "id": "camera-summary-line3",
+                        "type": "p",
+                        "children": ["⚠️ {{cameraFootage.findings.filter(f => f.severity === 'high').length}} high-priority incidents detected"]
+                      }
+                    ]
+                  },
+                  {
+                    "id": "generate-camera-report-btn",
+                    "type": "button",
+                    "props": {
+                      "className": "bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-medium transition-colors",
+                      "onClick": "generate_camera_footage_report"
+                    },
+                    "children": ["📄 Generate Camera Analysis Report"]
                   }
                 ]
               }
@@ -1729,7 +1971,7 @@ export const warehouseFlowDSL = {
                     "id": "worker-total-tasks",
                     "type": "div",
                     "props": {
-                      "className": "bg-blue-50 border border-blue-200 rounded-lg p-4 text-center"
+                      "className": "bg-slate-50 border border-slate-200 rounded-lg p-4 text-center"
                     },
                     "children": [
                       {
@@ -1744,7 +1986,7 @@ export const warehouseFlowDSL = {
                         "id": "worker-total-label",
                         "type": "div",
                         "props": {
-                          "className": "text-sm font-medium text-blue-800"
+                          "className": "text-sm font-medium text-slate-600"
                         },
                         "children": ["Total Tasks"]
                       }
@@ -2451,24 +2693,24 @@ export const warehouseFlowDSL = {
                     "id": "edge-case-alert",
                     "type": "div",
                     "props": {
-                      "className": "{{recount.result.edgeCase.severity === 'high' ? 'bg-red-50 border-red-200' : recount.result.edgeCase.severity === 'medium' ? 'bg-yellow-50 border-yellow-200' : 'bg-blue-50 border-blue-200'}} border rounded-lg p-6 mb-6"
+                      "className": "{{recount.result.edgeCase && recount.result.edgeCase.severity === 'high' ? 'bg-red-50 border-red-200' : recount.result.edgeCase && recount.result.edgeCase.severity === 'medium' ? 'bg-yellow-50 border-yellow-200' : 'bg-blue-50 border-blue-200'}} border rounded-lg p-6 mb-6"
                     },
                     "children": [
                       {
                         "id": "edge-case-title",
                         "type": "h3",
                         "props": {
-                          "className": "{{recount.result.edgeCase.severity === 'high' ? 'font-semibold text-red-800 mb-3' : recount.result.edgeCase.severity === 'medium' ? 'font-semibold text-yellow-800 mb-3' : 'font-semibold text-blue-800 mb-3'}}"
+                          "className": "{{recount.result.edgeCase && recount.result.edgeCase.severity === 'high' ? 'font-semibold text-red-800 mb-3' : recount.result.edgeCase && recount.result.edgeCase.severity === 'medium' ? 'font-semibold text-yellow-800 mb-3' : 'font-semibold text-blue-800 mb-3'}}"
                         },
-                        "children": ["⚠️ {{recount.result.edgeCase.title}}"]
+                        "children": ["⚠️ {{recount.result.edgeCase ? recount.result.edgeCase.title : 'Edge Case Analysis'}}"]
                       },
                       {
                         "id": "edge-case-description",
                         "type": "p",
                         "props": {
-                          "className": "{{recount.result.edgeCase.severity === 'high' ? 'text-red-700 mb-4' : recount.result.edgeCase.severity === 'medium' ? 'text-yellow-700 mb-4' : 'text-blue-700 mb-4'}}"
+                          "className": "{{recount.result.edgeCase && recount.result.edgeCase.severity === 'high' ? 'text-red-700 mb-4' : recount.result.edgeCase && recount.result.edgeCase.severity === 'medium' ? 'text-yellow-700 mb-4' : 'text-blue-700 mb-4'}}"
                         },
-                        "children": ["{{recount.result.edgeCase.description}}"]
+                        "children": ["{{recount.result.edgeCase ? recount.result.edgeCase.description : ''}}"]
                       },
                       {
                         "id": "edge-case-recommendations",
@@ -2488,12 +2730,12 @@ export const warehouseFlowDSL = {
                             "props": {
                               "className": "list-disc list-inside text-gray-700 space-y-1"
                             },
-                            "binding": "recount.result.edgeCase.recommendations",
+                            "binding": "recount.result.edgeCase ? recount.result.edgeCase.recommendations : []",
                             "children": [
                               {
                                 "id": "recommendation-item",
                                 "type": "li",
-                                "children": ["{{.}}"]
+                                "children": ["{{text || description}}"]
                               }
                             ]
                           }
@@ -2659,8 +2901,258 @@ export const warehouseFlowDSL = {
               }
             ]
           },
-          
-          // Step 5: Resolution Summary
+
+          // Step 5: Generate Discrepancy Report
+          {
+            "id": "step-5-generate-report",
+            "type": "div",
+            "props": {
+              "className": "{{currentFlow.step === 'generate_report' ? 'block' : 'hidden'}}"
+            },
+            "children": [
+              {
+                "id": "generate-report-header",
+                "type": "div",
+                "props": {
+                  "className": "flex justify-between items-center mb-6"
+                },
+                "children": [
+                  {
+                    "id": "generate-report-title",
+                    "type": "h2",
+                    "props": {
+                      "className": "text-xl font-semibold text-gray-800"
+                    },
+                    "children": ["📄 Generate Discrepancy Report"]
+                  },
+                  {
+                    "id": "back-to-investigation-from-report-btn",
+                    "type": "button",
+                    "props": {
+                      "className": "bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg",
+                      "onClick": "navigate_to_stock_investigation"
+                    },
+                    "children": ["← Back to Investigation"]
+                  }
+                ]
+              },
+
+              // Report Summary
+              {
+                "id": "report-summary-card",
+                "type": "div",
+                "props": {
+                  "className": "bg-white rounded-lg shadow border p-6 mb-6"
+                },
+                "children": [
+                  {
+                    "id": "report-summary-title",
+                    "type": "h3",
+                    "props": {
+                      "className": "text-lg font-semibold text-gray-900 mb-4"
+                    },
+                    "children": ["Discrepancy Report Summary"]
+                  },
+                  {
+                    "id": "report-details-grid",
+                    "type": "div",
+                    "props": {
+                      "className": "grid grid-cols-2 gap-6"
+                    },
+                    "children": [
+                      {
+                        "id": "report-incident-info",
+                        "type": "div",
+                        "children": [
+                          {
+                            "id": "incident-title",
+                            "type": "h4",
+                            "props": {
+                              "className": "font-semibold text-gray-800 mb-3"
+                            },
+                            "children": ["Incident Information"]
+                          },
+                          {
+                            "id": "incident-details",
+                            "type": "div",
+                            "props": {
+                              "className": "space-y-2 text-sm"
+                            },
+                            "children": [
+                              {
+                                "id": "incident-id",
+                                "type": "div",
+                                "children": ["Report ID: DISC-2025-09-16-001"]
+                              },
+                              {
+                                "id": "incident-product",
+                                "type": "div",
+                                "children": ["Product: WH-1000XM5 Wireless Headphones"]
+                              },
+                              {
+                                "id": "incident-zone",
+                                "type": "div",
+                                "children": ["Location: Zone B-12"]
+                              },
+                              {
+                                "id": "incident-task",
+                                "type": "div",
+                                "children": ["Task ID: PICK5847"]
+                              },
+                              {
+                                "id": "incident-worker",
+                                "type": "div",
+                                "children": ["Worker: Marcus Rodriguez (W456)"]
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "id": "report-discrepancy-info",
+                        "type": "div",
+                        "children": [
+                          {
+                            "id": "discrepancy-title",
+                            "type": "h4",
+                            "props": {
+                              "className": "font-semibold text-gray-800 mb-3"
+                            },
+                            "children": ["Discrepancy Details"]
+                          },
+                          {
+                            "id": "discrepancy-details",
+                            "type": "div",
+                            "props": {
+                              "className": "space-y-2 text-sm"
+                            },
+                            "children": [
+                              {
+                                "id": "discrepancy-type",
+                                "type": "div",
+                                "children": ["Type: Scanner Malfunction"]
+                              },
+                              {
+                                "id": "discrepancy-quantity",
+                                "type": "div",
+                                "children": ["Quantity Difference: 7 units"]
+                              },
+                              {
+                                "id": "discrepancy-value",
+                                "type": "div",
+                                "children": ["Financial Impact: $2,099.93"]
+                              },
+                              {
+                                "id": "discrepancy-cause",
+                                "type": "div",
+                                "children": ["Root Cause: Barcode reader malfunction"]
+                              },
+                              {
+                                "id": "discrepancy-severity",
+                                "type": "div",
+                                "children": ["Severity: High (expensive electronics)"]
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+
+              // Recommended Actions
+              {
+                "id": "recommended-actions-card",
+                "type": "div",
+                "props": {
+                  "className": "bg-blue-50 border border-blue-200 rounded-lg p-6 mb-6"
+                },
+                "children": [
+                  {
+                    "id": "actions-title",
+                    "type": "h3",
+                    "props": {
+                      "className": "text-lg font-semibold text-blue-800 mb-4"
+                    },
+                    "children": ["📋 Recommended Actions"]
+                  },
+                  {
+                    "id": "actions-list",
+                    "type": "div",
+                    "props": {
+                      "className": "space-y-2"
+                    },
+                    "children": [
+                      {
+                        "id": "action-1",
+                        "type": "div",
+                        "props": {
+                          "className": "flex items-center text-blue-700"
+                        },
+                        "children": ["✓ Adjust system inventory: Add 7 units to Zone B-12"]
+                      },
+                      {
+                        "id": "action-2",
+                        "type": "div",
+                        "props": {
+                          "className": "flex items-center text-blue-700"
+                        },
+                        "children": ["✓ Schedule scanner maintenance for SC03"]
+                      },
+                      {
+                        "id": "action-3",
+                        "type": "div",
+                        "props": {
+                          "className": "flex items-center text-blue-700"
+                        },
+                        "children": ["✓ Provide refresher training to Marcus Rodriguez"]
+                      },
+                      {
+                        "id": "action-4",
+                        "type": "div",
+                        "props": {
+                          "className": "flex items-center text-blue-700"
+                        },
+                        "children": ["✓ Monitor scanner performance for next 7 days"]
+                      }
+                    ]
+                  }
+                ]
+              },
+
+              // Generate Report Actions
+              {
+                "id": "report-generation-actions",
+                "type": "div",
+                "props": {
+                  "className": "grid grid-cols-2 gap-4"
+                },
+                "children": [
+                  {
+                    "id": "generate-final-report-btn",
+                    "type": "button",
+                    "props": {
+                      "className": "bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-medium transition-colors",
+                      "onClick": "navigate_to_resolution"
+                    },
+                    "children": ["✅ Generate & Send Report"]
+                  },
+                  {
+                    "id": "schedule-supervisor-review-btn",
+                    "type": "button",
+                    "props": {
+                      "className": "bg-orange-600 hover:bg-orange-700 text-white px-6 py-3 rounded-lg font-medium transition-colors",
+                      "onClick": "schedule_supervisor_review"
+                    },
+                    "children": ["👥 Schedule Supervisor Review"]
+                  }
+                ]
+              }
+            ]
+          },
+
+          // Step 6: Resolution Summary
           {
             "id": "step-5-resolution",
             "type": "div",
@@ -3234,7 +3726,261 @@ export const warehouseFlowDSL = {
                 ]
               }
             ]
-          }
+          },
+
+          // Report Modal
+          {
+            "id": "report-modal",
+            "type": "div",
+            "props": {
+              "className": "{{reportModal.isOpen ? 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50' : 'hidden'}}"
+            },
+            "children": [
+              {
+                "id": "modal-content",
+                "type": "div",
+                "props": {
+                  "className": "bg-white rounded-lg shadow-xl max-w-4xl max-h-[90vh] overflow-hidden"
+                },
+                "children": [
+                  {
+                    "id": "modal-header",
+                    "type": "div",
+                    "props": {
+                      "className": "bg-blue-600 text-white px-6 py-4 flex justify-between items-center"
+                    },
+                    "children": [
+                      {
+                        "id": "modal-title",
+                        "type": "h2",
+                        "props": {
+                          "className": "text-xl font-semibold"
+                        },
+                        "children": ["{{reportModal.data.title || 'Investigation Report'}}"]
+                      },
+                      {
+                        "id": "close-modal-btn",
+                        "type": "button",
+                        "props": {
+                          "className": "text-white hover:text-gray-200 text-2xl",
+                          "onClick": "close_report_modal"
+                        },
+                        "children": ["×"]
+                      }
+                    ]
+                  },
+                  {
+                    "id": "modal-body",
+                    "type": "div",
+                    "props": {
+                      "className": "p-6 max-h-[70vh] overflow-y-auto"
+                    },
+                    "children": [
+                      {
+                        "id": "report-info",
+                        "type": "div",
+                        "props": {
+                          "className": "mb-6 grid grid-cols-2 gap-4 bg-gray-50 p-4 rounded-lg"
+                        },
+                        "children": [
+                          {
+                            "id": "report-id-section",
+                            "type": "div",
+                            "children": [
+                              {
+                                "id": "report-id-label",
+                                "type": "span",
+                                "props": {
+                                  "className": "font-medium text-gray-600"
+                                },
+                                "children": ["Report ID: "]
+                              },
+                              {
+                                "id": "report-id-value",
+                                "type": "span",
+                                "props": {
+                                  "className": "font-mono"
+                                },
+                                "children": ["{{reportModal.data.reportId}}"]
+                              }
+                            ]
+                          },
+                          {
+                            "id": "report-date-section",
+                            "type": "div",
+                            "children": [
+                              {
+                                "id": "report-date-label",
+                                "type": "span",
+                                "props": {
+                                  "className": "font-medium text-gray-600"
+                                },
+                                "children": ["Generated: "]
+                              },
+                              {
+                                "id": "report-date-value",
+                                "type": "span",
+                                "children": ["{{reportModal.data.generatedAt}}"]
+                              }
+                            ]
+                          },
+                          {
+                            "id": "report-type-section",
+                            "type": "div",
+                            "children": [
+                              {
+                                "id": "report-type-label",
+                                "type": "span",
+                                "props": {
+                                  "className": "font-medium text-gray-600"
+                                },
+                                "children": ["Investigation Type: "]
+                              },
+                              {
+                                "id": "report-type-value",
+                                "type": "span",
+                                "children": ["{{reportModal.data.investigationType}}"]
+                              }
+                            ]
+                          },
+                          {
+                            "id": "report-status-section",
+                            "type": "div",
+                            "children": [
+                              {
+                                "id": "report-status-label",
+                                "type": "span",
+                                "props": {
+                                  "className": "font-medium text-gray-600"
+                                },
+                                "children": ["Status: "]
+                              },
+                              {
+                                "id": "report-status-value",
+                                "type": "span",
+                                "props": {
+                                  "className": "{{reportModal.data.status === 'completed' ? 'text-green-600 font-medium' : 'text-yellow-600 font-medium'}}"
+                                },
+                                "children": ["{{reportModal.data.status || 'Completed'}}"]
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "id": "report-table",
+                        "type": "div",
+                        "props": {
+                          "className": "overflow-x-auto"
+                        },
+                        "children": [
+                          {
+                            "id": "report-table-element",
+                            "type": "table",
+                            "props": {
+                              "className": "min-w-full bg-white border border-gray-300"
+                            },
+                            "children": [
+                              {
+                                "id": "report-thead",
+                                "type": "thead",
+                                "props": {
+                                  "className": "bg-gray-100"
+                                },
+                                "children": [
+                                  {
+                                    "id": "report-header-row",
+                                    "type": "tr",
+                                    "children": [
+                                      {
+                                        "id": "section-header",
+                                        "type": "th",
+                                        "props": {
+                                          "className": "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b"
+                                        },
+                                        "children": ["Section"]
+                                      },
+                                      {
+                                        "id": "details-header",
+                                        "type": "th",
+                                        "props": {
+                                          "className": "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b"
+                                        },
+                                        "children": ["Details"]
+                                      }
+                                    ]
+                                  }
+                                ]
+                              },
+                              {
+                                "id": "report-tbody",
+                                "type": "tbody",
+                                "props": {
+                                  "className": "bg-white divide-y divide-gray-200"
+                                },
+                                "binding": "reportModal.data.sections || []",
+                                "children": [
+                                  {
+                                    "id": "report-row",
+                                    "type": "tr",
+                                    "children": [
+                                      {
+                                        "id": "section-cell",
+                                        "type": "td",
+                                        "props": {
+                                          "className": "px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 border-b"
+                                        },
+                                        "children": ["{{label}}"]
+                                      },
+                                      {
+                                        "id": "details-cell",
+                                        "type": "td",
+                                        "props": {
+                                          "className": "px-6 py-4 text-sm text-gray-700 border-b"
+                                        },
+                                        "children": ["{{value}}"]
+                                      }
+                                    ]
+                                  }
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "id": "modal-footer",
+                    "type": "div",
+                    "props": {
+                      "className": "bg-gray-50 px-6 py-4 flex justify-end space-x-3"
+                    },
+                    "children": [
+                      {
+                        "id": "download-pdf-btn",
+                        "type": "button",
+                        "props": {
+                          "className": "bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg font-medium transition-colors",
+                          "onClick": "download_report_pdf"
+                        },
+                        "children": ["📄 Download PDF"]
+                      },
+                      {
+                        "id": "close-modal-footer-btn",
+                        "type": "button",
+                        "props": {
+                          "className": "bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg font-medium transition-colors",
+                          "onClick": "close_report_modal"
+                        },
+                        "children": ["Close"]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
         ]
       }
     ]
@@ -3245,70 +3991,87 @@ export const warehouseFlowDSL = {
 export const warehouseFlowData = {
   // Current flow state
   currentFlow: {
-    step: "alert", // alert | transactions | worker_profile | recount | resolution
+    step: "alert", // alert | transactions | stock_investigation | pick_task_investigation | scan_logs | generate_report | recount | resolution
     breadcrumb: "Home > Discrepancy Alert"
   },
   
   // Main discrepancy information
   discrepancy: {
-    productId: "Product Y",
-    zoneId: "Zone A", 
-    expectedQuantity: 20,
-    systemQuantity: 15,
-    discrepancyAmount: 5, // positive = missing, negative = excess
-    severity: "medium", // low | medium | high
+    productId: "WH-1000XM5",
+    productName: "Wireless Bluetooth Headphones - Model WH-1000XM5",
+    zoneId: "Zone B-12",
+    zoneName: "Electronics Storage Zone B-12",
+    expectedQuantity: 8, // Physical reality: 25 - 15 + 3 - 5 = 8 (what's actually there)
+    systemQuantity: 15, // System thinks: 25 - 8 + 3 - 5 = 15 (system only recorded 8 picked, but 15 were actually taken)
+    discrepancyAmount: 7, // positive = system shows more than reality (7 units missing)
+    severity: "high", // high because expensive electronics are missing
     status: "open",
-    timestamp: "2025-09-15T14:30:15",
-    detectedBy: "system_audit"
+    timestamp: "2025-09-16T09:45:22",
+    detectedBy: "cycle_count_audit",
+    unitValue: 299.99,
+    totalValue: 2099.93 // 7 * 299.99
   },
   
   // Transactions data for investigation
   transactions: [
     {
-      taskId: "PUT001",
+      taskId: "PUT2023",
       type: "putaway",
-      quantity: 20,
-      expectedQuantity: 20,
+      quantity: 25,
+      expectedQuantity: 25,
       workerId: "W123",
-      timestamp: "2025-09-10T08:00",
-      status: "complete"
+      workerName: "Sarah Johnson",
+      timestamp: "2025-09-14T08:30:00",
+      status: "complete",
+      description: "New shipment received - WH-1000XM5 Headphones"
     },
     {
-      taskId: "PICK789", 
+      taskId: "PICK5847",
       type: "picking",
-      quantity: 5,
-      expectedQuantity: 10,
+      quantity: 8, // System recorded only 8 picked
+      expectedQuantity: 15, // But order required 15
+      actualQuantity: 15, // Worker actually took 15 units
       workerId: "W456",
-      timestamp: "2025-09-10T10:15",
-      status: "error"
+      workerName: "Marcus Rodriguez",
+      timestamp: "2025-09-15T14:22:00",
+      status: "discrepancy", // Scanning error - under-reported
+      description: "Customer order #ORD-4521 - Bulk corporate purchase",
+      scannerIssue: true
     },
     {
-      taskId: "RET456",
+      taskId: "RET1203",
       type: "return",
-      quantity: 2,
-      expectedQuantity: 2,
-      workerId: "W789", 
-      timestamp: "2025-09-10T12:00",
-      status: "complete"
+      quantity: 3,
+      expectedQuantity: 3,
+      workerId: "W789",
+      workerName: "Linda Chen",
+      timestamp: "2025-09-15T16:45:00",
+      status: "complete",
+      description: "Customer return - damaged packaging"
     },
     {
-      taskId: "PICK101",
-      type: "picking", 
-      quantity: 8,
-      expectedQuantity: 8,
-      workerId: "W123",
-      timestamp: "2025-09-10T14:00",
-      status: "complete"
+      taskId: "ADJ9901",
+      type: "adjustment",
+      quantity: -5,
+      expectedQuantity: -5,
+      workerId: "W001",
+      workerName: "System Admin",
+      timestamp: "2025-09-16T07:15:00",
+      status: "complete",
+      description: "Damaged units removed - water damage during storm",
+      reason: "damaged_inventory"
     }
   ],
   
   // Current worker being investigated
   currentWorker: {
     id: "W456",
-    name: "Jane Smith",
-    totalTasks: 1500,
-    errorRate: 1.5, 
-    performanceRating: "Needs Improvement",
+    name: "Marcus Rodriguez",
+    totalTasks: 2340,
+    errorRate: 2.1,
+    performanceRating: "Needs Training",
+    department: "Electronics Picking",
+    shiftStart: "14:00",
     recentErrors: [
       {
         taskId: "PICK_ERROR_001",
@@ -3339,92 +4102,116 @@ export const warehouseFlowData = {
   
   // Current investigation data
   currentInvestigation: {
-    taskId: "PICK789",
+    taskId: "PICK5847",
     type: "picking",
-    expectedQuantity: 10,
-    actualQuantity: 5,
+    orderRequired: 15,
+    actuallyScanned: 8,
+    actuallyTaken: 15,
     workerId: "W456",
-    timestamp: "2025-09-10T10:15",
-    status: "error",
-    zoneId: "Zone A",
-    productId: "Product Y"
+    workerName: "Marcus Rodriguez",
+    timestamp: "2025-09-15T14:22:00",
+    status: "discrepancy",
+    zoneId: "Zone B-12",
+    productId: "WH-1000XM5",
+    productName: "Wireless Bluetooth Headphones - Model WH-1000XM5",
+    scannerIssue: "barcode_reader_malfunction",
+    description: "Customer order #ORD-4521 - Bulk corporate purchase",
+    scanningError: "7 units unscanned"
   },
 
   // Scan logs for investigation
   scanLogs: [
     {
-      timestamp: "08:00",
+      timestamp: "08:30",
       action: "Putaway Scan",
-      quantity: 20,
-      taskId: "PUT001", 
+      quantity: 25,
+      taskId: "PUT2023",
       workerId: "W123",
+      workerName: "Sarah Johnson",
       scannerId: "SC01",
       status: "verified",
-      isAnomaly: false
+      isAnomaly: false,
+      description: "New shipment - WH-1000XM5 Headphones"
     },
     {
-      timestamp: "10:10",
+      timestamp: "14:20",
       action: "Pick Start Scan",
       quantity: 0,
-      taskId: "PICK789",
-      workerId: "W456", 
-      scannerId: "SC02",
-      status: "verified",
-      isAnomaly: false
-    },
-    {
-      timestamp: "10:15",
-      action: "Pick Complete Scan",
-      quantity: 5,
-      taskId: "PICK789",
+      taskId: "PICK5847",
       workerId: "W456",
-      scannerId: "SC02", 
-      status: "error",
-      isAnomaly: true
-    },
-    {
-      timestamp: "12:00",
-      action: "Return Scan", 
-      quantity: 2,
-      taskId: "RET456",
-      workerId: "W789",
+      workerName: "Marcus Rodriguez",
       scannerId: "SC03",
       status: "verified",
-      isAnomaly: false
+      isAnomaly: false,
+      description: "Bulk corporate order start"
     },
     {
-      timestamp: "12:05",
-      action: "Return Scan",
-      quantity: 2, 
-      taskId: "RET456",
-      workerId: "W789",
-      scannerId: "SC03",
-      status: "duplicate",
-      isAnomaly: true
-    },
-    {
-      timestamp: "14:00",
+      timestamp: "14:22",
       action: "Pick Complete Scan",
       quantity: 8,
-      taskId: "PICK101",
-      workerId: "W123",
+      taskId: "PICK5847",
+      workerId: "W456",
+      workerName: "Marcus Rodriguez",
+      scannerId: "SC03",
+      status: "scanning_error",
+      isAnomaly: true,
+      description: "Scanner malfunction - only 8 scanned but 15 units taken",
+      actualQuantityTaken: 15,
+      scannerIssue: "barcode_reader_malfunction"
+    },
+    {
+      timestamp: "16:45",
+      action: "Return Scan",
+      quantity: 3,
+      taskId: "RET1203",
+      workerId: "W789",
+      workerName: "Linda Chen",
+      scannerId: "SC02",
+      status: "verified",
+      isAnomaly: false,
+      description: "Customer return - damaged packaging"
+    },
+    {
+      timestamp: "07:15",
+      action: "Adjustment Scan",
+      quantity: -5,
+      taskId: "ADJ9901",
+      workerId: "W001",
+      workerName: "System Admin",
       scannerId: "SC01",
-      status: "verified", 
-      isAnomaly: false
+      status: "verified",
+      isAnomaly: false,
+      description: "Damaged inventory removal - water damage"
     }
   ],
 
-  // Duplicate scans detected
+  // Error detection results - PICK5847 scanning issues
   duplicateScans: [
     {
-      originalTimestamp: "12:00:15",
-      originalQuantity: 2,
-      duplicateTimestamp: "12:05:22", 
-      duplicateQuantity: 2,
-      timeDifference: "5 minutes 7 seconds",
-      taskId: "RET456",
-      workerId: "W789",
-      impact: "medium"
+      originalTimestamp: "14:35:12",
+      originalQuantity: 5,
+      duplicateTimestamp: "14:35:15",
+      duplicateQuantity: 3,
+      timeDifference: "3 seconds",
+      taskId: "PICK5847",
+      workerId: "W2847",
+      scannerDevice: "SC-2847",
+      errorType: "partial_scan_retry",
+      impact: "high",
+      description: "Scanner timeout caused incomplete first scan (5 units), worker retried and got partial scan (3 units). System recorded 8 total instead of actual 15 units picked."
+    },
+    {
+      originalTimestamp: "14:35:18",
+      originalQuantity: 0,
+      duplicateTimestamp: "14:35:20",
+      duplicateQuantity: 0,
+      timeDifference: "2 seconds",
+      taskId: "PICK5847",
+      workerId: "W2847",
+      scannerDevice: "SC-2847",
+      errorType: "failed_scan_attempts",
+      impact: "critical",
+      description: "Multiple failed scan attempts due to hardware malfunction. Scanner unable to properly read barcode, resulted in incomplete quantity recording."
     }
   ],
 
@@ -3488,10 +4275,13 @@ export const warehouseFlowData = {
   // Recount data structure
   recount: {
     calculation: {
-      startingInventory: 20,
-      totalPicked: 10,
-      totalReturned: 2,
-      expectedQuantity: 12 // 20 - 10 + 2
+      startingInventory: 25, // PUT2023: +25 units
+      totalPickedRecorded: 8, // PICK5847: system recorded 8 picked
+      totalPickedActual: 15, // PICK5847: actually 15 units taken
+      totalReturned: 3, // RET1203: +3 units
+      totalAdjustments: -5, // ADJ9901: -5 damaged units
+      expectedQuantitySystem: 15, // 25 - 8 + 3 - 5 = 15 (what system thinks)
+      expectedQuantityPhysical: 8 // 25 - 15 + 3 - 5 = 8 (what's actually there)
     },
     result: {
       physicalCount: null, // Will be filled when user enters count
@@ -3506,37 +4296,43 @@ export const warehouseFlowData = {
   // Recount scenarios for testing different outcomes
   recountScenarios: [
     {
-      name: 'Matching Count',
-      enteredCount: 12,
-      expectedCount: 12,
+      name: 'Matching Physical Count',
+      enteredCount: 8,
+      expectedCount: 8, // Physical expected
+      systemCount: 15, // What system thinks
       variance: 0,
       varianceType: 'none',
-      edgeCase: 'resolved',
+      edgeCase: 'scanning_error_confirmed',
       status: 'resolved',
-      message: 'Physical count matches expected quantity. Discrepancy resolved.',
-      suggestedActions: ['Generate Resolution Report', 'Close Investigation']
+      message: 'Physical count confirms actual quantity. Scanning error in PICK5847 confirmed.',
+      suggestedActions: ['Update System Inventory', 'Schedule Scanner Training', 'Generate Resolution Report'],
+      systemAdjustment: -7 // System needs to reduce by 7
     },
     {
-      name: 'Higher Count (Mis-entry)',
-      enteredCount: 16,
-      expectedCount: 12,
+      name: 'Higher Count (Additional Items Found)',
+      enteredCount: 12,
+      expectedCount: 8,
+      systemCount: 15,
       variance: 4,
       varianceType: 'positive',
-      edgeCase: 'mis_entry',
+      edgeCase: 'items_found',
       status: 'requires_review',
-      message: 'Physical count is higher than expected. Potential scanning mis-entry detected.',
-      suggestedActions: ['Generate Discrepancy Report', 'Trigger Supervisor Audit', 'Verify Scan Accuracy']
+      message: 'More items found than expected. Possible misplaced inventory or return processing error.',
+      suggestedActions: ['Verify Item Locations', 'Check Return Processing', 'Generate Investigation Report'],
+      systemAdjustment: -3 // System still needs adjustment
     },
     {
-      name: 'Lower Count (Continue Investigation)',
-      enteredCount: 8,
-      expectedCount: 12,
-      variance: -4,
+      name: 'Lower Count (Potential Theft)',
+      enteredCount: 5,
+      expectedCount: 8,
+      systemCount: 15,
+      variance: -3,
       varianceType: 'negative',
-      edgeCase: 'continue_investigation',
-      status: 'needs_investigation',
-      message: 'Physical count is lower than expected. Continue investigation required.',
-      suggestedActions: ['Generate Discrepancy Report', 'Trigger Supervisor Audit', 'Adjust System Stock']
+      edgeCase: 'potential_theft',
+      status: 'critical_investigation',
+      message: 'Physical count lower than expected. Potential theft or additional unreported picking.',
+      suggestedActions: ['Security Investigation', 'Review Camera Footage', 'Supervisor Audit', 'Generate Incident Report'],
+      systemAdjustment: -10 // Large system adjustment needed
     }
   ],
 
