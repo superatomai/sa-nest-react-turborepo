@@ -3,14 +3,14 @@ export const warehouseFlowDSL = {
     "id": "warehouse-flow-container",
     "type": "div",
     "props": {
-      "className": "min-h-screen bg-gray-50 p-6"
+      "className": "ds-page-bg"
     },
     "children": [
       {
         "id": "flow-header",
         "type": "div",
         "props": {
-          "className": "max-w-6xl mx-auto mb-8"
+          "className": "ds-container ds-section-spacing"
         },
         "children": [
         ]
@@ -21,7 +21,7 @@ export const warehouseFlowDSL = {
         "id": "main-flow-content",
         "type": "div",
         "props": {
-          "className": "max-w-6xl mx-auto"
+          "className": "ds-container"
         },
         "children": [
           
@@ -37,7 +37,7 @@ export const warehouseFlowDSL = {
                 "id": "discrepancy-card",
                 "type": "div",
                 "props": {
-                  "className": "{{discrepancy.severity === 'high' ? 'bg-red-50 border-red-200' : 'bg-slate-50 border-slate-200'}} bg-white border rounded-xl p-6 mb-8 shadow-md"
+                  "className": "{{discrepancy.severity === 'high' ? 'ds-card ds-card-error' : 'ds-card'}} ds-item-spacing"
                 },
                 "children": [
                   {
@@ -58,7 +58,7 @@ export const warehouseFlowDSL = {
                             "id": "warning-icon",
                             "type": "div",
                             "props": {
-                              "className": "{{discrepancy.severity === 'high' ? 'w-10 h-10 bg-red-600' : 'w-10 h-10 bg-slate-600'}} rounded-full flex items-center justify-center text-white font-semibold text-xl"
+                              "className": "{{discrepancy.severity === 'high' ? 'ds-icon-lg bg-red-600' : 'ds-icon-lg'}} rounded-full flex items-center justify-center text-white ds-font-semibold ds-text-xl"
                             },
                             "children": ["⚠"]
                           },
@@ -66,7 +66,7 @@ export const warehouseFlowDSL = {
                             "id": "alert-title",
                             "type": "h2",
                             "props": {
-                              "className": "{{discrepancy.severity === 'high' ? 'text-2xl font-semibold text-red-600' : 'text-2xl font-semibold text-slate-700'}}"
+                              "className": "{{discrepancy.severity === 'high' ? 'ds-h2 ds-text-error' : 'ds-h2'}}"
                             },
                             "children": ["{{discrepancy.severity === 'high' ? 'CRITICAL ' : ''}}Discrepancy Alert Detected"]
                           }
@@ -76,7 +76,7 @@ export const warehouseFlowDSL = {
                         "id": "severity-badge",
                         "type": "span",
                         "props": {
-                          "className": "{{discrepancy.severity === 'high' ? 'bg-red-600 text-white' : 'bg-slate-600 text-white'}} px-3 py-1 rounded-lg text-sm font-medium"
+                          "className": "{{discrepancy.severity === 'high' ? 'ds-badge ds-badge-error' : 'ds-badge ds-badge-info'}}"
                         },
                         "children": ["{{discrepancy.severity === 'high' ? 'HIGH PRIORITY' : discrepancy.severity === 'medium' ? 'MEDIUM PRIORITY' : 'LOW PRIORITY'}}"]
                       }
@@ -116,7 +116,7 @@ export const warehouseFlowDSL = {
                             "id": "product-value",
                             "type": "div",
                             "props": {
-                              "className": "font-semibold text-gray-900 text-sm"
+                              "className": "ds-font-semibold ds-text-primary ds-text-sm"
                             },
                             "children": ["{{discrepancy.productName}}"]
                           },
@@ -149,7 +149,7 @@ export const warehouseFlowDSL = {
                             "id": "zone-value",
                             "type": "div",
                             "props": {
-                              "className": "font-semibold text-gray-900"
+                              "className": "ds-font-semibold ds-text-primary"
                             },
                             "children": ["{{discrepancy.zoneId}}"]
                           }
@@ -174,7 +174,7 @@ export const warehouseFlowDSL = {
                             "id": "physical-value",
                             "type": "div",
                             "props": {
-                              "className": "font-semibold text-red-600 text-xl"
+                              "className": "ds-font-semibold ds-text-error ds-text-xl"
                             },
                             "children": ["{{discrepancy.expectedQuantity}}"]
                           }
@@ -199,7 +199,7 @@ export const warehouseFlowDSL = {
                             "id": "system-value",
                             "type": "div",
                             "props": {
-                              "className": "font-semibold text-green-600 text-xl"
+                              "className": "ds-font-semibold ds-text-success ds-text-xl"
                             },
                             "children": ["{{discrepancy.systemQuantity}}"]
                           }
@@ -224,7 +224,7 @@ export const warehouseFlowDSL = {
                             "id": "value-amount",
                             "type": "div",
                             "props": {
-                              "className": "font-bold text-red-600 text-lg"
+                              "className": "ds-font-bold ds-text-error ds-text-lg"
                             },
                             "children": ["${{discrepancy.totalValue}}"]
                           },
@@ -255,7 +255,7 @@ export const warehouseFlowDSL = {
                     "id": "view-transactions-btn",
                     "type": "button",
                     "props": {
-                      "className": "bg-slate-700 hover:bg-slate-800 text-white px-4 py-3 rounded-lg font-medium transition-colors text-left shadow-sm",
+                      "className": "ds-btn ds-btn-primary text-left",
                       "onClick": "navigate_to_transactions"
                     },
                     "children": [
@@ -267,7 +267,7 @@ export const warehouseFlowDSL = {
                             "id": "transactions-btn-title",
                             "type": "div",
                             "props": {
-                              "className": "font-semibold text-lg mb-1"
+                              "className": "ds-font-semibold ds-text-lg mb-1"
                             },
                             "children": ["📋 View Recent Transactions"]
                           },
@@ -287,7 +287,7 @@ export const warehouseFlowDSL = {
                     "id": "ignore-alert-btn",
                     "type": "button",
                     "props": {
-                      "className": "{{discrepancy.severity === 'high' ? 'bg-red-600 hover:bg-red-700' : 'bg-gray-500 hover:bg-gray-600'}} text-white px-4 py-3 rounded-lg font-medium transition-colors text-left shadow-sm",
+                      "className": "{{discrepancy.severity === 'high' ? 'ds-btn ds-btn-error' : 'ds-btn ds-btn-secondary'}} text-left",
                       "onClick": "{{discrepancy.severity === 'high' ? 'escalate_to_supervisor' : 'ignore_alert'}}"
                     },
                     "children": [
@@ -299,7 +299,7 @@ export const warehouseFlowDSL = {
                             "id": "ignore-btn-title",
                             "type": "div",
                             "props": {
-                              "className": "font-semibold text-lg mb-1"
+                              "className": "ds-font-semibold ds-text-lg mb-1"
                             },
                             "children": ["{{discrepancy.severity === 'high' ? '🚨 Escalate to Supervisor' : '❌ Ignore Alert'}}"]
                           },
@@ -339,7 +339,7 @@ export const warehouseFlowDSL = {
                     "id": "transactions-title",
                     "type": "h2",
                     "props": {
-                      "className": "text-xl font-semibold text-gray-800"
+                      "className": "ds-h3"
                     },
                     "children": ["Recent Transactions - {{discrepancy.productId}}, {{discrepancy.zoneId}}"]
                   },
@@ -347,7 +347,7 @@ export const warehouseFlowDSL = {
                     "id": "back-to-alert-btn",
                     "type": "button",
                     "props": {
-                      "className": "bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg",
+                      "className": "ds-btn ds-btn-secondary",
                       "onClick": "navigate_to_alert"
                     },
                     "children": ["← Back to Alert"]
@@ -360,7 +360,7 @@ export const warehouseFlowDSL = {
                 "id": "investigation-summary",
                 "type": "div",
                 "props": {
-                  "className": "bg-slate-50 border border-slate-200 rounded-lg p-4 mb-6"
+                  "className": "ds-card ds-card-info ds-item-spacing"
                 },
                 "children": [
                   {
@@ -386,7 +386,7 @@ export const warehouseFlowDSL = {
                             "id": "summary-title",
                             "type": "h3",
                             "props": {
-                              "className": "text-sm font-medium text-blue-800 mb-1"
+                              "className": "ds-text-sm ds-font-medium ds-text-info mb-1"
                             },
                             "children": ["Transaction Analysis"]
                           },
@@ -410,7 +410,7 @@ export const warehouseFlowDSL = {
                 "id": "transactions-table-container",
                 "type": "div",
                 "props": {
-                  "className": "bg-white rounded-lg shadow border mb-6"
+                  "className": "ds-card ds-item-spacing"
                 },
                 "children": [
                   {
@@ -442,7 +442,7 @@ export const warehouseFlowDSL = {
                                 "id": "th-type",
                                 "type": "th",
                                 "props": {
-                                  "className": "px-6 py-4 text-left text-sm font-medium text-gray-600"
+                                  "className": "ds-table-header"
                                 },
                                 "children": ["Type"]
                               },
@@ -450,7 +450,7 @@ export const warehouseFlowDSL = {
                                 "id": "th-task-id",
                                 "type": "th",
                                 "props": {
-                                  "className": "px-6 py-4 text-left text-sm font-medium text-gray-600"
+                                  "className": "ds-table-header"
                                 },
                                 "children": ["Task ID"]
                               },
@@ -458,7 +458,7 @@ export const warehouseFlowDSL = {
                                 "id": "th-quantity",
                                 "type": "th",
                                 "props": {
-                                  "className": "px-6 py-4 text-left text-sm font-medium text-gray-600"
+                                  "className": "ds-table-header"
                                 },
                                 "children": ["Quantity"]
                               },
@@ -466,7 +466,7 @@ export const warehouseFlowDSL = {
                                 "id": "th-description",
                                 "type": "th",
                                 "props": {
-                                  "className": "px-6 py-4 text-left text-sm font-medium text-gray-600"
+                                  "className": "ds-table-header"
                                 },
                                 "children": ["Description"]
                               },
@@ -474,7 +474,7 @@ export const warehouseFlowDSL = {
                                 "id": "th-worker",
                                 "type": "th",
                                 "props": {
-                                  "className": "px-6 py-4 text-left text-sm font-medium text-gray-600"
+                                  "className": "ds-table-header"
                                 },
                                 "children": ["Worker"]
                               },
@@ -482,7 +482,7 @@ export const warehouseFlowDSL = {
                                 "id": "th-timestamp",
                                 "type": "th",
                                 "props": {
-                                  "className": "px-6 py-4 text-left text-sm font-medium text-gray-600"
+                                  "className": "ds-table-header"
                                 },
                                 "children": ["Timestamp"]
                               },
@@ -490,7 +490,7 @@ export const warehouseFlowDSL = {
                                 "id": "th-status",
                                 "type": "th",
                                 "props": {
-                                  "className": "px-6 py-4 text-left text-sm font-medium text-gray-600"
+                                  "className": "ds-table-header"
                                 },
                                 "children": ["Status"]
                               }
@@ -517,14 +517,14 @@ export const warehouseFlowDSL = {
                                 "id": "td-type",
                                 "type": "td",
                                 "props": {
-                                  "className": "px-6 py-4 whitespace-nowrap"
+                                  "className": "ds-table-cell"
                                 },
                                 "children": [
                                   {
                                     "id": "type-badge",
                                     "type": "span",
                                     "props": {
-                                      "className": "{{type === 'putaway' ? 'bg-green-100 text-green-800' : type === 'picking' ? 'bg-red-100 text-red-800' : 'bg-slate-100 text-slate-800'}} px-2 py-1 rounded-full text-sm font-medium"
+                                      "className": "{{type === 'putaway' ? 'ds-badge ds-badge-success' : type === 'picking' ? 'ds-badge ds-badge-error' : 'ds-badge ds-badge-neutral'}}"
                                     },
                                     "children": ["{{type.charAt(0).toUpperCase() + type.slice(1)}} {{status === 'discrepancy' ? '⚠️' : status === 'complete' ? '✅' : ''}}"]
                                   }
@@ -534,7 +534,7 @@ export const warehouseFlowDSL = {
                                 "id": "td-task-id",
                                 "type": "td",
                                 "props": {
-                                  "className": "px-6 py-4 whitespace-nowrap font-mono text-sm {{status === 'discrepancy' ? 'font-bold text-red-600' : 'text-gray-900'}}"
+                                  "className": "ds-table-cell ds-table-cell-mono {{status === 'discrepancy' ? 'ds-font-bold ds-text-error' : 'ds-text-primary'}}"
                                 },
                                 "children": ["{{taskId}}"]
                               },
@@ -542,7 +542,7 @@ export const warehouseFlowDSL = {
                                 "id": "td-quantity",
                                 "type": "td",
                                 "props": {
-                                  "className": "px-6 py-4 whitespace-nowrap text-sm {{status === 'discrepancy' ? 'font-bold text-red-600' : 'font-medium text-gray-900'}}"
+                                  "className": "ds-table-cell {{status === 'discrepancy' ? 'ds-font-bold ds-text-error' : 'ds-font-medium ds-text-primary'}}"
                                 },
                                 "children": ["{{type === 'putaway' || type === 'return' || type === 'adjustment' ? (quantity >= 0 ? '+' : '') : '-'}}{{Math.abs(quantity)}} units"]
                               },
@@ -550,7 +550,7 @@ export const warehouseFlowDSL = {
                                 "id": "td-description",
                                 "type": "td",
                                 "props": {
-                                  "className": "px-6 py-4 text-sm text-gray-700 max-w-xs"
+                                  "className": "ds-table-cell ds-text-secondary max-w-xs"
                                 },
                                 "children": ["{{description}}"]
                               },
@@ -604,7 +604,7 @@ export const warehouseFlowDSL = {
                                     "id": "status-badge",
                                     "type": "span",
                                     "props": {
-                                      "className": "{{status === 'discrepancy' ? 'bg-red-100 text-red-800' : status === 'complete' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}} px-2 py-1 rounded-full text-xs font-medium"
+                                      "className": "{{status === 'discrepancy' ? 'ds-badge ds-badge-error' : status === 'complete' ? 'ds-badge ds-badge-success' : 'ds-badge ds-badge-neutral'}}"
                                     },
                                     "children": ["{{status === 'discrepancy' ? 'SCANNING ERROR' : status === 'complete' ? 'COMPLETED' : status.toUpperCase()}}"]
                                   }
@@ -633,14 +633,14 @@ export const warehouseFlowDSL = {
                     "id": "total-transactions-card",
                     "type": "div",
                     "props": {
-                      "className": "bg-slate-50 border border-slate-200 rounded-lg p-4 text-center"
+                      "className": "ds-card ds-card-info text-center"
                     },
                     "children": [
                       {
                         "id": "total-count",
                         "type": "div",
                         "props": {
-                          "className": "text-3xl font-bold text-slate-700 mb-1"
+                          "className": "ds-stat-value"
                         },
                         "children": ["{{transactions.length}}"]
                       },
@@ -648,7 +648,7 @@ export const warehouseFlowDSL = {
                         "id": "total-label",
                         "type": "div",
                         "props": {
-                          "className": "text-sm font-medium text-slate-600"
+                          "className": "ds-stat-label"
                         },
                         "children": ["Total Transactions"]
                       }
@@ -658,14 +658,14 @@ export const warehouseFlowDSL = {
                     "id": "error-transactions-card",
                     "type": "div",
                     "props": {
-                      "className": "bg-red-50 border border-red-200 rounded-lg p-4 text-center"
+                      "className": "ds-card ds-card-error text-center"
                     },
                     "children": [
                       {
                         "id": "error-count",
                         "type": "div",
                         "props": {
-                          "className": "text-3xl font-bold text-red-600 mb-1"
+                          "className": "ds-stat-value ds-text-error"
                         },
                         "children": ["{{transactions.filter(t => t.status === 'error').length}}"]
                       },
@@ -673,7 +673,7 @@ export const warehouseFlowDSL = {
                         "id": "error-label",
                         "type": "div",
                         "props": {
-                          "className": "text-sm font-medium text-red-800"
+                          "className": "ds-stat-label ds-text-error"
                         },
                         "children": ["Error Transactions"]
                       }
@@ -683,14 +683,14 @@ export const warehouseFlowDSL = {
                     "id": "success-rate-card",
                     "type": "div",
                     "props": {
-                      "className": "bg-green-50 border border-green-200 rounded-lg p-4 text-center"
+                      "className": "ds-card ds-card-success text-center"
                     },
                     "children": [
                       {
                         "id": "success-percentage",
                         "type": "div",
                         "props": {
-                          "className": "text-3xl font-bold text-green-600 mb-1"
+                          "className": "ds-stat-value ds-text-success"
                         },
                         "children": ["{{Math.round((transactions.filter(t => t.status === 'complete').length / transactions.length) * 100)}}%"]
                       },
@@ -698,7 +698,7 @@ export const warehouseFlowDSL = {
                         "id": "success-label",
                         "type": "div",
                         "props": {
-                          "className": "text-sm font-medium text-green-800"
+                          "className": "ds-stat-label ds-text-success"
                         },
                         "children": ["Success Rate"]
                       }
@@ -719,7 +719,7 @@ export const warehouseFlowDSL = {
                     "id": "investigate-stock-movement-btn",
                     "type": "button",
                     "props": {
-                      "className": "bg-slate-700 hover:bg-slate-800 text-white px-6 py-3 rounded-lg font-medium transition-colors inline-flex items-center gap-3 shadow-sm",
+                      "className": "ds-btn ds-btn-primary ds-btn-lg inline-flex items-center gap-3",
                       "onClick": "navigate_to_stock_investigation"
                     },
                     "children": [
@@ -762,7 +762,7 @@ export const warehouseFlowDSL = {
                     "id": "investigation-title",
                     "type": "h2",
                     "props": {
-                      "className": "text-xl font-semibold text-gray-800"
+                      "className": "ds-h3"
                     },
                     "children": ["Stock Movement Investigation - PICK5847"]
                   },
@@ -770,7 +770,7 @@ export const warehouseFlowDSL = {
                     "id": "back-to-transactions-from-investigation-btn",
                     "type": "button",
                     "props": {
-                      "className": "bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg",
+                      "className": "ds-btn ds-btn-secondary",
                       "onClick": "navigate_to_transactions"
                     },
                     "children": ["← Back to Transactions"]
@@ -783,14 +783,14 @@ export const warehouseFlowDSL = {
                 "id": "investigation-task-summary",
                 "type": "div",
                 "props": {
-                  "className": "bg-red-50 border border-red-200 rounded-lg p-6 mb-6"
+                  "className": "ds-card ds-card-error ds-item-spacing"
                 },
                 "children": [
                   {
                     "id": "investigation-task-title",
                     "type": "h3",
                     "props": {
-                      "className": "text-lg font-semibold text-red-800 mb-4"
+                      "className": "ds-text-lg ds-font-semibold ds-text-error mb-4"
                     },
                     "children": ["⚠️ Task PICK5847 - Scanning Error Detected"]
                   },
@@ -820,7 +820,7 @@ export const warehouseFlowDSL = {
                             "id": "task-expected-value",
                             "type": "div",
                             "props": {
-                              "className": "text-2xl font-bold text-blue-600"
+                              "className": "ds-metric-value ds-text-info"
                             },
                             "children": ["15 units"]
                           }
@@ -845,7 +845,7 @@ export const warehouseFlowDSL = {
                             "id": "task-scanned-value",
                             "type": "div",
                             "props": {
-                              "className": "text-2xl font-bold text-red-600"
+                              "className": "ds-metric-value ds-text-error"
                             },
                             "children": ["8 units"]
                           }
@@ -870,7 +870,7 @@ export const warehouseFlowDSL = {
                             "id": "task-taken-value",
                             "type": "div",
                             "props": {
-                              "className": "text-2xl font-bold text-orange-600"
+                              "className": "ds-metric-value ds-text-warning"
                             },
                             "children": ["15 units"]
                           }
@@ -895,7 +895,7 @@ export const warehouseFlowDSL = {
                             "id": "task-worker-value",
                             "type": "div",
                             "props": {
-                              "className": "text-lg font-semibold text-gray-900"
+                              "className": "ds-text-lg ds-font-semibold ds-text-primary"
                             },
                             "children": ["Marcus Rodriguez (W456)"]
                           }
@@ -920,7 +920,7 @@ export const warehouseFlowDSL = {
                             "id": "task-difference-value",
                             "type": "div",
                             "props": {
-                              "className": "text-2xl font-bold text-red-600"
+                              "className": "ds-metric-value ds-text-error"
                             },
                             "children": ["7 units unscanned"]
                           }
@@ -943,7 +943,7 @@ export const warehouseFlowDSL = {
                     "id": "scan-logs-option",
                     "type": "div",
                     "props": {
-                      "className": "bg-white border border-gray-200 rounded-xl p-6 hover:shadow-md transition-all duration-200"
+                      "className": "ds-card ds-card-hover"
                     },
                     "children": [
                       {
@@ -957,7 +957,7 @@ export const warehouseFlowDSL = {
                             "id": "scan-logs-icon",
                             "type": "div",
                             "props": {
-                              "className": "w-8 h-8 bg-slate-100 rounded-full flex items-center justify-center mr-3"
+                              "className": "ds-icon-base bg-slate-100 rounded-full flex items-center justify-center mr-3"
                             },
                             "children": ["📊"]
                           },
@@ -965,7 +965,7 @@ export const warehouseFlowDSL = {
                             "id": "scan-logs-title",
                             "type": "h3",
                             "props": {
-                              "className": "text-lg font-semibold text-gray-900"
+                              "className": "ds-text-lg ds-font-semibold ds-text-primary"
                             },
                             "children": ["📱 Check Scan Logs"]
                           }
@@ -983,7 +983,7 @@ export const warehouseFlowDSL = {
                         "id": "scan-logs-button",
                         "type": "button",
                         "props": {
-                          "className": "w-full bg-slate-700 hover:bg-slate-800 text-white px-4 py-3 rounded-lg font-medium transition-colors shadow-sm",
+                          "className": "ds-btn ds-btn-primary ds-btn-full",
                           "onClick": "navigate_to_scan_logs"
                         },
                         "children": ["View Scan Logs"]
@@ -994,7 +994,7 @@ export const warehouseFlowDSL = {
                     "id": "duplicate-scan-option",
                     "type": "div",
                     "props": {
-                      "className": "bg-white border border-gray-200 rounded-xl p-6 hover:shadow-md transition-all duration-200"
+                      "className": "ds-card ds-card-hover"
                     },
                     "children": [
                       {
@@ -1008,7 +1008,7 @@ export const warehouseFlowDSL = {
                             "id": "duplicate-scan-icon",
                             "type": "div",
                             "props": {
-                              "className": "w-8 h-8 bg-slate-100 rounded-full flex items-center justify-center mr-3"
+                              "className": "ds-icon-base bg-slate-100 rounded-full flex items-center justify-center mr-3"
                             },
                             "children": ["🔍"]
                           },
@@ -1016,7 +1016,7 @@ export const warehouseFlowDSL = {
                             "id": "duplicate-scan-title",
                             "type": "h3",
                             "props": {
-                              "className": "text-lg font-semibold text-gray-900"
+                              "className": "ds-text-lg ds-font-semibold ds-text-primary"
                             },
                             "children": ["📋 Investigate PICK5847"]
                           }
@@ -1034,7 +1034,7 @@ export const warehouseFlowDSL = {
                         "id": "duplicate-scan-button",
                         "type": "button",
                         "props": {
-                          "className": "w-full bg-slate-600 hover:bg-slate-700 text-white px-4 py-3 rounded-lg font-medium transition-colors shadow-sm",
+                          "className": "ds-btn ds-btn-secondary ds-btn-full",
                           "onClick": "navigate_to_pick_task_investigation"
                         },
                         "children": ["View Task Details"]
@@ -1065,7 +1065,7 @@ export const warehouseFlowDSL = {
                     "id": "pick-task-title",
                     "type": "h2",
                     "props": {
-                      "className": "text-xl font-semibold text-gray-800"
+                      "className": "ds-h3"
                     },
                     "children": ["📋 PICK5847 Task Investigation"]
                   },
@@ -1073,7 +1073,7 @@ export const warehouseFlowDSL = {
                     "id": "back-to-stock-investigation-btn",
                     "type": "button",
                     "props": {
-                      "className": "bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg",
+                      "className": "ds-btn ds-btn-secondary",
                       "onClick": "navigate_to_stock_investigation"
                     },
                     "children": ["← Back to Investigation"]
@@ -1086,7 +1086,7 @@ export const warehouseFlowDSL = {
                 "id": "pick-task-details",
                 "type": "div",
                 "props": {
-                  "className": "bg-white rounded-lg shadow border p-6 mb-6"
+                  "className": "ds-card ds-item-spacing"
                 },
                 "children": [
                   {
@@ -1111,7 +1111,7 @@ export const warehouseFlowDSL = {
                                 "id": "task-id-label",
                                 "type": "label",
                                 "props": {
-                                  "className": "block text-sm font-medium text-gray-700 mb-1"
+                                  "className": "ds-text-sm ds-font-medium ds-text-secondary mb-1 block"
                                 },
                                 "children": ["Task ID"]
                               },
@@ -1119,7 +1119,7 @@ export const warehouseFlowDSL = {
                                 "id": "task-id-value",
                                 "type": "div",
                                 "props": {
-                                  "className": "text-lg font-mono font-bold text-red-600"
+                                  "className": "ds-text-lg ds-font-mono ds-font-bold ds-text-error"
                                 },
                                 "children": ["PICK5847"]
                               }
@@ -1136,7 +1136,7 @@ export const warehouseFlowDSL = {
                                 "id": "task-worker-label",
                                 "type": "label",
                                 "props": {
-                                  "className": "block text-sm font-medium text-gray-700 mb-1"
+                                  "className": "ds-text-sm ds-font-medium ds-text-secondary mb-1 block"
                                 },
                                 "children": ["Worker"]
                               },
@@ -1144,7 +1144,7 @@ export const warehouseFlowDSL = {
                                 "id": "task-worker-value",
                                 "type": "div",
                                 "props": {
-                                  "className": "text-lg font-semibold text-gray-900"
+                                  "className": "ds-text-lg ds-font-semibold ds-text-primary"
                                 },
                                 "children": ["Marcus Rodriguez (W456)"]
                               }
@@ -1158,7 +1158,7 @@ export const warehouseFlowDSL = {
                                 "id": "task-timestamp-label",
                                 "type": "label",
                                 "props": {
-                                  "className": "block text-sm font-medium text-gray-700 mb-1"
+                                  "className": "ds-text-sm ds-font-medium ds-text-secondary mb-1 block"
                                 },
                                 "children": ["Timestamp"]
                               },
@@ -1188,7 +1188,7 @@ export const warehouseFlowDSL = {
                                 "id": "required-qty-label",
                                 "type": "label",
                                 "props": {
-                                  "className": "block text-sm font-medium text-gray-700 mb-1"
+                                  "className": "ds-text-sm ds-font-medium ds-text-secondary mb-1 block"
                                 },
                                 "children": ["Order Required"]
                               },
@@ -1196,7 +1196,7 @@ export const warehouseFlowDSL = {
                                 "id": "required-qty-value",
                                 "type": "div",
                                 "props": {
-                                  "className": "text-2xl font-bold text-blue-600"
+                                  "className": "ds-stat-value ds-text-info"
                                 },
                                 "children": ["15 units"]
                               }
@@ -1213,7 +1213,7 @@ export const warehouseFlowDSL = {
                                 "id": "scanned-qty-label",
                                 "type": "label",
                                 "props": {
-                                  "className": "block text-sm font-medium text-gray-700 mb-1"
+                                  "className": "ds-text-sm ds-font-medium ds-text-secondary mb-1 block"
                                 },
                                 "children": ["Actually Scanned"]
                               },
@@ -1221,7 +1221,7 @@ export const warehouseFlowDSL = {
                                 "id": "scanned-qty-value",
                                 "type": "div",
                                 "props": {
-                                  "className": "text-2xl font-bold text-red-600"
+                                  "className": "ds-stat-value ds-text-error"
                                 },
                                 "children": ["8 units"]
                               }
@@ -1235,7 +1235,7 @@ export const warehouseFlowDSL = {
                                 "id": "taken-qty-label",
                                 "type": "label",
                                 "props": {
-                                  "className": "block text-sm font-medium text-gray-700 mb-1"
+                                  "className": "ds-text-sm ds-font-medium ds-text-secondary mb-1 block"
                                 },
                                 "children": ["Actually Taken"]
                               },
@@ -1243,7 +1243,7 @@ export const warehouseFlowDSL = {
                                 "id": "taken-qty-value",
                                 "type": "div",
                                 "props": {
-                                  "className": "text-2xl font-bold text-orange-600"
+                                  "className": "ds-stat-value ds-text-warning"
                                 },
                                 "children": ["15 units"]
                               }
@@ -1343,7 +1343,7 @@ export const warehouseFlowDSL = {
                         "id": "generate-report-btn",
                         "type": "button",
                         "props": {
-                          "className": "bg-slate-700 hover:bg-slate-800 text-white px-6 py-3 rounded-lg font-medium transition-colors",
+                          "className": "ds-btn ds-btn-primary ds-btn-lg",
                           "onClick": "generate_pick_task_report"
                         },
                         "children": ["📄 Generate PICK Task Report"]
@@ -1352,7 +1352,7 @@ export const warehouseFlowDSL = {
                         "id": "update-system-inventory-btn",
                         "type": "button",
                         "props": {
-                          "className": "bg-slate-600 hover:bg-slate-700 text-white px-6 py-3 rounded-lg font-medium transition-colors",
+                          "className": "ds-btn ds-btn-secondary ds-btn-lg",
                           "onClick": "update_system_inventory"
                         },
                         "children": ["🔧 Update System Inventory"]
@@ -1383,7 +1383,7 @@ export const warehouseFlowDSL = {
                     "id": "scan-logs-title",
                     "type": "h2",
                     "props": {
-                      "className": "text-xl font-semibold text-gray-800"
+                      "className": "ds-h3"
                     },
                     "children": ["📱 Scan Logs - Zone B-12 (PICK5847 Timeline)"]
                   },
@@ -1391,7 +1391,7 @@ export const warehouseFlowDSL = {
                     "id": "back-to-investigation-btn",
                     "type": "button",
                     "props": {
-                      "className": "bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg",
+                      "className": "ds-btn ds-btn-secondary",
                       "onClick": "navigate_to_stock_investigation"
                     },
                     "children": ["← Back to Investigation"]
@@ -1404,7 +1404,7 @@ export const warehouseFlowDSL = {
                 "id": "scan-logs-timeline",
                 "type": "div",
                 "props": {
-                  "className": "bg-white rounded-lg shadow border p-6 mb-6"
+                  "className": "ds-card ds-item-spacing"
                 },
                 "children": [
                   {
@@ -1490,14 +1490,14 @@ export const warehouseFlowDSL = {
                     "id": "total-scans-card",
                     "type": "div",
                     "props": {
-                      "className": "bg-slate-50 border border-slate-200 rounded-lg p-4 text-center"
+                      "className": "ds-card ds-card-info text-center"
                     },
                     "children": [
                       {
                         "id": "total-scans-value",
                         "type": "div",
                         "props": {
-                          "className": "text-3xl font-bold text-slate-700 mb-1"
+                          "className": "ds-stat-value"
                         },
                         "children": ["{{scanLogs.length}}"]
                       },
@@ -1505,7 +1505,7 @@ export const warehouseFlowDSL = {
                         "id": "total-scans-label",
                         "type": "div",
                         "props": {
-                          "className": "text-sm font-medium text-slate-600"
+                          "className": "ds-stat-label"
                         },
                         "children": ["Total Scans"]
                       }
@@ -1515,14 +1515,14 @@ export const warehouseFlowDSL = {
                     "id": "anomaly-scans-card",
                     "type": "div",
                     "props": {
-                      "className": "bg-red-50 border border-red-200 rounded-lg p-4 text-center"
+                      "className": "ds-card ds-card-error text-center"
                     },
                     "children": [
                       {
                         "id": "anomaly-scans-value",
                         "type": "div",
                         "props": {
-                          "className": "text-3xl font-bold text-red-600 mb-1"
+                          "className": "ds-stat-value ds-text-error"
                         },
                         "children": ["{{scanLogs.filter(log => log.isAnomaly).length}}"]
                       },
@@ -1530,7 +1530,7 @@ export const warehouseFlowDSL = {
                         "id": "anomaly-scans-label",
                         "type": "div",
                         "props": {
-                          "className": "text-sm font-medium text-red-800"
+                          "className": "ds-stat-label ds-text-error"
                         },
                         "children": ["Anomalies Found"]
                       }
@@ -1540,14 +1540,14 @@ export const warehouseFlowDSL = {
                     "id": "verified-scans-card",
                     "type": "div",
                     "props": {
-                      "className": "bg-green-50 border border-green-200 rounded-lg p-4 text-center"
+                      "className": "ds-card ds-card-success text-center"
                     },
                     "children": [
                       {
                         "id": "verified-scans-value",
                         "type": "div",
                         "props": {
-                          "className": "text-3xl font-bold text-green-600 mb-1"
+                          "className": "ds-stat-value ds-text-success"
                         },
                         "children": ["{{scanLogs.filter(log => log.status === 'verified').length}}"]
                       },
@@ -1555,7 +1555,7 @@ export const warehouseFlowDSL = {
                         "id": "verified-scans-label",
                         "type": "div",
                         "props": {
-                          "className": "text-sm font-medium text-green-800"
+                          "className": "ds-stat-label ds-text-success"
                         },
                         "children": ["Verified Scans"]
                       }
@@ -1599,7 +1599,7 @@ export const warehouseFlowDSL = {
                         "id": "generate-scan-report-btn",
                         "type": "button",
                         "props": {
-                          "className": "bg-slate-700 hover:bg-slate-800 text-white px-6 py-3 rounded-lg font-medium transition-colors",
+                          "className": "ds-btn ds-btn-primary ds-btn-lg",
                           "onClick": "generate_scan_logs_report"
                         },
                         "children": ["📄 Generate Scan Report"]
@@ -1608,7 +1608,7 @@ export const warehouseFlowDSL = {
                         "id": "schedule-scanner-maintenance-btn",
                         "type": "button",
                         "props": {
-                          "className": "bg-slate-600 hover:bg-slate-700 text-white px-6 py-3 rounded-lg font-medium transition-colors",
+                          "className": "ds-btn ds-btn-secondary ds-btn-lg",
                           "onClick": "schedule_scanner_maintenance"
                         },
                         "children": ["🔧 Schedule Scanner Maintenance"]
@@ -1640,7 +1640,7 @@ export const warehouseFlowDSL = {
                     "id": "camera-footage-title",
                     "type": "h2",
                     "props": {
-                      "className": "text-xl font-semibold text-gray-800"
+                      "className": "ds-h3"
                     },
                     "children": ["Camera Footage Review - {{discrepancy.zoneId}}"]
                   },
@@ -1648,7 +1648,7 @@ export const warehouseFlowDSL = {
                     "id": "back-to-investigation-camera-btn",
                     "type": "button",
                     "props": {
-                      "className": "bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg",
+                      "className": "ds-btn ds-btn-secondary",
                       "onClick": "navigate_to_stock_investigation"
                     },
                     "children": ["← Back to Investigation"]
@@ -1844,7 +1844,7 @@ export const warehouseFlowDSL = {
                     "id": "save-evidence-btn",
                     "type": "button",
                     "props": {
-                      "className": "bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors",
+                      "className": "ds-btn ds-btn-info ds-btn-lg",
                       "onClick": "save_footage_evidence"
                     },
                     "children": ["💾 Save as Evidence"]
@@ -1853,7 +1853,7 @@ export const warehouseFlowDSL = {
                     "id": "download-footage-btn",
                     "type": "button",
                     "props": {
-                      "className": "bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-lg font-medium transition-colors",
+                      "className": "ds-btn ds-btn-secondary ds-btn-lg",
                       "onClick": "download_footage"
                     },
                     "children": ["📥 Download Footage"]
@@ -1914,7 +1914,7 @@ export const warehouseFlowDSL = {
                     "id": "generate-camera-report-btn",
                     "type": "button",
                     "props": {
-                      "className": "bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-medium transition-colors",
+                      "className": "ds-btn ds-btn-success ds-btn-lg",
                       "onClick": "generate_camera_footage_report"
                     },
                     "children": ["📄 Generate Camera Analysis Report"]
@@ -1943,7 +1943,7 @@ export const warehouseFlowDSL = {
                     "id": "worker-profile-title",
                     "type": "h2",
                     "props": {
-                      "className": "text-xl font-semibold text-gray-800"
+                      "className": "ds-h3"
                     },
                     "children": ["Worker Profile - {{currentWorker.id}} ({{currentWorker.name}})"]
                   },
@@ -1951,7 +1951,7 @@ export const warehouseFlowDSL = {
                     "id": "back-to-transactions-btn",
                     "type": "button",
                     "props": {
-                      "className": "bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg",
+                      "className": "ds-btn ds-btn-secondary",
                       "onClick": "navigate_to_transactions"
                     },
                     "children": ["← Back to Transactions"]
@@ -1971,7 +1971,7 @@ export const warehouseFlowDSL = {
                     "id": "worker-total-tasks",
                     "type": "div",
                     "props": {
-                      "className": "bg-slate-50 border border-slate-200 rounded-lg p-4 text-center"
+                      "className": "ds-card ds-card-info text-center"
                     },
                     "children": [
                       {
@@ -1986,7 +1986,7 @@ export const warehouseFlowDSL = {
                         "id": "worker-total-label",
                         "type": "div",
                         "props": {
-                          "className": "text-sm font-medium text-slate-600"
+                          "className": "ds-stat-label"
                         },
                         "children": ["Total Tasks"]
                       }
@@ -2075,7 +2075,7 @@ export const warehouseFlowDSL = {
                 "id": "worker-recent-errors-section",
                 "type": "div",
                 "props": {
-                  "className": "bg-white rounded-lg shadow border p-6 mb-6"
+                  "className": "ds-card ds-item-spacing"
                 },
                 "children": [
                   {
@@ -2196,7 +2196,7 @@ export const warehouseFlowDSL = {
                     "id": "recount-title",
                     "type": "h2",
                     "props": {
-                      "className": "text-xl font-semibold text-gray-800"
+                      "className": "ds-h3"
                     },
                     "children": ["Physical Recount - {{discrepancy.productId}}, {{discrepancy.zoneId}}"]
                   },
@@ -2204,7 +2204,7 @@ export const warehouseFlowDSL = {
                     "id": "back-to-alert-recount-btn",
                     "type": "button",
                     "props": {
-                      "className": "bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg",
+                      "className": "ds-btn ds-btn-secondary",
                       "onClick": "navigate_to_alert"
                     },
                     "children": ["← Back to Alert"]
@@ -2349,7 +2349,7 @@ export const warehouseFlowDSL = {
                 "id": "recount-form",
                 "type": "div",
                 "props": {
-                  "className": "bg-white rounded-lg shadow border p-6 mb-6"
+                  "className": "ds-card ds-item-spacing"
                 },
                 "children": [
                   {
@@ -2434,7 +2434,7 @@ export const warehouseFlowDSL = {
                             "id": "recount-system-value",
                             "type": "div",
                             "props": {
-                              "className": "text-2xl font-bold text-red-600"
+                              "className": "ds-metric-value ds-text-error"
                             },
                             "children": ["{{discrepancy.systemQuantity}} units"]
                           }
@@ -2459,7 +2459,7 @@ export const warehouseFlowDSL = {
                             "id": "recount-difference-value",
                             "type": "div",
                             "props": {
-                              "className": "text-2xl font-bold text-orange-600"
+                              "className": "ds-metric-value ds-text-warning"
                             },
                             "children": ["{{discrepancy.systemQuantity - recount.calculation.expectedQuantity}} units"]
                           }
@@ -2520,7 +2520,7 @@ export const warehouseFlowDSL = {
                     "id": "recount-results-title",
                     "type": "h2",
                     "props": {
-                      "className": "text-xl font-semibold text-gray-800"
+                      "className": "ds-h3"
                     },
                     "children": ["Recount Results & Analysis"]
                   },
@@ -2528,7 +2528,7 @@ export const warehouseFlowDSL = {
                     "id": "back-to-recount-btn",
                     "type": "button",
                     "props": {
-                      "className": "bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg",
+                      "className": "ds-btn ds-btn-secondary",
                       "onClick": "navigate_to_recount"
                     },
                     "children": ["← Back to Recount"]
@@ -2620,7 +2620,7 @@ export const warehouseFlowDSL = {
                             "id": "physical-value",
                             "type": "div",
                             "props": {
-                              "className": "text-2xl font-bold text-blue-600"
+                              "className": "ds-stat-value ds-text-info"
                             },
                             "children": ["{{recount.result.physicalCount}}"]
                           }
@@ -2751,7 +2751,7 @@ export const warehouseFlowDSL = {
                 "id": "suggested-actions",
                 "type": "div",
                 "props": {
-                  "className": "bg-white rounded-lg shadow border p-6 mb-6"
+                  "className": "ds-card ds-item-spacing"
                 },
                 "children": [
                   {
@@ -2921,7 +2921,7 @@ export const warehouseFlowDSL = {
                     "id": "generate-report-title",
                     "type": "h2",
                     "props": {
-                      "className": "text-xl font-semibold text-gray-800"
+                      "className": "ds-h3"
                     },
                     "children": ["📄 Generate Discrepancy Report"]
                   },
@@ -2929,7 +2929,7 @@ export const warehouseFlowDSL = {
                     "id": "back-to-investigation-from-report-btn",
                     "type": "button",
                     "props": {
-                      "className": "bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg",
+                      "className": "ds-btn ds-btn-secondary",
                       "onClick": "navigate_to_stock_investigation"
                     },
                     "children": ["← Back to Investigation"]
@@ -2942,7 +2942,7 @@ export const warehouseFlowDSL = {
                 "id": "report-summary-card",
                 "type": "div",
                 "props": {
-                  "className": "bg-white rounded-lg shadow border p-6 mb-6"
+                  "className": "ds-card ds-item-spacing"
                 },
                 "children": [
                   {
@@ -3133,7 +3133,7 @@ export const warehouseFlowDSL = {
                     "id": "generate-final-report-btn",
                     "type": "button",
                     "props": {
-                      "className": "bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-medium transition-colors",
+                      "className": "ds-btn ds-btn-success ds-btn-lg",
                       "onClick": "navigate_to_resolution"
                     },
                     "children": ["✅ Generate & Send Report"]
@@ -3206,7 +3206,7 @@ export const warehouseFlowDSL = {
                     "id": "start-new-investigation-btn",
                     "type": "button",
                     "props": {
-                      "className": "bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors",
+                      "className": "ds-btn ds-btn-info ds-btn-lg",
                       "onClick": "start_new_investigation"
                     },
                     "children": ["Start New Investigation"]
@@ -3215,7 +3215,7 @@ export const warehouseFlowDSL = {
                     "id": "view-report-btn",
                     "type": "button",
                     "props": {
-                      "className": "bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-lg font-medium transition-colors",
+                      "className": "ds-btn ds-btn-secondary ds-btn-lg",
                       "onClick": "view_full_report"
                     },
                     "children": ["View Full Report"]

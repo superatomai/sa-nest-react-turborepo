@@ -1,9 +1,10 @@
 import { Routes, Route, useLocation, Navigate } from "react-router-dom";
 import {
-  OrganizationProfile, 
+  OrganizationProfile,
   useAuth,
   SignedIn,
 } from "@clerk/clerk-react";
+import "./styles/design-system.css";
 import Home from "./pages/Home";
 import Editor from "./pages/Editor";
 import Login from "./pages/Login";
