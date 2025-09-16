@@ -5,6 +5,8 @@ import { trpc, trpcClient } from '../utils/trpc'
 import { observer } from 'mobx-react-lite'
 import { useParams } from 'react-router-dom'
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000'
+
 const default_ui_schema:T_UI_Component = {
 	id: "ui_33O2Hf",
 	type: "div",
@@ -79,7 +81,7 @@ const EditorSSE = () => {
 			try {
 				// 1. Check if data agent is connected to the project (still via HTTP since it's WebSocket related)
 				console.log('📡 Checking data agent connection...');
-				const agentStatusResponse = await fetch(`http://localhost:3000/agent-status/${projectId}`);
+				const agentStatusResponse = await fetch(`${API_URL}/agent-status/${projectId}`);
 				const agentStatusData = await agentStatusResponse.json();
 				
 				if (!agentStatusData.success || !agentStatusData.data.hasAgent) {
@@ -122,7 +124,7 @@ const EditorSSE = () => {
 					// Fallback to WebSocket docs if not loaded from database
 					if (!docsData) {
 						console.log('📡 Fetching documentation from WebSocket...');
-						const docsResponse = await fetch(`http://localhost:3000/init-docs?projectId=${projectId}`);
+						const docsResponse = await fetch(`${API_URL}/init-docs?projectId=${projectId}`);
 						if (docsResponse.ok) {
 							docsData = await docsResponse.json();
 							setProjectDocs(docsData);
@@ -171,7 +173,7 @@ const EditorSSE = () => {
 					console.log('🤖 Generating new UI suggestions from docs...');
 
 					try {
-						const suggestionsResponse = await fetch('http://localhost:3000/init-ui', {
+						const suggestionsResponse = await fetch(`${API_URL}/init-ui`, {
 							method: 'POST',
 							headers: {
 								'Content-Type': 'application/json',
@@ -468,7 +470,7 @@ const EditorSSE = () => {
 		
 		try {
 			// Use the SSE endpoint from app controller
-			const response = await fetch('http://localhost:3000/generate-ui-sse', {
+			const response = await fetch(`${API_URL}/generate-ui-sse`, {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',

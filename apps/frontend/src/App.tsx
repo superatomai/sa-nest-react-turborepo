@@ -1,9 +1,8 @@
-import { Routes, Route, useLocation } from "react-router-dom";
+import { Routes, Route, useLocation, Navigate } from "react-router-dom";
 import {
-  OrganizationProfile,
-  SignIn,
-  SignUp,
+  OrganizationProfile, 
   useAuth,
+  SignedIn,
 } from "@clerk/clerk-react";
 import Home from "./pages/Home";
 import Editor from "./pages/Editor";
@@ -21,44 +20,46 @@ import SignUpPage from "./pages/SignUp";
 import { Toaster } from "react-hot-toast";
 
 export function App() {
-  const { organization, isLoaded } = useOrganization();
-  const { isSignedIn } = useAuth();
+  const { organization, isLoaded: orgLoaded } = useOrganization();
+  const { isSignedIn, isLoaded: authLoaded } = useAuth();
   const location = useLocation();
 
   useEffect(() => {
-    if (isLoaded) {
+    if (orgLoaded) {
       orgStore.setOrgId(organization?.id ?? null);
     }
-  }, [isLoaded, organization]);
+  }, [orgLoaded, organization]);
 
   const hideSidebar = location.pathname.startsWith("/editor");
   const isPublicRoute = [
     "/login",
+    "/sign-up",
     "/login/sso-callback",
     "/sign-in/sso-callback",
     "/sign-up/sso-callback",
-  ].includes(location.pathname);
+  ].some(path => location.pathname.startsWith(path));
 
-  if (isPublicRoute || !isSignedIn) {
+  // Show loading state while Clerk is initializing
+  if (!authLoaded || !orgLoaded) {
     return (
-      <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="/sign-up" element={<SignUpPage />} />
-        <Route
-          path="/login/sso-callback"
-          element={<SignIn routing="path" path="/login" />}
-        />
-        <Route
-          path="/sign-in/sso-callback"
-          element={<SignIn routing="path" path="/login" />}
-        />
-        <Route
-          path="/sign-up/sso-callback"
-          element={<SignUp routing="path" path="/sign-up" />}
-        />
-        <Route path="*" element={<Login />} />
-      </Routes>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
+      </div>
     );
+  }
+
+  // Now we know for sure the auth state is loaded
+  if (!isSignedIn) {
+    if (isPublicRoute) {
+      return (
+        <Routes>
+          <Route path="/login/*" element={<Login />} />
+          <Route path="/sign-up/*" element={<SignUpPage />} />
+          <Route path="*" element={<Navigate to="/login" replace />} />
+        </Routes>
+      );
+    }
+    return <Navigate to="/login" replace />;
   }
 
   return (
@@ -67,6 +68,8 @@ export function App() {
       {/* {!hideNavbar && <Navbar />} */}
       <div className="h-screen overflow-auto w-full flex-1">
         <Routes>
+          <Route path="/login" element={<Navigate to="/" replace />} />
+          <Route path="/sign-up" element={<Navigate to="/" replace />} />
           <Route
             path="/"
             element={
@@ -108,9 +111,9 @@ export function App() {
           <Route
             path="/create-organization"
             element={
-              <ProtectedRoute>
+              <SignedIn>
                 <CreateOrganizationWrapper />
-              </ProtectedRoute>
+              </SignedIn>
             }
           />
 
