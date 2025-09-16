@@ -1,8 +1,6 @@
 import { Routes, Route, useLocation, Navigate } from "react-router-dom";
 import {
-  OrganizationProfile,
-  SignIn,
-  SignUp,
+  OrganizationProfile, 
   useAuth,
   SignedIn,
 } from "@clerk/clerk-react";
