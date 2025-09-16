@@ -86,8 +86,9 @@ export function AppSidebar() {
             <SidebarGroupContent>
               {sidebar.open ? (
                 <div className="px-2 py-1">
-                  <OrganizationSwitcher 
+                  <OrganizationSwitcher
                     createOrganizationMode="modal"
+                    afterLeaveOrganizationUrl="/create-organization"
                     appearance={{
                       elements: {
                         rootBox: "w-full",
