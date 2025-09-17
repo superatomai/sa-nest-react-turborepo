@@ -158,27 +158,65 @@ const WarehouseApp = () => {
         },
 
         navigate_to_transactions: () => {
-            console.log('📋 Navigating to transactions');
+            console.log('📋 Navigating to transactions - starting loading');
+
+            // First navigate to transactions step with loading state
             updateFlowState((prev: any) => ({
                 ...prev,
                 currentFlow: {
-                    ...prev.currentFlow,
                     step: 'transactions',
                     breadcrumb: 'Home > Discrepancy Alert > Transactions'
+                },
+                loadingStates: {
+                    ...prev.loadingStates,
+                    transactions: true
                 }
             }));
+
+            console.log('Loading state set, will clear in 2 seconds');
+
+            // Simulate database fetch delay
+            setTimeout(() => {
+                console.log('Clearing loading state');
+                updateFlowState((prev: any) => ({
+                    ...prev,
+                    loadingStates: {
+                        ...prev.loadingStates,
+                        transactions: false
+                    }
+                }));
+            }, 2000);
         },
 
         navigate_to_investigation: () => {
-            console.log('🔍 Navigating to investigation');
+            console.log('🔍 Navigating to investigation - starting loading');
+
+            // First navigate to investigation step with loading state
             updateFlowState((prev: any) => ({
                 ...prev,
                 currentFlow: {
-                    ...prev.currentFlow,
                     step: 'stock_investigation',
                     breadcrumb: 'Home > Discrepancy Alert > Investigation'
+                },
+                loadingStates: {
+                    ...prev.loadingStates,
+                    stockInvestigation: true
                 }
             }));
+
+            console.log('Stock investigation loading state set, will clear in 2.5 seconds');
+
+            // Simulate database fetch delay
+            setTimeout(() => {
+                console.log('Clearing stock investigation loading state');
+                updateFlowState((prev: any) => ({
+                    ...prev,
+                    loadingStates: {
+                        ...prev.loadingStates,
+                        stockInvestigation: false
+                    }
+                }));
+            }, 2500);
         },
 
         navigate_to_stock_investigation: () => {

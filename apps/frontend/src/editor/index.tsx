@@ -49,7 +49,6 @@ const StudioTestPage = () => {
 				console.log('Loading existing UI for projectId:', projectId, 'uiId:', uiId);
 			
 				if (uidata && uidata.ui) {
-					console.log('Found UI data:', uidata.ui);
 					const ui_version = uidata.ui.uiVersion;
 
 					let dslToUse = null;
@@ -84,7 +83,6 @@ const StudioTestPage = () => {
 							
 							// Set conversations in messages state
 							if (conversations.length > 0) {
-								console.log('Loading conversations:', conversations);
 								setMessages(conversations);
 							}
 							
@@ -99,7 +97,7 @@ const StudioTestPage = () => {
 						console.error('Failed to fetch version data:', versionError);
 					}
 
-					console.log('dsl to use', dslToUse);
+					// console.log('dsl to use', dslToUse);
 						// Parse and set the DSL if we found it
 					if (dslToUse) {
 						try {
@@ -124,7 +122,7 @@ const StudioTestPage = () => {
 							console.error('Failed to parse DSL:', parseError);
 						}
 					} else {
-						console.log('No DSL found for this UI');
+						console.error('No DSL found for this UI');
 					}
 				}
 			} catch (error) {
@@ -328,20 +326,20 @@ const StudioTestPage = () => {
 	})
 
 	// Health check query (optional - to test tRPC connection)
-	const healthQuery = trpc.health.useQuery(undefined, {
-		refetchInterval: false, // Don't auto-refetch
-		retry: false
-	})
+	// const healthQuery = trpc.health.useQuery(undefined, {
+	// 	refetchInterval: false, // Don't auto-refetch
+	// 	retry: false
+	// })
 	
-	useEffect(() => {
-		// Optional: Log health check result
-		if (healthQuery.data) {
-			console.log('tRPC Health check:', healthQuery.data)
-		}
-		if (healthQuery.error) {
-			console.error('tRPC connection error:', healthQuery.error)
-		}
-	}, [healthQuery.data, healthQuery.error])
+	// useEffect(() => {
+	// 	// Optional: Log health check result
+	// 	if (healthQuery.data) {
+	// 		console.log('tRPC Health check:', healthQuery.data)
+	// 	}
+	// 	if (healthQuery.error) {
+	// 		console.error('tRPC connection error:', healthQuery.error)
+	// 	}
+	// }, [healthQuery.data, healthQuery.error])
 
 	
 

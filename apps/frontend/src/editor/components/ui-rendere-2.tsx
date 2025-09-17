@@ -1,4 +1,5 @@
 import React from 'react'
+import { useNodeSelection } from '../hooks/useNodeSelection'
 
 interface UIRendererProps {
     schema: any
@@ -6,6 +7,7 @@ interface UIRendererProps {
     handlers?: Record<string, Function>
     isStreaming?: boolean
     onRefresh?: () => void
+    enableSelection?: boolean // New prop to enable/disable selection
 }
 
 /**
@@ -195,15 +197,26 @@ class DataBindingResolver {
 const FLOWUIRenderer2 = ({
     schema,
     data = null,
-    handlers = {}
+    handlers = {},
+    enableSelection = false
 }: UIRendererProps) => {
     const bindingResolver = new DataBindingResolver()
+
+    // Use selection hook - will be null if not within NodeSelectionProvider
+    let selectionHook = null
+    try {
+        selectionHook = useNodeSelection()
+    } catch {
+        // Not within NodeSelectionProvider - selection disabled
+        selectionHook = null
+    }
 
     const renderComponent = (
         component: any,
         contextData: any = data,
         key?: number | string,
-        iterationPath: string[] = []
+        iterationPath: string[] = [],
+        componentPath: number[] = [] // Track path in the component tree
     ): React.ReactNode => {
         // Handle primitive values
         if (typeof component === 'string') {
@@ -222,7 +235,7 @@ const FLOWUIRenderer2 = ({
             return null
         }
 
-        const normalizedType = type.toLowerCase().trim()
+        let normalizedType = type.toLowerCase().trim()
 
         // Valid HTML elements
         const validElements = new Set([
@@ -236,8 +249,8 @@ const FLOWUIRenderer2 = ({
         ])
 
         if (!validElements.has(normalizedType)) {
-            console.warn('Invalid HTML element:', normalizedType)
-            return null
+            console.warn('Invalid HTML element:', normalizedType, '→ defaulting to div')
+            normalizedType = 'div'
         }
 
         try {
@@ -275,6 +288,79 @@ const FLOWUIRenderer2 = ({
                 processedProps.key = key
             }
 
+            // Add selection functionality if enabled
+            if (enableSelection && selectionHook && selectionHook.isSelectionEnabled) {
+                const isSelectable = selectionHook.isNodeSelectable(componentPath)
+                const isSelected = selectionHook.isNodeSelected(id, componentPath)
+                const isHovered = selectionHook.isNodeHovered(id, componentPath)
+
+                if (isSelectable) {
+                    // Add selection styles
+                    let selectionStyles = 'relative transition-all duration-200 '
+
+                    if (isSelected) {
+                        selectionStyles += 'ring-2 ring-blue-500 ring-offset-2 bg-blue-50/50 '
+                    } else if (isHovered) {
+                        selectionStyles += 'ring-2 ring-blue-300 ring-offset-1 bg-blue-50/30 '
+                    } else {
+                        selectionStyles += 'hover:ring-2 hover:ring-blue-200 hover:ring-offset-1 hover:bg-blue-50/20 '
+                    }
+
+                    // Add cursor pointer for selectable items
+                    selectionStyles += 'cursor-pointer '
+
+                    // Merge with existing className
+                    const existingClassName = processedProps.className || ''
+                    processedProps.className = `${existingClassName} ${selectionStyles}`.trim()
+
+                    // Add selection event handlers
+                    const originalOnClick = processedProps.onClick
+
+                    processedProps.onClick = (e: React.MouseEvent) => {
+                        e.stopPropagation()
+
+                        // Handle original click if it exists
+                        if (originalOnClick && typeof originalOnClick === 'function') {
+                            originalOnClick(e)
+                        }
+
+                        // Handle selection
+                        selectionHook.selectNode(id, componentPath)
+                    }
+
+                    // Add double-click handler for navigation
+                    processedProps.onDoubleClick = (e: React.MouseEvent) => {
+                        e.stopPropagation()
+                        if (isSelected) {
+                            selectionHook.navigateToChildren()
+                        }
+                    }
+
+                    // Add hover handlers
+                    processedProps.onMouseEnter = (e: React.MouseEvent) => {
+                        e.stopPropagation()
+                        selectionHook.setHoveredNode(id, componentPath)
+                    }
+
+                    processedProps.onMouseLeave = (e: React.MouseEvent) => {
+                        e.stopPropagation()
+                        selectionHook.setHoveredNode(null)
+                    }
+
+                    // Add selection indicator
+                    if (isSelected || isHovered) {
+                        const indicatorText = isSelected ? 'Selected' : 'Hovering'
+                        const indicatorColor = isSelected ? 'bg-blue-500' : 'bg-blue-300'
+
+                        // We'll add the indicator as a pseudo-element using CSS-in-JS style
+                        processedProps.style = {
+                            ...processedProps.style,
+                            position: 'relative'
+                        }
+                    }
+                }
+            }
+
             // Handle array binding (iteration)
             if (binding && !iterationPath.includes(binding)) {
                 const boundData = bindingResolver.getRawValue(binding, currentData)
@@ -286,11 +372,13 @@ const FLOWUIRenderer2 = ({
                     boundData.forEach((item, index) => {
                         children.forEach((child: any, childIndex: number) => {
                             const itemKey = `${binding}-${index}-${childIndex}`
+                            const childPath = [...componentPath, childIndex]
                             const renderedChild = renderComponent(
                                 child,
                                 item, // Each array item becomes the context
                                 itemKey,
-                                [...iterationPath, binding]
+                                [...iterationPath, binding],
+                                childPath
                             )
                             if (renderedChild !== null) {
                                 renderedItems.push(renderedChild)
@@ -307,11 +395,13 @@ const FLOWUIRenderer2 = ({
                     // Handle object binding
                     const renderedChildren = children.map((child: any, index: number) => {
                         const childKey = `${binding}-object-${index}`
+                        const childPath = [...componentPath, index]
                         return renderComponent(
                             child,
                             boundData,
                             childKey,
-                            [...iterationPath, binding]
+                            [...iterationPath, binding],
+                            childPath
                         )
                     }).filter((child: React.ReactNode) => child !== null)
 
@@ -326,7 +416,8 @@ const FLOWUIRenderer2 = ({
             // Regular children rendering (no binding)
             const renderedChildren = children.map((child: any, index: number) => {
                 const childKey = `${id || type}-${index}`
-                return renderComponent(child, currentData, childKey, iterationPath)
+                const childPath = [...componentPath, index]
+                return renderComponent(child, currentData, childKey, iterationPath, childPath)
             }).filter((child: React.ReactNode) => child !== null)
 
             // Handle self-closing elements
@@ -369,7 +460,7 @@ const FLOWUIRenderer2 = ({
 
     return (
         <div className="universal-ui-renderer">
-            {renderComponent(schema, data, 'root')}
+            {renderComponent(schema, data, 'root', [], [])}
         </div>
     )
 }

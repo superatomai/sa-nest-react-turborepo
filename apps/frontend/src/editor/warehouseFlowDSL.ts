@@ -405,12 +405,53 @@ export const warehouseFlowDSL = {
                 ]
               },
 
-              // Transactions Table
+              // Transactions Table with Loading State
+              {
+                "id": "transactions-loading-container",
+                "type": "div",
+                "props": {
+                  "className": "{{loadingStates.transactions ? 'block' : 'hidden'}} ds-card ds-item-spacing"
+                },
+                "children": [
+                  {
+                    "id": "transactions-loading-content",
+                    "type": "div",
+                    "props": {
+                      "className": "flex flex-col items-center justify-center py-16"
+                    },
+                    "children": [
+                      {
+                        "id": "transactions-loading-spinner",
+                        "type": "div",
+                        "props": {
+                          "className": "animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"
+                        }
+                      },
+                      {
+                        "id": "transactions-loading-text",
+                        "type": "div",
+                        "props": {
+                          "className": "text-gray-600 text-lg font-medium"
+                        },
+                        "children": ["Loading transaction data..."]
+                      },
+                      {
+                        "id": "transactions-loading-subtext",
+                        "type": "div",
+                        "props": {
+                          "className": "text-gray-500 text-sm mt-2"
+                        },
+                        "children": ["Fetching records from database"]
+                      }
+                    ]
+                  }
+                ]
+              },
               {
                 "id": "transactions-table-container",
                 "type": "div",
                 "props": {
-                  "className": "ds-card ds-item-spacing"
+                  "className": "{{loadingStates.transactions ? 'hidden' : 'block'}} ds-card ds-item-spacing"
                 },
                 "children": [
                   {
@@ -900,12 +941,54 @@ export const warehouseFlowDSL = {
             ]
           },
 
+          // Step 3: Stock Investigation Loading
+          {
+            "id": "stock-investigation-loading",
+            "type": "div",
+            "props": {
+              "className": "{{currentFlow.step === 'stock_investigation' && loadingStates.stockInvestigation ? 'block' : 'hidden'}}"
+            },
+            "children": [
+              {
+                "id": "stock-investigation-loading-content",
+                "type": "div",
+                "props": {
+                  "className": "ds-card text-center py-16"
+                },
+                "children": [
+                  {
+                    "id": "stock-investigation-spinner",
+                    "type": "div",
+                    "props": {
+                      "className": "animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-6"
+                    }
+                  },
+                  {
+                    "id": "stock-investigation-loading-title",
+                    "type": "div",
+                    "props": {
+                      "className": "text-gray-700 text-xl font-semibold mb-2"
+                    },
+                    "children": ["Analyzing Stock Movement"]
+                  },
+                  {
+                    "id": "stock-investigation-loading-subtitle",
+                    "type": "div",
+                    "props": {
+                      "className": "text-gray-500 text-base"
+                    },
+                    "children": ["Fetching PICK task data and scanner logs..."]
+                  }
+                ]
+              }
+            ]
+          },
           // Step 3: Stock Investigation
           {
             "id": "step-3-stock-investigation",
             "type": "div",
             "props": {
-              "className": "{{currentFlow.step === 'stock_investigation' ? 'block' : 'hidden'}}"
+              "className": "{{currentFlow.step === 'stock_investigation' && !loadingStates.stockInvestigation ? 'block' : 'hidden'}}"
             },
             "children": [
               {
@@ -4523,5 +4606,14 @@ export const warehouseFlowData = {
     isVisible: false,
     workerId: "",
     workerName: ""
+  },
+
+  // Loading states for database operations
+  loadingStates: {
+    transactions: false,
+    stockInvestigation: false,
+    scanLogs: false,
+    cameraFootage: false,
+    workerProfile: false
   }
 };

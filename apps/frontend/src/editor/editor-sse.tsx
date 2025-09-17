@@ -1,9 +1,11 @@
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, useCallback } from 'react'
+import toast from 'react-hot-toast'
 import { T_UI_Component } from '../types/ui-schema'
 import FLOWUIRenderer from './components/ui-renderer'
 import { trpc, trpcClient } from '../utils/trpc'
 import { observer } from 'mobx-react-lite'
 import { useParams } from 'react-router-dom'
+import SelectableUIRenderer from './components/SelectableUIRenderer'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000'
 
@@ -71,153 +73,153 @@ const EditorSSE = () => {
 		}
 	});	
 
-	useEffect(() => {
-		//initialising the project using tRPC services
-		(async () => {
-			if (!projectId || projectId === "") return;
+	// useEffect(() => {
+	// 	//initialising the project using tRPC services
+	// 	(async () => {
+	// 		if (!projectId || projectId === "") return;
 
-			console.log('🚀 Initializing project: ', projectId);
+	// 		console.log('🚀 Initializing project: ', projectId);
 
-			try {
-				// 1. Check if data agent is connected to the project (still via HTTP since it's WebSocket related)
-				console.log('📡 Checking data agent connection...');
-				const agentStatusResponse = await fetch(`${API_URL}/agent-status/${projectId}`);
-				const agentStatusData = await agentStatusResponse.json();
+	// 		try {
+	// 			// 1. Check if data agent is connected to the project (still via HTTP since it's WebSocket related)
+	// 			console.log('📡 Checking data agent connection...');
+	// 			const agentStatusResponse = await fetch(`${API_URL}/agent-status/${projectId}`);
+	// 			const agentStatusData = await agentStatusResponse.json();
 				
-				if (!agentStatusData.success || !agentStatusData.data.hasAgent) {
-					console.warn('⚠️ No data agent connected to project', projectId);
-					return ;
-				} 
+	// 			if (!agentStatusData.success || !agentStatusData.data.hasAgent) {
+	// 				console.warn('⚠️ No data agent connected to project', projectId);
+	// 				return ;
+	// 			} 
 
-				console.log('✅ Data agent connected:', agentStatusData.data);
+	// 			console.log('✅ Data agent connected:', agentStatusData.data);
 
-				// 2. Get project with docs and UI list using tRPC
-				console.log('📚 Fetching project, docs and UI list via tRPC...');
+	// 			// 2. Get project with docs and UI list using tRPC
+	// 			console.log('📚 Fetching project, docs and UI list via tRPC...');
 
-				const projectResult = await trpcClient.projectWithDocsAndUi.query({ projId: parseInt(projectId) });
-				let docsData = null;
-				let existingUiList = null;
+	// 			const projectResult = await trpcClient.projectWithDocsAndUi.query({ projId: parseInt(projectId) });
+	// 			let docsData = null;
+	// 			let existingUiList = null;
 
-				if (projectResult && projectResult.project && projectResult.project.length > 0) {
-					const project = projectResult.project[0];
-					console.log('✅ Project data loaded:', project);
+	// 			if (projectResult && projectResult.project && projectResult.project.length > 0) {
+	// 				const project = projectResult.project[0];
+	// 				console.log('✅ Project data loaded:', project);
 					
-					// 3. Load docs if project has docs reference  
-					if (project.docs) {
-						console.log('📖 Loading documentation from database...');
-						try {
-							// Use trpcClient for direct calls instead of hooks
-							const dbDocsData = await trpcClient.getDocs.query({ id: project.docs });
-							if (dbDocsData) {
-								docsData = dbDocsData;
-								setProjectDocs(docsData);
-								console.log('✅ Documentation loaded from database');
-							}
-						} catch (docsError) {
-							console.warn('⚠️ Failed to load docs from database:', docsError);
-							return;
-						}
-					} else {
-						console.warn('⚠️ No docs found');
-					}
+	// 				// 3. Load docs if project has docs reference  
+	// 				if (project.docs) {
+	// 					console.log('📖 Loading documentation from database...');
+	// 					try {
+	// 						// Use trpcClient for direct calls instead of hooks
+	// 						const dbDocsData = await trpcClient.getDocs.query({ id: project.docs });
+	// 						if (dbDocsData) {
+	// 							docsData = dbDocsData;
+	// 							setProjectDocs(docsData);
+	// 							console.log('✅ Documentation loaded from database');
+	// 						}
+	// 					} catch (docsError) {
+	// 						console.warn('⚠️ Failed to load docs from database:', docsError);
+	// 						return;
+	// 					}
+	// 				} else {
+	// 					console.warn('⚠️ No docs found');
+	// 				}
 					
-					// Fallback to WebSocket docs if not loaded from database
-					if (!docsData) {
-						console.log('📡 Fetching documentation from WebSocket...');
-						const docsResponse = await fetch(`${API_URL}/init-docs?projectId=${projectId}`);
-						if (docsResponse.ok) {
-							docsData = await docsResponse.json();
-							setProjectDocs(docsData);
-							console.log('✅ Docs fetched from WebSocket');
+	// 				// Fallback to WebSocket docs if not loaded from database
+	// 				if (!docsData) {
+	// 					console.log('📡 Fetching documentation from WebSocket...');
+	// 					const docsResponse = await fetch(`${API_URL}/init-docs?projectId=${projectId}`);
+	// 					if (docsResponse.ok) {
+	// 						docsData = await docsResponse.json();
+	// 						setProjectDocs(docsData);
+	// 						console.log('✅ Docs fetched from WebSocket');
 
 
-							//save the docs to the database
-							if (docsData.success) {
-								console.log('💾 Saving docs to database...');
-								createDocsMutation.mutate({
-									projId: parseInt(projectId),
-									docs: docsData.data
-								})
-							}
-						} else {
-							console.warn('⚠️ Failed to fetch docs from WebSocket');
-							return;
-						}
-					}
+	// 						//save the docs to the database
+	// 						if (docsData.success) {
+	// 							console.log('💾 Saving docs to database...');
+	// 							createDocsMutation.mutate({
+	// 								projId: parseInt(projectId),
+	// 								docs: docsData.data
+	// 							})
+	// 						}
+	// 					} else {
+	// 						console.warn('⚠️ Failed to fetch docs from WebSocket');
+	// 						return;
+	// 					}
+	// 				}
 
-					// 4. Load existing UI list if project has one
-					if (project.uiList) {
-						console.log('🎨 Loading existing UI suggestions from database...');
-						try {
-							const uiListData = await trpcClient.getUiList.query({ id: project.uiList });
-							if (uiListData && (uiListData as any).uiList && (uiListData as any).uiList.length > 0) {
-								const dbUiList = (uiListData as any).uiList[0];
-								if (dbUiList && dbUiList.uiList) {
-									existingUiList = dbUiList.uiList;
-									setUiSuggestions(existingUiList);
-									console.log('✅ Existing UI suggestions loaded:', existingUiList);
-								}
-							}
-						} catch (uiListError) {
-							console.warn('⚠️ Failed to load UI suggestions from database:', uiListError);
-							return;
-						}
-					}
-				}  else {
-					console.warn('⚠️ No project data found');
-					return;
-				}
+	// 				// 4. Load existing UI list if project has one
+	// 				if (project.uiList) {
+	// 					console.log('🎨 Loading existing UI suggestions from database...');
+	// 					try {
+	// 						const uiListData = await trpcClient.getUiList.query({ id: project.uiList });
+	// 						if (uiListData && (uiListData as any).uiList && (uiListData as any).uiList.length > 0) {
+	// 							const dbUiList = (uiListData as any).uiList[0];
+	// 							if (dbUiList && dbUiList.uiList) {
+	// 								existingUiList = dbUiList.uiList;
+	// 								setUiSuggestions(existingUiList);
+	// 								console.log('✅ Existing UI suggestions loaded:', existingUiList);
+	// 							}
+	// 						}
+	// 					} catch (uiListError) {
+	// 						console.warn('⚠️ Failed to load UI suggestions from database:', uiListError);
+	// 						return;
+	// 					}
+	// 				}
+	// 			}  else {
+	// 				console.warn('⚠️ No project data found');
+	// 				return;
+	// 			}
 
-				// 5. Generate new UI suggestions if we don't have them and have docs
-				if (!existingUiList && docsData && agentStatusData.data.hasAgent) {
-					console.log('🤖 Generating new UI suggestions from docs...');
+	// 			// 5. Generate new UI suggestions if we don't have them and have docs
+	// 			if (!existingUiList && docsData && agentStatusData.data.hasAgent) {
+	// 				console.log('🤖 Generating new UI suggestions from docs...');
 
-					try {
-						const suggestionsResponse = await fetch(`${API_URL}/init-ui`, {
-							method: 'POST',
-							headers: {
-								'Content-Type': 'application/json',
-							},
-							body: JSON.stringify({
-								docsInfo: docsData.data || docsData,
-								projectId: projectId
-							})
-						});
+	// 				try {
+	// 					const suggestionsResponse = await fetch(`${API_URL}/init-ui`, {
+	// 						method: 'POST',
+	// 						headers: {
+	// 							'Content-Type': 'application/json',
+	// 						},
+	// 						body: JSON.stringify({
+	// 							docsInfo: docsData.data || docsData,
+	// 							projectId: projectId
+	// 						})
+	// 					});
 
-						if (suggestionsResponse.ok) {
-							const suggestionsData = await suggestionsResponse.json();
-							const suggestions = suggestionsData.data || [];
-							setUiSuggestions(suggestions);
-							console.log('✅ UI suggestions generated:', suggestions);
+	// 					if (suggestionsResponse.ok) {
+	// 						const suggestionsData = await suggestionsResponse.json();
+	// 						const suggestions = suggestionsData.data || [];
+	// 						setUiSuggestions(suggestions);
+	// 						console.log('✅ UI suggestions generated:', suggestions);
 
-							// 6. Save suggestions to database using tRPC
-							if (suggestions.length > 0) {
-								console.log('💾 Saving UI suggestions to database...');
-								createUiListMutation.mutate({
-									projId: parseInt(projectId),
-									uiList: suggestions
-								})
-							}
-						} else {
-							console.warn('⚠️ Failed to generate UI suggestions:', suggestionsResponse.statusText);
-							return;
-						}
-					} catch (error) {
-						console.error('❌ Error generating UI suggestions:', error);
-						return;
-					}
-				}
+	// 						// 6. Save suggestions to database using tRPC
+	// 						if (suggestions.length > 0) {
+	// 							console.log('💾 Saving UI suggestions to database...');
+	// 							createUiListMutation.mutate({
+	// 								projId: parseInt(projectId),
+	// 								uiList: suggestions
+	// 							})
+	// 						}
+	// 					} else {
+	// 						console.warn('⚠️ Failed to generate UI suggestions:', suggestionsResponse.statusText);
+	// 						return;
+	// 					}
+	// 				} catch (error) {
+	// 					console.error('❌ Error generating UI suggestions:', error);
+	// 					return;
+	// 				}
+	// 			}
 
-				console.log('✅ Project initialization complete');
+	// 			console.log('✅ Project initialization complete');
 
 
-			} catch (error) {
-				console.error('❌ Error during project initialization:', error);
-				return;
-			}
-		})();
+	// 		} catch (error) {
+	// 			console.error('❌ Error during project initialization:', error);
+	// 			return;
+	// 		}
+	// 	})();
 
-	}, [projectId])
+	// }, [projectId])
 
 	useEffect(() => {
 		if (uiId && uidata) {
@@ -238,7 +240,6 @@ const EditorSSE = () => {
 				console.log('Loading existing UI for projectId:', projectId, 'uiId:', uiId);
 			
 				if (uidata && uidata.ui) {
-					console.log('Found UI data:', uidata.ui);
 					const ui_version = uidata.ui.uiVersion;
 
 					let dslToUse = null;
@@ -273,7 +274,6 @@ const EditorSSE = () => {
 							
 							// Set conversations in messages state
 							if (conversations.length > 0) {
-								console.log('Loading conversations:', conversations);
 								setMessages(conversations);
 							}
 							
@@ -288,7 +288,7 @@ const EditorSSE = () => {
 						console.error('Failed to fetch version data:', versionError);
 					}
 
-					console.log('dsl to use', dslToUse);
+					// console.log('dsl to use', dslToUse);
 						// Parse and set the DSL if we found it
 					if (dslToUse) {
 						try {
@@ -313,7 +313,7 @@ const EditorSSE = () => {
 							console.error('Failed to parse DSL:', parseError);
 						}
 					} else {
-						console.log('No DSL found for this UI');
+						console.error('No DSL found for this UI');
 					}
 				}
 			} catch (error) {
@@ -330,11 +330,11 @@ const EditorSSE = () => {
 	const [promptHistory, setPromptHistory] = useState<string[]>([])
 	const [historyIndex, setHistoryIndex] = useState(-1)
 
-		// Health check query (optional - to test tRPC connection)
-	const healthQuery = trpc.health.useQuery(undefined, {
-		refetchInterval: false, // Don't auto-refetch
-		retry: false
-	})
+	// 	// Health check query (optional - to test tRPC connection)
+	// const healthQuery = trpc.health.useQuery(undefined, {
+	// 	refetchInterval: false, // Don't auto-refetch
+	// 	retry: false
+	// })
 
 	// Local storage key for prompt history
 	const PROMPT_HISTORY_KEY = 'prompt_history'
@@ -354,15 +354,15 @@ const EditorSSE = () => {
 		}
 	}, [])
 
-	useEffect(() => {
-		// Optional: Log health check result
-		if (healthQuery.data) {
-			console.log('tRPC Health check:', healthQuery.data)
-		}
-		if (healthQuery.error) {
-			console.error('tRPC connection error:', healthQuery.error)
-		}
-	}, [healthQuery.data, healthQuery.error])
+	// useEffect(() => {
+	// 	// Optional: Log health check result
+	// 	if (healthQuery.data) {
+	// 		console.log('tRPC Health check:', healthQuery.data)
+	// 	}
+	// 	if (healthQuery.error) {
+	// 		console.error('tRPC connection error:', healthQuery.error)
+	// 	}
+	// }, [healthQuery.data, healthQuery.error])
 
 	// Save prompt to history and localStorage
 	const savePromptToHistory = (prompt: string) => {
@@ -430,6 +430,7 @@ const EditorSSE = () => {
 				});
 			} else {
 				console.error('UI not found with uiId:', uiId);
+				toast.error('Failed to find UI record')
 				setMessages(prev => [...prev, {
 					role: 'assistant',
 					content: 'Failed to find UI record. Please try again.'
@@ -438,6 +439,7 @@ const EditorSSE = () => {
 		},
 		onError: (error) => {
 			console.error('Create version error:', error)
+			toast.error('Failed to save changes to database')
 			setMessages(prev => [...prev, {
 				role: 'assistant',
 				content: 'Failed to create version. Please try again.'
@@ -576,11 +578,48 @@ const EditorSSE = () => {
 		}
 	}), [])
 
+	// Handle schema updates from copy-paste operations
+	const handleSchemaUpdate = useCallback((newSchema: T_UI_Component, operation?: string) => {
+		setCurrentSchema(newSchema)
+		console.log('🔄 Schema updated via:', operation || 'unknown operation', newSchema.id)
+
+		// Save to database like we do for SSE generation
+		if (uiId && data) {
+			try {
+				const new_version = {
+					uiId: uiId,
+					dsl: JSON.stringify({
+						ui: newSchema,
+						data: data // Use the current data state
+					}),
+					prompt: `Schema updated via ${operation || 'copy/paste/cut/delete'}`,
+				};
+
+				console.log('💾 Saving schema update to database:', operation)
+				createVersionMutation.mutate(new_version);
+			} catch (error) {
+				console.error('Failed to save schema update to database:', error)
+				toast.error(`Failed to save ${operation || 'changes'} to database`)
+			}
+		} else {
+			console.warn('Cannot save to database: missing uiId or data')
+			toast.error('Cannot save changes: missing required data')
+		}
+	}, [uiId, data, createVersionMutation])
+
 	// Memoize the renderer to prevent unnecessary re-renders
 	const memoizedRenderer = useMemo(() => {
 		if (!currentSchema) return null
-		return <FLOWUIRenderer schema={currentSchema} data={data} handlers={handlers} />
-	}, [currentSchema, data, handlers])
+		return (
+			<SelectableUIRenderer
+				schema={currentSchema}
+				data={data}
+				handlers={handlers}
+				enableSelection={true} // Set to false to disable selection
+				onSchemaUpdate={handleSchemaUpdate}
+			/>
+		)
+	}, [currentSchema, data, handlers, handleSchemaUpdate])
 
 	const handleSend = async () => {
 		if (!input.trim()) return
