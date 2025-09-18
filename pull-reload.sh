@@ -8,6 +8,12 @@ if ! git pull origin main; then
     exit 1
 fi
 
+echo "Installing dependencies with pnpm..."
+if ! pnpm install; then
+    echo "Error: Failed to install dependencies"
+    exit 1
+fi
+
 echo "Building project with pnpm..."
 if ! pnpm run build; then
     echo "Error: Build failed"
