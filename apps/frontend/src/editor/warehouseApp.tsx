@@ -1263,8 +1263,10 @@ const WarehouseApp = () => {
                                             <div className="bg-white rounded-b-xl shadow-lg border-x border-b border-gray-200 overflow-hidden" style={{ height: '70vh' }}>
                                                 <div className="h-full overflow-auto">
                                                     <FLOWUIRenderer2
-                                                        schema={msg.uiSchema}
-                                                        data={msg.uiData}
+                                                        uiComponent={{
+                                                            ...msg.uiSchema,
+                                                            data: msg.uiData || {}
+                                                        }}
                                                         handlers={handlers}
                                                     />
                                                 </div>
@@ -1389,8 +1391,10 @@ const WarehouseApp = () => {
                         {schema ? (
                             <div className="min-h-full bg-white rounded-xl shadow-lg border border-slate-200">
                                 <FLOWUIRenderer2
-                                    schema={schema}
-                                    data={flowData}
+                                    uiComponent={{
+                                        ...schema,
+                                        data: flowData || {}
+                                    }}
                                     handlers={handlers}
                                 />
                             </div>

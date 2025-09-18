@@ -1,18 +1,13 @@
 import { useEffect, useState } from 'react'
-import { T_UI_Component } from '../types/ui-schema'
+import { UIComponent } from '../types/dsl'
 import FLOWUIRenderer from './components/ui-renderer'
 import { trpc } from '../utils/trpc'
 import { observer } from 'mobx-react-lite'
 import { useParams } from 'react-router-dom'
+import { DatabaseUtils, parseDSLFromVersion } from '../utils/database'
+import { createDefaultDSL } from '../lib/utils/default-dsl'
 
-const default_ui_schema:T_UI_Component = {
-	id: "ui_33O2Hf",
-	type: "div",
-	props: {
-		className: "min-h-screen bg-gray-50 py-8"
-	},
-	children: ["Welcome to Superatom"],
-}
+const default_ui_schema: UIComponent = createDefaultDSL()
 
 
 const StudioTestPage = () => {
@@ -98,26 +93,22 @@ const StudioTestPage = () => {
 					}
 
 					// console.log('dsl to use', dslToUse);
-						// Parse and set the DSL if we found it
+						// Parse and set the DSL if we found it using new utilities
 					if (dslToUse) {
 						try {
-							const parsedDSL = JSON.parse(dslToUse);
-							
-							if (parsedDSL.ui) {
-								console.log('Setting current schema from DSL:', parsedDSL.ui);
-								setCurrentSchema(parsedDSL.ui as T_UI_Component);
-							}
-							
-							if (parsedDSL.data) {
-								console.log('Setting data from DSL:', parsedDSL.data);
-								const ui_schema = parsedDSL.ui as T_UI_Component;
-								if (ui_schema.query?.id && parsedDSL.data[ui_schema.query.id]) {
-									setData(parsedDSL.data[ui_schema.query.id]);
-								} else {
-									setData(parsedDSL.data);
+							const uiComponent = parseDSLFromVersion(dslToUse);
+
+							if (uiComponent) {
+								console.log('Setting current schema from DSL:', uiComponent);
+								setCurrentSchema(uiComponent);
+
+								// Set data from UIComponent
+								if (uiComponent.data) {
+									console.log('Setting data from DSL:', uiComponent.data);
+									setData(uiComponent.data);
 								}
 							}
-							
+
 						} catch (parseError) {
 							console.error('Failed to parse DSL:', parseError);
 						}
@@ -210,66 +201,8 @@ const StudioTestPage = () => {
 		{ enabled: false } // Only run manually
 	);
 
-	// tRPC mutations
-	const createVersionMutation = trpc.versionsCreate.useMutation({
-		onSuccess: async (response) => {
-			console.log('Version created successfully:', response);
-
-			if (uidata && uidata.ui && uidata.ui.id) {
-				// Update UI with new version
-				updateUiMutation.mutate({
-					id: uidata.ui.id, // Use the actual UI record ID
-					uiVersion: response.version.id, // Set uiVersion to the new version ID
-				});
-			} else {
-				console.error('UI not found with uiId:', uiId);
-				setMessages(prev => [...prev, {
-					role: 'assistant',
-					content: 'Failed to find UI record. Please try again.'
-				}])
-			}
-			
-			// if (uiResult.data && uiResult.data.uis) {
-			// 	// The response structure has uis directly
-			// 	const uis = uiResult.data.uis;
-			// 	const uiData = Array.isArray(uis) ? uis.find(ui => ui.uiId === uiId) : null;
-			// 	console.log('Retrieved UI data:', uiData);
-
-				
-			// } else {
-			// 	console.error('Failed to retrieve UI data');
-			// 	setMessages(prev => [...prev, {
-			// 		role: 'assistant',
-			// 		content: 'Failed to update UI version. Please try again.'
-			// 	}])
-			// }
-		},
-		onError: (error) => {
-			console.error('Create version error:', error)
-			setMessages(prev => [...prev, {
-				role: 'assistant',
-				content: 'Failed to create version. Please try again.'
-			}])
-		}
-	})
-
-	const updateUiMutation = trpc.uisUpdate.useMutation({
-		onSuccess: (response) => {
-			console.log('UI updated successfully:', response);
-			setInput('');
-			setMessages(prev => [...prev, {
-				role: 'assistant',
-				content: 'UI updated successfully!'
-			}])
-		},
-		onError: (error) => {
-			console.error('Update UI error:', error)
-			setMessages(prev => [...prev, {
-				role: 'assistant',
-				content: 'Failed to update UI. Please try again.'
-			}])
-		}
-	})
+	// Database operations using centralized utilities
+	const { createVersionAndUpdateUI } = DatabaseUtils.useCreateVersionAndUpdateUI()
 
 	// tRPC mutation for generating UI
 	const generateUIMutation = trpc.generateUI.useMutation({
@@ -283,12 +216,12 @@ const StudioTestPage = () => {
 				console.log('ui_schema', ui_schema)
 				console.log('ui_data', ui_data)
 
-				setCurrentSchema(ui_schema as T_UI_Component)
+				setCurrentSchema(ui_schema as UIComponent)
 				
-				const typedSchema = ui_schema as T_UI_Component
-				if (typedSchema.query?.id && ui_data && ui_data[typedSchema.query.id]) {
+				const typedSchema = ui_schema as UIComponent
+				if (typedSchema.query?.key && ui_data && ui_data[typedSchema.query.key]) {
 					// Pass the actual data object, not wrapped in another object
-					const actualData = ui_data[typedSchema.query.id];
+					const actualData = ui_data[typedSchema.query.key];
 					setData(actualData);
 				} else {
 					// Fallback: if no query id, use the data directly
@@ -299,13 +232,36 @@ const StudioTestPage = () => {
 				//save the data to the database
 
 				console.log("creating  a new version");
-				const new_version ={
-					uiId: uiId!,
-					dsl: JSON.stringify(response.data),
-					prompt: input,
+				// Create a new version when UI is generated using new database utilities
+				if (response.data.ui) {
+					// Merge data into UIComponent
+					const uiComponent = {
+						...response.data.ui,
+						data: response.data.data || {}
+					};
+
+					createVersionAndUpdateUI({
+						uiId: uiId!,
+						uiComponent: uiComponent,
+						prompt: input,
+						operation: 'UI Generation'
+					}, uidata, {
+						onComplete: () => {
+							setInput('');
+							setMessages(prev => [...prev, {
+								role: 'assistant',
+								content: 'UI generated and saved successfully!'
+							}]);
+						},
+						onError: (error, step) => {
+							console.error(`Failed at ${step}:`, error);
+							setMessages(prev => [...prev, {
+								role: 'assistant',
+								content: 'UI generated but failed to save. Please try again.'
+							}]);
+						}
+					});
 				}
-				// Create a new version when UI is generated
-				createVersionMutation.mutate(new_version);
 			} else {
 				setMessages(prev => [
                     ...prev,

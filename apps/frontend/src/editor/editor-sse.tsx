@@ -1,29 +1,24 @@
 import { useEffect, useState, useMemo, useCallback } from 'react'
 import toast from 'react-hot-toast'
-import { T_UI_Component } from '../types/ui-schema'
+import { UIComponent } from '../types/dsl'
 import FLOWUIRenderer from './components/ui-renderer'
 import { trpc, trpcClient } from '../utils/trpc'
 import { observer } from 'mobx-react-lite'
 import { useParams } from 'react-router-dom'
 import SelectableUIRenderer from './components/SelectableUIRenderer'
+import { DatabaseUtils, parseDSLFromVersion } from '../utils/database'
+import { createDefaultDSL } from '../lib/utils/default-dsl'
+import { TEST_DSL } from '@/test/dsl'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000'
 
-const default_ui_schema:T_UI_Component = {
-	id: "ui_33O2Hf",
-	type: "div",
-	props: {
-		className: "min-h-screen bg-gray-50 py-8"
-	},
-	children: ["Welcome to Superatom"],
-}
+const default_ui_schema: UIComponent = createDefaultDSL()
 		
 const EditorSSE = () => {
 	const [messages, setMessages] = useState<Array<{ role: string, content: string }>>([])
 	const [input, setInput] = useState('')
 
-	const [currentSchema, setCurrentSchema] = useState<T_UI_Component>()
-	const [data, setData] = useState<any>(null)
+	const [currentSchema, setCurrentSchema] = useState<UIComponent>(TEST_DSL)
 	const [projectId, setProjectId] = useState<string>("");
 	const [isDSLLoading, setIsDSLLoading] = useState<boolean>(false);
 	
@@ -231,99 +226,89 @@ const EditorSSE = () => {
 	}, [uiId, uidata]);
 
 	// Load existing UI DSL on component mount - run after projectId is set
-	useEffect(() => {
-		const loadExistingUI = async () => {
-			if (!projectId || !uiId || projectId === "") return;
+	// useEffect(() => {
+	// 	const loadExistingUI = async () => {
+	// 		if (!projectId || !uiId || projectId === "") return;
 			
-			setIsDSLLoading(true);
-			try {
-				console.log('Loading existing UI for projectId:', projectId, 'uiId:', uiId);
+	// 		setIsDSLLoading(true);
+	// 		try {
+	// 			console.log('Loading existing UI for projectId:', projectId, 'uiId:', uiId);
 			
-				if (uidata && uidata.ui) {
-					const ui_version = uidata.ui.uiVersion;
+	// 			if (uidata && uidata.ui) {
+	// 				const ui_version = uidata.ui.uiVersion;
 
-					let dslToUse = null;
+	// 				let dslToUse = null;
 
-					try {
-						const versionResult = await getVersionQuery.refetch();
-						if (versionResult.data && versionResult.data.versions) {
-							const versions = versionResult.data.versions;
+	// 				try {
+	// 					const versionResult = await getVersionQuery.refetch();
+	// 					if (versionResult.data && versionResult.data.versions) {
+	// 						const versions = versionResult.data.versions;
 							
-							// Load conversations from all versions
-							const conversations: Array<{ role: string, content: string }> = [];
+	// 						// Load conversations from all versions
+	// 						const conversations: Array<{ role: string, content: string }> = [];
 							
-							if (Array.isArray(versions)) {
-								// Sort versions by creation date (assuming id is chronological or there's a createdAt field)
-								const sortedVersions = [...versions].sort((a, b) => a.id - b.id);
+	// 						if (Array.isArray(versions)) {
+	// 							// Sort versions by creation date (assuming id is chronological or there's a createdAt field)
+	// 							const sortedVersions = [...versions].sort((a, b) => a.id - b.id);
 								
-								sortedVersions.forEach(version => {
-									if (version.prompt && version.prompt.trim()) {
-										// Add user message (the prompt)
-										conversations.push({
-											role: 'user',
-											content: version.prompt
-										});
-										// Add assistant response
-										conversations.push({
-											role: 'assistant',
-											content: 'UI generated successfully!'
-										});
-									}
-								});
-							}
+	// 							sortedVersions.forEach(version => {
+	// 								if (version.prompt && version.prompt.trim()) {
+	// 									// Add user message (the prompt)
+	// 									conversations.push({
+	// 										role: 'user',
+	// 										content: version.prompt
+	// 									});
+	// 									// Add assistant response
+	// 									conversations.push({
+	// 										role: 'assistant',
+	// 										content: 'UI generated successfully!'
+	// 									});
+	// 								}
+	// 							});
+	// 						}
 							
-							// Set conversations in messages state
-							if (conversations.length > 0) {
-								setMessages(conversations);
-							}
+	// 						// Set conversations in messages state
+	// 						if (conversations.length > 0) {
+	// 							setMessages(conversations);
+	// 						}
 							
-							// Find the current version's DSL
-							const versionData = Array.isArray(versions) ? 
-								versions.find(v => v.id === ui_version) : null;
-							if (versionData && versionData.dsl) {
-								dslToUse = versionData.dsl;
-							}
-						}
-					} catch (versionError) {
-						console.error('Failed to fetch version data:', versionError);
-					}
+	// 						// Find the current version's DSL
+	// 						const versionData = Array.isArray(versions) ? 
+	// 							versions.find(v => v.id === ui_version) : null;
+	// 						if (versionData && versionData.dsl) {
+	// 							dslToUse = versionData.dsl;
+	// 						}
+	// 					}
+	// 				} catch (versionError) {
+	// 					console.error('Failed to fetch version data:', versionError);
+	// 				}
 
-					// console.log('dsl to use', dslToUse);
-						// Parse and set the DSL if we found it
-					if (dslToUse) {
-						try {
-							const parsedDSL = JSON.parse(dslToUse);
-							
-							if (parsedDSL.ui) {
-								console.log('Setting current schema from DSL:', parsedDSL.ui);
-								setCurrentSchema(parsedDSL.ui as T_UI_Component);
-							}
-							
-							if (parsedDSL.data) {
-								console.log('Setting data from DSL:', parsedDSL.data);
-								const ui_schema = parsedDSL.ui as T_UI_Component;
-								if (ui_schema.query?.id && parsedDSL.data[ui_schema.query.id]) {
-									setData(parsedDSL.data[ui_schema.query.id]);
-								} else {
-									setData(parsedDSL.data);
-								}
-							}
-							
-						} catch (parseError) {
-							console.error('Failed to parse DSL:', parseError);
-						}
-					} else {
-						console.error('No DSL found for this UI');
-					}
-				}
-			} catch (error) {
-				console.error('Failed to load existing UI:', error);
-			} finally {
-				setIsDSLLoading(false);
-			}
-		};
-		loadExistingUI();
-	}, [projectId, uiId]); // Run when projectId or uiId changes
+	// 				// console.log('dsl to use', dslToUse);
+	// 					// Parse and set the DSL if we found it using new utilities
+	// 				if (dslToUse) {
+	// 					try {
+	// 						const uiComponent = parseDSLFromVersion(dslToUse);
+
+	// 						if (uiComponent) {
+	// 							console.log('Setting current schema from DSL:', uiComponent);
+	// 							setCurrentSchema(uiComponent);
+	// 						}
+
+	// 					} catch (parseError) {
+	// 						console.error('Failed to parse DSL:', parseError);
+	// 					}
+	// 				} else {
+	// 					console.error('No DSL found for this UI');
+	// 				}
+	// 			}
+	// 		} catch (error) {
+	// 			console.error('Failed to load existing UI:', error);
+	// 		} finally {
+	// 			setIsDSLLoading(false);
+	// 		}
+	// 	};
+	// 	loadExistingUI();
+	// }, [projectId, uiId]); // Run when projectId or uiId changes
 
 
 	// Prompt history state
@@ -417,56 +402,11 @@ const EditorSSE = () => {
 		{ enabled: false } // Only run manually
 	);
 
-	// tRPC mutations
-	const createVersionMutation = trpc.versionsCreate.useMutation({
-		onSuccess: async (response) => {
-			console.log('Version created successfully:', response);
-
-			if (uidata && uidata.ui && uidata.ui.id) {
-				// Update UI with new version
-				updateUiMutation.mutate({
-					id: uidata.ui.id, // Use the actual UI record ID
-					uiVersion: response.version.id, // Set uiVersion to the new version ID
-				});
-			} else {
-				console.error('UI not found with uiId:', uiId);
-				toast.error('Failed to find UI record')
-				setMessages(prev => [...prev, {
-					role: 'assistant',
-					content: 'Failed to find UI record. Please try again.'
-				}])
-			}
-		},
-		onError: (error) => {
-			console.error('Create version error:', error)
-			toast.error('Failed to save changes to database')
-			setMessages(prev => [...prev, {
-				role: 'assistant',
-				content: 'Failed to create version. Please try again.'
-			}])
-		}
-	})
-
-	const updateUiMutation = trpc.uisUpdate.useMutation({
-		onSuccess: (response) => {
-			console.log('UI updated successfully:', response);
-			setInput('');
-			setMessages(prev => [...prev, {
-				role: 'assistant',
-				content: 'UI updated successfully!'
-			}])
-		},
-		onError: (error) => {
-			console.error('Update UI error:', error)
-			setMessages(prev => [...prev, {
-				role: 'assistant',
-				content: 'Failed to update UI. Please try again.'
-			}])
-		}
-	})
+	// Database operations using centralized utilities
+	const { createVersionAndUpdateUI, isLoading: isSavingToDatabase } = DatabaseUtils.useCreateVersionAndUpdateUI()
 
 	// SSE UI Generation Function
-	const generateUIWithSSE = async (prompt: string, projectId: string, currentSchema: T_UI_Component) => {
+	const generateUIWithSSE = async (prompt: string, projectId: string, currentSchema: UIComponent) => {
 		setIsGenerating(true);
 		setSSEEvents([]);
 		
@@ -522,25 +462,23 @@ const EditorSSE = () => {
 								if (response.success && response.data) {
 									const ui_schema = response.data.ui;
 									const ui_data = response.data.data;
-									
-									console.log('SSE UI generated:', ui_schema);
-									setCurrentSchema(ui_schema as T_UI_Component);
-									
-									const typedSchema = ui_schema as T_UI_Component;
-									if (typedSchema.query?.id && ui_data && ui_data[typedSchema.query.id]) {
-										const actualData = ui_data[typedSchema.query.id];
-										setData(actualData);
-									} else {
-										setData(ui_data);
-									}
 
-									// Create version
-									const new_version = {
-										uiId: uiId!,
-										dsl: JSON.stringify(response.data),
-										prompt: prompt,
+									// Merge data into UIComponent structure
+									const uiComponent: UIComponent = {
+										...ui_schema,
+										data: ui_data || {}
 									};
-									createVersionMutation.mutate(new_version);
+
+									console.log('SSE UI generated:', uiComponent);
+									setCurrentSchema(uiComponent);
+
+									// Create version using new database utilities
+									createVersionAndUpdateUI({
+										uiId: uiId!,
+										uiComponent: uiComponent,
+										prompt: prompt,
+										operation: 'SSE Generation'
+									}, uidata);
 
 									setMessages(prev => [...prev, {
 										role: 'assistant',
@@ -579,47 +517,49 @@ const EditorSSE = () => {
 	}), [])
 
 	// Handle schema updates from copy-paste operations
-	const handleSchemaUpdate = useCallback((newSchema: T_UI_Component, operation?: string) => {
+	const handleSchemaUpdate = useCallback((newSchema: UIComponent, operation?: string) => {
 		setCurrentSchema(newSchema)
 		console.log('🔄 Schema updated via:', operation || 'unknown operation', newSchema.id)
 
-		// Save to database like we do for SSE generation
-		if (uiId && data) {
+		// Save to database using new database utilities
+		if (uiId) {
 			try {
-				const new_version = {
+				createVersionAndUpdateUI({
 					uiId: uiId,
-					dsl: JSON.stringify({
-						ui: newSchema,
-						data: data // Use the current data state
-					}),
+					uiComponent: newSchema,
 					prompt: `Schema updated via ${operation || 'copy/paste/cut/delete'}`,
-				};
-
-				console.log('💾 Saving schema update to database:', operation)
-				createVersionMutation.mutate(new_version);
+					operation: operation || 'Schema Update'
+				}, uidata, {
+					onComplete: () => {
+						console.log('✅ Schema update saved successfully')
+					},
+					onError: (error, step) => {
+						console.error(`❌ Failed to save schema update at ${step}:`, error)
+						toast.error(`Failed to save ${operation || 'changes'}`)
+					}
+				});
 			} catch (error) {
 				console.error('Failed to save schema update to database:', error)
 				toast.error(`Failed to save ${operation || 'changes'} to database`)
 			}
 		} else {
-			console.warn('Cannot save to database: missing uiId or data')
-			toast.error('Cannot save changes: missing required data')
+			console.warn('Cannot save to database: missing uiId')
+			toast.error('Cannot save changes: missing UI ID')
 		}
-	}, [uiId, data, createVersionMutation])
+	}, [uiId, uidata, createVersionAndUpdateUI])
 
 	// Memoize the renderer to prevent unnecessary re-renders
 	const memoizedRenderer = useMemo(() => {
 		if (!currentSchema) return null
 		return (
 			<SelectableUIRenderer
-				schema={currentSchema}
-				data={data}
+				uiComponent={currentSchema}
 				handlers={handlers}
 				enableSelection={true} // Set to false to disable selection
 				onSchemaUpdate={handleSchemaUpdate}
 			/>
 		)
-	}, [currentSchema, data, handlers, handleSchemaUpdate])
+	}, [currentSchema, handlers, handleSchemaUpdate])
 
 	const handleSend = async () => {
 		if (!input.trim()) return

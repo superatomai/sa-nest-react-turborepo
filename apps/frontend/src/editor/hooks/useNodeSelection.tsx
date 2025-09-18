@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, ReactNode, useCallback, useEffect } from 'react'
-import { T_UI_Component } from '../../types/ui-schema'
+import { UIComponent, UIElement } from '../../types/dsl'
 import toast from 'react-hot-toast'
+import { SchemaUtils } from '../../utils/schema-utilities'
 
 interface SelectionPath {
 	componentId: string
@@ -13,7 +14,7 @@ interface NodeSelectionContextType {
 	selectedNode: SelectionPath | null
 	hoveredNode: SelectionPath | null
 	selectionLevel: number // 0 = root siblings, 1+ = child levels
-	copiedNode: T_UI_Component | null // Copied component
+	copiedNode: UIComponent | UIElement | null // Copied component or element
 
 	// Selection actions
 	enableSelection: () => void
@@ -41,15 +42,15 @@ interface NodeSelectionContextType {
 	isNodeHovered: (componentId: string, path: number[]) => boolean
 
 	// Schema update callback
-	onSchemaUpdate?: (newSchema: T_UI_Component, operation?: string) => void
+	onSchemaUpdate?: (newSchema: UIComponent, operation?: string) => void
 }
 
 const NodeSelectionContext = createContext<NodeSelectionContextType | null>(null)
 
 interface NodeSelectionProviderProps {
 	children: ReactNode
-	rootSchema: T_UI_Component | null
-	onSchemaUpdate?: (newSchema: T_UI_Component, operation?: string) => void
+	rootSchema: UIComponent | null
+	onSchemaUpdate?: (newSchema: UIComponent, operation?: string) => void
 }
 
 export const NodeSelectionProvider: React.FC<NodeSelectionProviderProps> = ({
@@ -61,7 +62,7 @@ export const NodeSelectionProvider: React.FC<NodeSelectionProviderProps> = ({
 	const [selectedNode, setSelectedNode] = useState<SelectionPath | null>(null)
 	const [hoveredNode, setHoveredNodeState] = useState<SelectionPath | null>(null)
 	const [selectionLevel, setSelectionLevel] = useState(0)
-	const [copiedNode, setCopiedNode] = useState<T_UI_Component | null>(null)
+	const [copiedNode, setCopiedNode] = useState<UIComponent | UIElement | null>(null)
 
 	const enableSelection = useCallback(() => {
 		setIsSelectionEnabled(true)
@@ -99,8 +100,8 @@ export const NodeSelectionProvider: React.FC<NodeSelectionProviderProps> = ({
 		if (!selectedNode || !rootSchema) return
 
 		// Find the selected component and check if it has children
-		const selectedComponent = findComponentByPath(rootSchema, selectedNode.path)
-		if (selectedComponent && selectedComponent.children && selectedComponent.children.length > 0) {
+		const selectedComponent = SchemaUtils.findComponentByPath(rootSchema, selectedNode.path)
+		if (selectedComponent && SchemaUtils.hasNavigableChildren(selectedComponent)) {
 			setSelectionLevel(prev => prev + 1)
 			setSelectedNode(null) // Clear current selection when navigating to children
 			setHoveredNodeState(null)
@@ -115,27 +116,7 @@ export const NodeSelectionProvider: React.FC<NodeSelectionProviderProps> = ({
 		}
 	}, [selectionLevel])
 
-	// Helper function to generate unique IDs
-	const generateUniqueId = useCallback((baseId: string): string => {
-		const timestamp = Date.now()
-		const random = Math.random().toString(36).substr(2, 5)
-		return `${baseId}_copy_${timestamp}_${random}`
-	}, [])
-
-	// Helper function to deep clone a component and update IDs
-	const cloneComponentWithNewIds = useCallback((component: T_UI_Component): T_UI_Component => {
-		const cloned: T_UI_Component = {
-			...component,
-			id: generateUniqueId(component.id),
-			children: component.children?.map(child => {
-				if (typeof child === 'string') {
-					return child
-				}
-				return cloneComponentWithNewIds(child)
-			})
-		}
-		return cloned
-	}, [generateUniqueId])
+	// Note: Using SchemaUtils for cloning and ID generation
 
 	// Copy selected node
 	const copySelectedNode = useCallback(() => {
@@ -145,11 +126,12 @@ export const NodeSelectionProvider: React.FC<NodeSelectionProviderProps> = ({
 				return
 			}
 
-			const componentToCopy = findComponentByPath(rootSchema, selectedNode.path)
+			const componentToCopy = SchemaUtils.findComponentByPath(rootSchema, selectedNode.path)
 			if (componentToCopy) {
 				setCopiedNode(componentToCopy)
-				toast.success(`Copied "${componentToCopy.type}" component`)
-				console.log('📋 Copied component:', componentToCopy.id)
+				const elementInfo = SchemaUtils.getElementInfo(componentToCopy)
+				toast.success(`Copied "${elementInfo.type}" element`)
+				console.log('📋 Copied element:', elementInfo.id)
 			} else {
 				toast.error('Failed to find component to copy')
 			}
@@ -179,7 +161,7 @@ export const NodeSelectionProvider: React.FC<NodeSelectionProviderProps> = ({
 			}
 
 			// First, copy the component
-			const componentToCut = findComponentByPath(rootSchema, selectedNode.path)
+			const componentToCut = SchemaUtils.findComponentByPath(rootSchema, selectedNode.path)
 			if (!componentToCut) {
 				toast.error('Component to cut not found')
 				return
@@ -188,45 +170,17 @@ export const NodeSelectionProvider: React.FC<NodeSelectionProviderProps> = ({
 			// Set the copied node
 			setCopiedNode(componentToCut)
 
-			// Then delete it (same logic as deleteSelectedNode)
-			const parentPath = selectedNode.path.slice(0, -1)
-			const childIndex = selectedNode.path[selectedNode.path.length - 1]
-
-			const updateSchemaRecursively = (component: T_UI_Component, path: number[]): T_UI_Component => {
-				if (path.length === 0) {
-					// This is the parent component - remove the child at childIndex
-					const updatedComponent = { ...component }
-					if (updatedComponent.children && Array.isArray(updatedComponent.children)) {
-						updatedComponent.children = [...updatedComponent.children]
-						updatedComponent.children.splice(childIndex, 1)
-					}
-					return updatedComponent
-				}
-
-				// Not the target parent - continue traversing
-				const [nextIndex, ...remainingPath] = path
-				const updatedComponent = { ...component }
-
-				if (updatedComponent.children && updatedComponent.children[nextIndex] && typeof updatedComponent.children[nextIndex] !== 'string') {
-					updatedComponent.children = [...updatedComponent.children]
-					updatedComponent.children[nextIndex] = updateSchemaRecursively(
-						updatedComponent.children[nextIndex] as T_UI_Component,
-						remainingPath
-					)
-				}
-
-				return updatedComponent
-			}
-
-			const updatedSchema = updateSchemaRecursively({ ...rootSchema }, parentPath)
+			// Remove the component using utility function
+			const updatedSchema = SchemaUtils.removeComponentAtPath(rootSchema, selectedNode.path)
 
 			// Clear selection since the component is being cut
 			clearSelection()
 
 			// Update the schema
 			onSchemaUpdate(updatedSchema, 'cut')
-			toast.success(`Cut "${componentToCut.type}" component`)
-			console.log('✂️ Cut component:', componentToCut.id)
+			const elementInfo = SchemaUtils.getElementInfo(componentToCut)
+			toast.success(`Cut "${elementInfo.type}" element`)
+			console.log('✂️ Cut element:', elementInfo.id)
 		} catch (error) {
 			toast.error('Error cutting component')
 			console.error('Cut error:', error)
@@ -251,60 +205,31 @@ export const NodeSelectionProvider: React.FC<NodeSelectionProviderProps> = ({
 				return
 			}
 
-			// Clone ONLY the copied node with new IDs (not the entire schema)
-			const clonedNode = cloneComponentWithNewIds(copiedNode)
+			// Clone the copied node with new IDs
+			const clonedNode = SchemaUtils.cloneElementWithNewIds(copiedNode)
 
-			// Find the target parent component in the ORIGINAL schema
-			const targetParent = findComponentByPath(rootSchema, selectedNode.path)
+			// Find the target parent component
+			const targetParent = SchemaUtils.findComponentByPath(rootSchema, selectedNode.path)
 			if (!targetParent) {
 				toast.error('Target component not found')
 				return
 			}
 
-			// Create a shallow copy of the schema to avoid mutation
-			const newSchema = { ...rootSchema }
-
-			// Find the target parent in the new schema and add the cloned node
-			const updateSchemaRecursively = (component: T_UI_Component, path: number[]): T_UI_Component => {
-				if (path.length === 0) {
-					// This is the target component - add the cloned node as a child
-					const updatedComponent = { ...component }
-					if (!updatedComponent.children) {
-						updatedComponent.children = []
-					} else {
-						// Create a new children array to avoid mutation
-						updatedComponent.children = [...updatedComponent.children]
-					}
-					updatedComponent.children.push(clonedNode)
-					return updatedComponent
-				}
-
-				// Not the target - continue traversing
-				const [nextIndex, ...remainingPath] = path
-				const updatedComponent = { ...component }
-
-				if (updatedComponent.children && updatedComponent.children[nextIndex] && typeof updatedComponent.children[nextIndex] !== 'string') {
-					updatedComponent.children = [...updatedComponent.children]
-					updatedComponent.children[nextIndex] = updateSchemaRecursively(
-						updatedComponent.children[nextIndex] as T_UI_Component,
-						remainingPath
-					)
-				}
-
-				return updatedComponent
-			}
-
-			const updatedSchema = updateSchemaRecursively(newSchema, selectedNode.path)
+			// Add the cloned component as a child using utility function
+			const updatedSchema = SchemaUtils.addComponentAtPath(rootSchema, selectedNode.path, clonedNode)
 
 			// Update the schema
 			onSchemaUpdate(updatedSchema, 'paste')
-			toast.success(`Pasted "${copiedNode.type}" into "${targetParent.type}"`)
-			console.log('📌 Pasted component as child of:', targetParent.id)
+
+			const copiedInfo = SchemaUtils.getElementInfo(copiedNode)
+			const targetInfo = SchemaUtils.getElementInfo(targetParent)
+			toast.success(`Pasted "${copiedInfo.type}" into "${targetInfo.type}"`)
+			console.log('📌 Pasted element as child of:', targetInfo.id)
 		} catch (error) {
 			toast.error('Error pasting component')
 			console.error('Paste error:', error)
 		}
-	}, [selectedNode, copiedNode, rootSchema, onSchemaUpdate, cloneComponentWithNewIds])
+	}, [selectedNode, copiedNode, rootSchema, onSchemaUpdate])
 
 	// Delete selected node
 	const deleteSelectedNode = useCallback(() => {
@@ -327,48 +252,18 @@ export const NodeSelectionProvider: React.FC<NodeSelectionProviderProps> = ({
 			}
 
 			// Find the component to delete for toast message
-			const componentToDelete = findComponentByPath(rootSchema, selectedNode.path)
-			const componentType = componentToDelete?.type || 'component'
+			const componentToDelete = SchemaUtils.findComponentByPath(rootSchema, selectedNode.path)
+			const componentInfo = componentToDelete ? SchemaUtils.getElementInfo(componentToDelete) : null
 
-			// Find the parent component path
-			const parentPath = selectedNode.path.slice(0, -1)
-			const childIndex = selectedNode.path[selectedNode.path.length - 1]
-
-			// Create updated schema by removing the selected node
-			const updateSchemaRecursively = (component: T_UI_Component, path: number[]): T_UI_Component => {
-				if (path.length === 0) {
-					// This is the parent component - remove the child at childIndex
-					const updatedComponent = { ...component }
-					if (updatedComponent.children && Array.isArray(updatedComponent.children)) {
-						updatedComponent.children = [...updatedComponent.children]
-						updatedComponent.children.splice(childIndex, 1)
-					}
-					return updatedComponent
-				}
-
-				// Not the target parent - continue traversing
-				const [nextIndex, ...remainingPath] = path
-				const updatedComponent = { ...component }
-
-				if (updatedComponent.children && updatedComponent.children[nextIndex] && typeof updatedComponent.children[nextIndex] !== 'string') {
-					updatedComponent.children = [...updatedComponent.children]
-					updatedComponent.children[nextIndex] = updateSchemaRecursively(
-						updatedComponent.children[nextIndex] as T_UI_Component,
-						remainingPath
-					)
-				}
-
-				return updatedComponent
-			}
-
-			const updatedSchema = updateSchemaRecursively({ ...rootSchema }, parentPath)
+			// Remove the component using utility function
+			const updatedSchema = SchemaUtils.removeComponentAtPath(rootSchema, selectedNode.path)
 
 			// Clear selection since the selected component is being deleted
 			clearSelection()
 
 			// Update the schema
 			onSchemaUpdate(updatedSchema, 'delete')
-			toast.success(`Deleted "${componentType}" component`)
+			toast.success(`Deleted "${componentInfo?.type || 'component'}" component`)
 			console.log('🗑️ Deleted component:', selectedNode.componentId)
 		} catch (error) {
 			toast.error('Error deleting component')
@@ -497,24 +392,7 @@ export const NodeSelectionProvider: React.FC<NodeSelectionProviderProps> = ({
 	)
 }
 
-// Helper function to find component by path
-function findComponentByPath(schema: T_UI_Component, path: number[]): T_UI_Component | null {
-	if (path.length === 0) return schema
-
-	let current: T_UI_Component = schema
-	for (const index of path) {
-		if (!current.children || !Array.isArray(current.children) || index >= current.children.length) {
-			return null
-		}
-
-		const child = current.children[index]
-		if (typeof child === 'string') return null
-
-		current = child
-	}
-
-	return current
-}
+// Note: Using SchemaUtils.findComponentByPath instead of local function
 
 // Custom hook to use the selection context
 export const useNodeSelection = () => {
@@ -602,7 +480,7 @@ export const SelectionControlPanel: React.FC = () => {
 					<div className="bg-green-50 border border-green-200 rounded p-2">
 						<div className="text-xs text-green-600 font-medium">Copied:</div>
 						<div className="text-xs text-green-800 font-mono">#{copiedNode.id}</div>
-						<div className="text-xs text-green-600">Type: {copiedNode.type}</div>
+						<div className="text-xs text-green-600">Type: {SchemaUtils.getElementType(copiedNode) || 'unknown'}</div>
 					</div>
 				)}
 

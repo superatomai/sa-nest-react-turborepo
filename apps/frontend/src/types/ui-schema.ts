@@ -47,18 +47,8 @@ export type T_UI_Component = {
 	binding?: string
 }
 
-// UI Schema for database storage
-export const UISchemaSchema = z.object({
-	id: z.string().min(1),
-	userId: z.string().min(1),
-	uiId: z.string().min(1),
-	name: z.string().min(1),
-	component: UIComponentSchema,
-	createdAt: z.date(),
-	updatedAt: z.date(),
-})
 
-export type UISchema = z.infer<typeof UISchemaSchema>
+
 
 
 export type User = {
@@ -66,3 +56,5 @@ export type User = {
 	email?: string;
 	roles?: string[];
 };
+
+

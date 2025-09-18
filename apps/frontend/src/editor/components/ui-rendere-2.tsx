@@ -1,13 +1,13 @@
 import React from 'react'
 import { useNodeSelection } from '../hooks/useNodeSelection'
+import { UIComponent, UIElement, Expression, Binding } from '../../types/dsl'
 
 interface UIRendererProps {
-    schema: any
-    data?: any
+    uiComponent: UIComponent // Pass entire UIComponent (includes data and render)
     handlers?: Record<string, Function>
     isStreaming?: boolean
     onRefresh?: () => void
-    enableSelection?: boolean // New prop to enable/disable selection
+    enableSelection?: boolean
 }
 
 /**
@@ -191,12 +191,99 @@ class DataBindingResolver {
 }
 
 /**
- * Universal UI Renderer
- * Handles all UI rendering with dynamic expressions
+ * Extract render data from new UIComponent schema
+ */
+const extractRenderData = (component: UIComponent) => {
+    if (!component || !component.render) {
+        return null
+    }
+
+    return {
+        ...component.render,
+        componentId: component.id, // Preserve the main component ID
+        componentName: component.name // Preserve component name if exists
+    }
+}
+
+/**
+ * Evaluate conditional expressions (if/elseIf)
+ */
+const evaluateCondition = (condition: Expression | undefined, data: any, bindingResolver: DataBindingResolver): boolean => {
+    if (!condition) return true
+
+    if (typeof condition === 'object' && '$exp' in condition) {
+        const result = bindingResolver.evaluateExpression(condition.$exp, data)
+        return Boolean(result)
+    }
+
+    return true
+}
+
+/**
+ * Normalize children to array format for consistent processing
+ */
+const normalizeChildren = (children: any): Array<UIElement | string> => {
+    if (!children) return []
+
+    if (typeof children === 'string') {
+        return [children]
+    }
+
+    if (Array.isArray(children)) {
+        return children
+    }
+
+    if (typeof children === 'object') {
+        return [children as UIElement]
+    }
+
+    return []
+}
+
+/**
+ * Universal UI Renderer (FLOWUIRenderer2)
+ *
+ * Renders UIComponent schema with dynamic expressions and data binding.
+ * Only supports the new DSL schema format from dsl.ts.
+ *
+ * Schema Format (UIComponent):
+ * {
+ *   id: "component_id",
+ *   name: "ComponentName",
+ *   render: {
+ *     id: "render_id",
+ *     type: "div",
+ *     props: { className: "..." },
+ *     children: [...], // Flexible - can be string, array, or object
+ *     for: {
+ *       in: "items",     // Data path to iterate over
+ *       as: "item",      // Variable name for each item
+ *       index: "i",      // Optional index variable
+ *       key: "{{item.id}}" // Optional custom key expression
+ *     },
+ *     if: { $exp: "condition" },     // Conditional rendering
+ *     elseIf: { $exp: "condition" }, // Else if condition
+ *     else: { ... },                 // Else element
+ *     "link-to": "target_ui"         // Navigation target
+ *   }
+ * }
+ *
+ * Important: This renderer only handles UI rendering based on the data prop.
+ * Query properties in the schema are for API data fetching and are handled
+ * elsewhere - not by this renderer.
+ *
+ * Features:
+ * - Data binding with {{expression}} syntax in strings
+ * - Array iteration with 'for' directive (supports custom keys)
+ * - Conditional rendering with if/elseIf/else
+ * - Navigation with link-to directive
+ * - Event handler mapping
+ * - Selection/editing capabilities when enableSelection=true
+ * - Safe expression evaluation with context variables
+ * - Flexible children handling (string, array, object)
  */
 const FLOWUIRenderer2 = ({
-    schema,
-    data = null,
+    uiComponent,
     handlers = {},
     enableSelection = false
 }: UIRendererProps) => {
@@ -212,11 +299,11 @@ const FLOWUIRenderer2 = ({
     }
 
     const renderComponent = (
-        component: any,
-        contextData: any = data,
+        component: UIComponent | UIElement | string,
+        contextData: any = uiComponent.data || {},
         key?: number | string,
         iterationPath: string[] = [],
-        componentPath: number[] = [] // Track path in the component tree
+        componentPath: number[] = []
     ): React.ReactNode => {
         // Handle primitive values
         if (typeof component === 'string') {
@@ -227,12 +314,58 @@ const FLOWUIRenderer2 = ({
             return null
         }
 
-        const { id, type, props = {}, children = [], binding, dataPath } = component
+        // Handle UIComponent vs UIElement
+        let elementData: UIElement
+        let componentId: string | undefined
+
+        if ('render' in component) {
+            // This is a UIComponent
+            const extracted = extractRenderData(component as UIComponent)
+            if (!extracted) {
+                console.warn('Invalid UIComponent - missing render property:', component)
+                return null
+            }
+            elementData = extracted
+            componentId = (component as UIComponent).id
+        } else {
+            // This is a UIElement
+            elementData = component as UIElement
+            componentId = elementData.id
+        }
+
+        const {
+            id: renderId,
+            type,
+            props = {},
+            children,
+            for: forDirective,
+            if: ifCondition,
+            elseIf: elseIfCondition,
+            else: elseElement,
+            'link-to': linkTo
+        } = elementData
+
+        // Use component ID first, then render ID as fallback
+        const id = componentId || renderId
 
         // Validate component type
         if (!type || typeof type !== 'string') {
             console.warn('Invalid component type:', component)
             return null
+        }
+
+        // Handle conditional rendering
+        if (ifCondition && !evaluateCondition(ifCondition, contextData, bindingResolver)) {
+            // Check elseIf conditions
+            if (elseIfCondition && evaluateCondition(elseIfCondition, contextData, bindingResolver)) {
+                // Continue with rendering this element
+            } else if (elseElement) {
+                // Render else element
+                return renderComponent(elseElement, contextData, key, iterationPath, componentPath)
+            } else {
+                // Don't render anything
+                return null
+            }
         }
 
         let normalizedType = type.toLowerCase().trim()
@@ -254,13 +387,8 @@ const FLOWUIRenderer2 = ({
         }
 
         try {
-            // Determine current data context
-            let currentData = contextData
-
-            // Apply dataPath if specified
-            if (dataPath) {
-                currentData = bindingResolver.getRawValue(dataPath, contextData) || contextData
-            }
+            // Use the data context as-is - no query handling in renderer
+            const currentData = contextData
 
             // Process props with data binding
             const processedProps: Record<string, any> = {}
@@ -281,6 +409,50 @@ const FLOWUIRenderer2 = ({
                 processedProps.onClick = handlers[handlerName] || (() => {
                     console.warn(`Missing handler: ${handlerName}`)
                 })
+            }
+
+            // Handle link-to navigation
+            if (linkTo) {
+                const existingOnClick = processedProps.onClick
+
+                processedProps.onClick = (e: React.MouseEvent) => {
+                    // Call existing onClick handler first if it exists
+                    if (existingOnClick && typeof existingOnClick === 'function') {
+                        existingOnClick(e)
+                    }
+
+                    // Handle navigation
+                    let navigationTarget: string | undefined
+                    let navigationParams: Record<string, any> | undefined
+
+                    if (typeof linkTo === 'string') {
+                        navigationTarget = linkTo
+                    } else if (typeof linkTo === 'object') {
+                        if ('$exp' in linkTo) {
+                            navigationTarget = bindingResolver.evaluateExpression(linkTo.$exp, contextData)
+                        } else if ('$bind' in linkTo) {
+                            navigationTarget = bindingResolver.getRawValue(linkTo.$bind, contextData)
+                        } else if ('ui' in linkTo) {
+                            const uiTarget = linkTo.ui
+                            if (typeof uiTarget === 'string') {
+                                navigationTarget = uiTarget
+                            } else if (typeof uiTarget === 'object') {
+                                if ('$exp' in uiTarget) {
+                                    navigationTarget = bindingResolver.evaluateExpression(uiTarget.$exp, contextData)
+                                } else if ('$bind' in uiTarget) {
+                                    navigationTarget = bindingResolver.getRawValue(uiTarget.$bind, contextData)
+                                }
+                            }
+                            navigationParams = linkTo.params
+                        }
+                    }
+
+                    if (navigationTarget && handlers.navigate) {
+                        handlers.navigate(navigationTarget, navigationParams)
+                    } else if (navigationTarget) {
+                        console.warn('Navigation target specified but no navigate handler provided:', navigationTarget)
+                    }
+                }
             }
 
             // Add React key
@@ -347,11 +519,8 @@ const FLOWUIRenderer2 = ({
                         selectionHook.setHoveredNode(null)
                     }
 
-                    // Add selection indicator
+                    // Add selection indicator with positioning
                     if (isSelected || isHovered) {
-                        const indicatorText = isSelected ? 'Selected' : 'Hovering'
-                        const indicatorColor = isSelected ? 'bg-blue-500' : 'bg-blue-300'
-
                         // We'll add the indicator as a pseudo-element using CSS-in-JS style
                         processedProps.style = {
                             ...processedProps.style,
@@ -361,60 +530,86 @@ const FLOWUIRenderer2 = ({
                 }
             }
 
-            // Handle array binding (iteration)
-            if (binding && !iterationPath.includes(binding)) {
-                const boundData = bindingResolver.getRawValue(binding, currentData)
-                
-                if (Array.isArray(boundData)) {
-                    // Render each array item
-                    const renderedItems: React.ReactNode[] = []
-                    
-                    boundData.forEach((item, index) => {
-                        children.forEach((child: any, childIndex: number) => {
-                            const itemKey = `${binding}-${index}-${childIndex}`
-                            const childPath = [...componentPath, childIndex]
-                            const renderedChild = renderComponent(
+            // Normalize children to consistent array format
+            const normalizedChildren = normalizeChildren(children)
+
+            // Handle for directive (iteration)
+            if (forDirective && forDirective.in) {
+                const forPath = typeof forDirective.in === 'string'
+                    ? forDirective.in
+                    : typeof forDirective.in === 'object' && '$bind' in forDirective.in
+                        ? forDirective.in.$bind
+                        : forDirective.in.$exp
+
+                if (forPath && !iterationPath.includes(forPath)) {
+                    const boundData = bindingResolver.getRawValue(forPath, currentData)
+
+                    if (Array.isArray(boundData)) {
+                        // Render each array item
+                        const renderedItems: React.ReactNode[] = []
+
+                        boundData.forEach((item, index) => {
+                            normalizedChildren.forEach((child: UIElement | string, childIndex: number) => {
+                                const itemKey = forDirective.key
+                                    ? bindingResolver.resolve(forDirective.key, { ...currentData, [forDirective.as]: item, ...(forDirective.index ? { [forDirective.index]: index } : {}) })
+                                    : `${forPath}-${index}-${childIndex}`
+                                const childPath = [...componentPath, childIndex]
+
+                                // Create context with the item data and index
+                                const itemContext = {
+                                    ...currentData,
+                                    [forDirective.as]: item,
+                                    ...(forDirective.index ? { [forDirective.index]: index } : {})
+                                }
+
+                                const renderedChild = renderComponent(
+                                    child,
+                                    itemContext,
+                                    itemKey,
+                                    [...iterationPath, forPath],
+                                    childPath
+                                )
+                                if (renderedChild !== null) {
+                                    renderedItems.push(renderedChild)
+                                }
+                            })
+                        })
+
+                        return React.createElement(
+                            normalizedType,
+                            processedProps,
+                            renderedItems.length > 0 ? renderedItems : null
+                        )
+                    } else if (boundData && typeof boundData === 'object') {
+                        // Handle object binding
+                        const itemContext = {
+                            ...currentData,
+                            [forDirective.as]: boundData
+                        }
+
+                        const renderedChildren = normalizedChildren.map((child: UIElement | string, index: number) => {
+                            const childKey = `${forPath}-object-${index}`
+                            const childPath = [...componentPath, index]
+                            return renderComponent(
                                 child,
-                                item, // Each array item becomes the context
-                                itemKey,
-                                [...iterationPath, binding],
+                                itemContext,
+                                childKey,
+                                [...iterationPath, forPath],
                                 childPath
                             )
-                            if (renderedChild !== null) {
-                                renderedItems.push(renderedChild)
-                            }
-                        })
-                    })
+                        }).filter((child: React.ReactNode) => child !== null)
 
-                    return React.createElement(
-                        normalizedType,
-                        processedProps,
-                        renderedItems.length > 0 ? renderedItems : null
-                    )
-                } else if (boundData && typeof boundData === 'object') {
-                    // Handle object binding
-                    const renderedChildren = children.map((child: any, index: number) => {
-                        const childKey = `${binding}-object-${index}`
-                        const childPath = [...componentPath, index]
-                        return renderComponent(
-                            child,
-                            boundData,
-                            childKey,
-                            [...iterationPath, binding],
-                            childPath
+                        return React.createElement(
+                            normalizedType,
+                            processedProps,
+                            renderedChildren.length > 0 ? renderedChildren : null
                         )
-                    }).filter((child: React.ReactNode) => child !== null)
-
-                    return React.createElement(
-                        normalizedType,
-                        processedProps,
-                        renderedChildren.length > 0 ? renderedChildren : null
-                    )
+                    }
                 }
             }
 
             // Regular children rendering (no binding)
-            const renderedChildren = children.map((child: any, index: number) => {
+            const renderedChildren = normalizedChildren.map((child: UIElement | string, index: number) => {
                 const childKey = `${id || type}-${index}`
                 const childPath = [...componentPath, index]
                 return renderComponent(child, currentData, childKey, iterationPath, childPath)
@@ -449,18 +644,18 @@ const FLOWUIRenderer2 = ({
         }
     }
 
-    if (!schema) {
+    if (!uiComponent) {
         return (
             <div className="p-4 text-gray-500 text-center">
-                <div className="text-lg font-medium">No Schema Provided</div>
-                <div className="text-sm mt-1">Please provide a valid UI schema to render</div>
+                <div className="text-lg font-medium">No UIComponent Provided</div>
+                <div className="text-sm mt-1">Please provide a valid UIComponent to render</div>
             </div>
         )
     }
 
     return (
         <div className="universal-ui-renderer">
-            {renderComponent(schema, data, 'root', [], [])}
+            {renderComponent(uiComponent, uiComponent.data || {}, 'root', [], [])}
         </div>
     )
 }
