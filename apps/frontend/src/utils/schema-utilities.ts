@@ -286,6 +286,123 @@ export function updateComponentAtPath(
 }
 
 /**
+ * Update element at path using a transform function (works with both UIComponent and UIElement)
+ */
+export function updateElementAtPath(
+	schema: UIComponent,
+	path: number[],
+	transform: (element: UIComponent | UIElement) => UIComponent | UIElement
+): UIComponent {
+	if (path.length === 0) {
+		return transform(schema) as UIComponent
+	}
+
+	const [firstIndex, ...restPath] = path
+
+	// Get navigable children
+	const navigableChildren = getNavigableChildrenArray(schema)
+	if (firstIndex >= navigableChildren.length) {
+		return schema
+	}
+
+	const childToUpdate = navigableChildren[firstIndex]
+
+	// Recursively update the child
+	let updatedChild: UIComponent | UIElement
+	if ('render' in childToUpdate) {
+		// Child is UIComponent
+		updatedChild = updateElementAtPath(childToUpdate as UIComponent, restPath, transform)
+	} else {
+		// Child is UIElement
+		if (restPath.length === 0) {
+			// We've reached the target element
+			updatedChild = transform(childToUpdate)
+		} else {
+			// Continue traversing
+			updatedChild = updateElementInChildren(childToUpdate as UIElement, restPath, transform)
+		}
+	}
+
+	// Replace the child in the parent
+	const allChildren = getChildrenArray(schema)
+	const newChildren = [...allChildren]
+
+	// Find the actual index in all children (including non-navigable ones)
+	let actualIndex = 0
+	let navigableIndex = 0
+	for (let i = 0; i < allChildren.length; i++) {
+		if (isNavigableChild(allChildren[i])) {
+			if (navigableIndex === firstIndex) {
+				actualIndex = i
+				break
+			}
+			navigableIndex++
+		}
+	}
+
+	newChildren[actualIndex] = updatedChild
+	return setChildren(schema, newChildren)
+}
+
+/**
+ * Helper function to update element within UIElement children
+ */
+function updateElementInChildren(
+	element: UIElement,
+	path: number[],
+	transform: (element: UIComponent | UIElement) => UIComponent | UIElement
+): UIElement {
+	const [firstIndex, ...restPath] = path
+
+	const elementChildren = element.children
+	const allChildren = Array.isArray(elementChildren) ? elementChildren : (elementChildren !== undefined ? [elementChildren] : [])
+	const navigableChildren = allChildren.filter(child => isNavigableChild(child))
+
+	if (firstIndex >= navigableChildren.length) {
+		return element
+	}
+
+	const childToUpdate = navigableChildren[firstIndex]
+
+	// Recursively update the child
+	let updatedChild: UIComponent | UIElement
+	if ('render' in childToUpdate) {
+		// Child is UIComponent
+		updatedChild = updateElementAtPath(childToUpdate as UIComponent, restPath, transform)
+	} else {
+		// Child is UIElement
+		if (restPath.length === 0) {
+			updatedChild = transform(childToUpdate)
+		} else {
+			updatedChild = updateElementInChildren(childToUpdate as UIElement, restPath, transform)
+		}
+	}
+
+	// Replace the child
+	const newChildren = [...allChildren]
+
+	// Find the actual index
+	let actualIndex = 0
+	let navigableIndex = 0
+	for (let i = 0; i < allChildren.length; i++) {
+		if (isNavigableChild(allChildren[i])) {
+			if (navigableIndex === firstIndex) {
+				actualIndex = i
+				break
+			}
+			navigableIndex++
+		}
+	}
+
+	newChildren[actualIndex] = updatedChild
+
+	return {
+		...element,
+		children: newChildren.length === 1 ? newChildren[0] : newChildren
+	} as UIElement
+}
+
+/**
  * Remove component at path
  */
 export function removeComponentAtPath(schema: UIComponent, path: number[]): UIComponent {
@@ -297,18 +414,48 @@ export function removeComponentAtPath(schema: UIComponent, path: number[]): UICo
 	const parentPath = path.slice(0, -1)
 	const childIndex = path[path.length - 1]
 
-	return updateComponentAtPath(schema, parentPath, (parent) =>
-		removeChildAtIndex(parent, childIndex)
-	)
+	return updateElementAtPath(schema, parentPath, (parent) => {
+		if ('render' in parent) {
+			// UIComponent
+			return removeChildAtIndex(parent as UIComponent, childIndex)
+		} else {
+			// UIElement
+			const elementChildren = (parent as UIElement).children
+			const children = Array.isArray(elementChildren) ? elementChildren : (elementChildren !== undefined ? [elementChildren] : [])
+
+			if (childIndex >= children.length) return parent
+
+			const newChildren = [...children]
+			newChildren.splice(childIndex, 1)
+
+			return {
+				...parent,
+				children: newChildren.length === 1 ? newChildren[0] : newChildren
+			} as UIElement
+		}
+	})
 }
 
 /**
  * Add component at path (as child of component at path)
  */
-export function addComponentAtPath(schema: UIComponent, path: number[], newComponent: UIComponent): UIComponent {
-	return updateComponentAtPath(schema, path, (target) =>
-		addChild(target, newComponent)
-	)
+export function addComponentAtPath(schema: UIComponent, path: number[], newComponent: UIComponent | UIElement): UIComponent {
+	return updateElementAtPath(schema, path, (target) => {
+		if ('render' in target) {
+			// UIComponent
+			return addChild(target as UIComponent, newComponent)
+		} else {
+			// UIElement
+			const elementChildren = (target as UIElement).children
+			const children = Array.isArray(elementChildren) ? elementChildren : (elementChildren !== undefined ? [elementChildren] : [])
+			const newChildren = [...children, newComponent]
+
+			return {
+				...target,
+				children: newChildren.length === 1 ? newChildren[0] : newChildren
+			} as UIElement
+		}
+	})
 }
 
 // ==================== CLONING AND ID GENERATION ====================
@@ -510,6 +657,279 @@ export function findComponentById(schema: UIComponent, id: string): { component:
 	return results.length > 0 ? results[0] : null
 }
 
+// ==================== SIBLING NAVIGATION ====================
+
+/**
+ * Get siblings at a specific path (returns navigable children of the parent)
+ */
+export function getSiblingsAtPath(schema: UIComponent, path: number[]): (UIComponent | UIElement)[] {
+	if (path.length === 0) {
+		// Root level - no siblings, return empty array
+		return []
+	}
+
+	// Get parent path and find parent component
+	const parentPath = path.slice(0, -1)
+	const parent = findComponentByPath(schema, parentPath)
+
+	if (!parent) return []
+
+	// Get navigable children from parent
+	if ('render' in parent) {
+		// Parent is UIComponent
+		return getNavigableChildrenArray(parent as UIComponent)
+	} else {
+		// Parent is UIElement
+		const parentChildren = (parent as UIElement).children
+		const allChildren = Array.isArray(parentChildren) ? parentChildren : (parentChildren !== undefined ? [parentChildren] : [])
+		return allChildren.filter(child => isNavigableChild(child))
+	}
+}
+
+/**
+ * Find the index of a sibling with the given ID
+ */
+export function findSiblingIndex(siblings: (UIComponent | UIElement)[], componentId: string): number {
+	return siblings.findIndex(sibling => {
+		if ('render' in sibling) {
+			// UIComponent
+			return sibling.id === componentId
+		} else {
+			// UIElement
+			return sibling.id === componentId
+		}
+	})
+}
+
+/**
+ * Get the next sibling in a given direction
+ */
+export function getNextSibling(
+	schema: UIComponent,
+	currentPath: number[],
+	direction: 'next' | 'previous'
+): { sibling: UIComponent | UIElement; path: number[] } | null {
+	const siblings = getSiblingsAtPath(schema, currentPath)
+	if (siblings.length <= 1) return null
+
+	const currentIndex = currentPath[currentPath.length - 1]
+	let nextIndex: number
+
+	if (direction === 'next') {
+		nextIndex = currentIndex >= siblings.length - 1 ? 0 : currentIndex + 1
+	} else {
+		nextIndex = currentIndex <= 0 ? siblings.length - 1 : currentIndex - 1
+	}
+
+	const nextSibling = siblings[nextIndex]
+	if (!nextSibling) return null
+
+	const parentPath = currentPath.slice(0, -1)
+	const nextPath = [...parentPath, nextIndex]
+
+	return { sibling: nextSibling, path: nextPath }
+}
+
+/**
+ * Move element to a new position within its siblings (works with nested UIElements)
+ */
+export function moveElementInSiblings(
+	schema: UIComponent,
+	elementPath: number[],
+	direction: 'up' | 'down' | 'left' | 'right'
+): UIComponent {
+	if (elementPath.length === 0) {
+		// Cannot move root element
+		return schema
+	}
+
+	const parentPath = elementPath.slice(0, -1)
+	const currentIndex = elementPath[elementPath.length - 1]
+
+	// Helper function to move within any element (UIComponent or UIElement)
+	const moveWithinElement = (element: UIComponent | UIElement): UIComponent | UIElement => {
+		let children: any[]
+		let navigableChildren: any[]
+
+		if ('render' in element) {
+			// UIComponent
+			children = getChildrenArray(element as UIComponent)
+			navigableChildren = getNavigableChildrenArray(element as UIComponent)
+		} else {
+			// UIElement
+			const elementChildren = (element as UIElement).children
+			children = Array.isArray(elementChildren) ? elementChildren : (elementChildren !== undefined ? [elementChildren] : [])
+			navigableChildren = children.filter(child => isNavigableChild(child))
+		}
+
+		if (navigableChildren.length <= 1) {
+			return element
+		}
+
+		let newIndex: number
+		switch (direction) {
+			case 'up':
+			case 'left':
+				newIndex = currentIndex === 0 ? navigableChildren.length - 1 : currentIndex - 1
+				break
+			case 'down':
+			case 'right':
+				newIndex = currentIndex === navigableChildren.length - 1 ? 0 : currentIndex + 1
+				break
+			default:
+				return element
+		}
+
+		// Find actual indices in the children array
+		let currentActualIndex = -1
+		let newActualIndex = -1
+		let navigableIdx = 0
+
+		for (let i = 0; i < children.length; i++) {
+			if (isNavigableChild(children[i])) {
+				if (navigableIdx === currentIndex) {
+					currentActualIndex = i
+				}
+				if (navigableIdx === newIndex) {
+					newActualIndex = i
+				}
+				navigableIdx++
+			}
+		}
+
+		if (currentActualIndex === -1 || newActualIndex === -1) {
+			return element
+		}
+
+		// Swap the elements in the actual children array
+		const newChildren = [...children]
+		const elementToMove = newChildren[currentActualIndex]
+		const targetElement = newChildren[newActualIndex]
+
+		newChildren[currentActualIndex] = targetElement
+		newChildren[newActualIndex] = elementToMove
+
+		// Return updated element
+		if ('render' in element) {
+			// UIComponent
+			return setChildren(element as UIComponent, newChildren)
+		} else {
+			// UIElement
+			return {
+				...element,
+				children: newChildren.length === 1 ? newChildren[0] : newChildren
+			} as UIElement
+		}
+	}
+
+	// Use the general update function for nested paths
+	return updateElementAtPath(schema, parentPath, moveWithinElement)
+}
+
+/**
+ * Get the new path after moving an element
+ */
+export function getNewPathAfterMove(
+	elementPath: number[],
+	direction: 'up' | 'down' | 'left' | 'right',
+	siblingCount: number
+): number[] {
+	if (elementPath.length === 0) return elementPath
+
+	const parentPath = elementPath.slice(0, -1)
+	const currentIndex = elementPath[elementPath.length - 1]
+
+	let newIndex: number
+	switch (direction) {
+		case 'up':
+		case 'left':
+			newIndex = currentIndex === 0 ? siblingCount - 1 : currentIndex - 1
+			break
+		case 'down':
+		case 'right':
+			newIndex = currentIndex === siblingCount - 1 ? 0 : currentIndex + 1
+			break
+		default:
+			return elementPath
+	}
+
+	return [...parentPath, newIndex]
+}
+
+/**
+ * Get the first navigable child of an element
+ */
+export function getFirstNavigableChild(
+	schema: UIComponent,
+	elementPath: number[]
+): { child: UIComponent | UIElement; path: number[] } | null {
+	console.log('🔍 getFirstNavigableChild called:', { elementPath })
+
+	const element = findComponentByPath(schema, elementPath)
+	console.log('📍 Found element:', element ? (element.id || 'unknown') : 'null')
+
+	if (!element) return null
+
+	let navigableChildren: any[]
+
+	if ('render' in element) {
+		// UIComponent
+		navigableChildren = getNavigableChildrenArray(element as UIComponent)
+		console.log('📍 UIComponent navigable children:', navigableChildren.length, navigableChildren.map(c => c.id))
+	} else {
+		// UIElement
+		const elementChildren = (element as UIElement).children
+		const allChildren = Array.isArray(elementChildren) ? elementChildren : (elementChildren !== undefined ? [elementChildren] : [])
+		navigableChildren = allChildren.filter(child => isNavigableChild(child))
+		console.log('📍 UIElement navigable children:', navigableChildren.length, navigableChildren.map(c => c.id))
+	}
+
+	if (navigableChildren.length === 0) {
+		console.log('❌ No navigable children found')
+		return null
+	}
+
+	const firstChild = navigableChildren[0]
+	const childPath = [...elementPath, 0]
+
+	console.log('✅ Returning first child:', { childId: firstChild.id, childPath })
+
+	return { child: firstChild, path: childPath }
+}
+
+/**
+ * Get the parent element of the current selection
+ */
+export function getParentElement(
+	schema: UIComponent,
+	elementPath: number[]
+): { parent: UIComponent | UIElement; path: number[] } | null {
+	if (elementPath.length === 0) {
+		// Already at root level
+		return null
+	}
+
+	const parentPath = elementPath.slice(0, -1)
+	const parent = findComponentByPath(schema, parentPath)
+
+	if (!parent) return null
+
+	return { parent, path: parentPath }
+}
+
+/**
+ * Check if an element has navigable children
+ */
+export function hasNavigableChildrenAtPath(
+	schema: UIComponent,
+	elementPath: number[]
+): boolean {
+	const element = findComponentByPath(schema, elementPath)
+	if (!element) return false
+
+	return hasNavigableChildren(element)
+}
+
 // ==================== EXPORT DEFAULT UTILITIES OBJECT ====================
 
 export const SchemaUtils = {
@@ -539,6 +959,7 @@ export const SchemaUtils = {
 	// Path operations
 	findComponentByPath,
 	updateComponentAtPath,
+	updateElementAtPath,
 	removeComponentAtPath,
 	addComponentAtPath,
 
@@ -550,6 +971,7 @@ export const SchemaUtils = {
 	// Validation
 	isValidUIComponent,
 	ensureValidRender,
+	isNavigableChild,
 
 	// Component info
 	getComponentInfo,
@@ -559,6 +981,20 @@ export const SchemaUtils = {
 	// Search and traversal
 	findComponents,
 	findComponentById,
+
+	// Sibling navigation
+	getSiblingsAtPath,
+	findSiblingIndex,
+	getNextSibling,
+
+	// Element movement
+	moveElementInSiblings,
+	getNewPathAfterMove,
+
+	// Navigation drilling
+	getFirstNavigableChild,
+	getParentElement,
+	hasNavigableChildrenAtPath,
 }
 
 export default SchemaUtils

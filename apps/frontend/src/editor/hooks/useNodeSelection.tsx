@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode, useCallback, useEffect } from 'react'
+import React, { createContext, useContext, useState, ReactNode, useCallback } from 'react'
 import { UIComponent, UIElement } from '../../types/dsl'
 import toast from 'react-hot-toast'
 import { SchemaUtils } from '../../utils/schema-utilities'
@@ -15,6 +15,7 @@ interface NodeSelectionContextType {
 	hoveredNode: SelectionPath | null
 	selectionLevel: number // 0 = root siblings, 1+ = child levels
 	copiedNode: UIComponent | UIElement | null // Copied component or element
+	rootSchema: UIComponent | null // Current root schema
 
 	// Selection actions
 	enableSelection: () => void
@@ -276,71 +277,8 @@ export const NodeSelectionProvider: React.FC<NodeSelectionProviderProps> = ({
 		return copiedNode !== null
 	}, [copiedNode])
 
-	// Add keyboard handlers (escape, copy, paste)
-	useEffect(() => {
-		const handleKeyDown = (event: KeyboardEvent) => {
-			// Only handle keys when selection is enabled
-			if (!isSelectionEnabled) return
-
-			// Handle Escape key
-			if (event.key === 'Escape') {
-				event.preventDefault()
-
-				// If there's a selected node, clear it first
-				if (selectedNode) {
-					clearSelection()
-				}
-				// If no selection but we're at a child level, go to parent
-				else if (selectionLevel > 0) {
-					navigateToParent()
-				}
-				// If at root level with no selection, disable selection
-				// else {
-				// 	disableSelection()
-				// }
-			}
-
-			// Handle Ctrl+C (Copy)
-			if (event.ctrlKey && event.key === 'c') {
-				if (selectedNode) {
-					event.preventDefault()
-					copySelectedNode()
-				}
-			}
-
-			// Handle Ctrl+X (Cut)
-			if (event.ctrlKey && event.key === 'x') {
-				if (selectedNode) {
-					event.preventDefault()
-					cutSelectedNode()
-				}
-			}
-
-			// Handle Ctrl+V (Paste)
-			if (event.ctrlKey && event.key === 'v') {
-				if (selectedNode && copiedNode) {
-					event.preventDefault()
-					pasteAsChild()
-				}
-			}
-
-			// Handle Delete key
-			if (event.key === 'Delete') {
-				if (selectedNode) {
-					event.preventDefault()
-					deleteSelectedNode()
-				}
-			}
-		}
-
-		// Add event listener to document
-		document.addEventListener('keydown', handleKeyDown)
-
-		// Cleanup function
-		return () => {
-			document.removeEventListener('keydown', handleKeyDown)
-		}
-	}, [isSelectionEnabled, selectedNode, selectionLevel, copiedNode, clearSelection, navigateToParent, copySelectedNode, cutSelectedNode, pasteAsChild, deleteSelectedNode])
+	// Note: Keyboard handling has been moved to useKeyboardInteractions hook
+	// This allows for better separation of concerns and easier customization
 
 	// Check if a node at given path is selectable at current level
 	const isNodeSelectable = useCallback((path: number[]) => {
@@ -367,6 +305,7 @@ export const NodeSelectionProvider: React.FC<NodeSelectionProviderProps> = ({
 		hoveredNode,
 		selectionLevel,
 		copiedNode,
+		rootSchema,
 		enableSelection,
 		disableSelection,
 		selectNode,

@@ -522,30 +522,30 @@ const EditorSSE = () => {
 		console.log('🔄 Schema updated via:', operation || 'unknown operation', newSchema.id)
 
 		// Save to database using new database utilities
-		if (uiId) {
-			try {
-				createVersionAndUpdateUI({
-					uiId: uiId,
-					uiComponent: newSchema,
-					prompt: `Schema updated via ${operation || 'copy/paste/cut/delete'}`,
-					operation: operation || 'Schema Update'
-				}, uidata, {
-					onComplete: () => {
-						console.log('✅ Schema update saved successfully')
-					},
-					onError: (error, step) => {
-						console.error(`❌ Failed to save schema update at ${step}:`, error)
-						toast.error(`Failed to save ${operation || 'changes'}`)
-					}
-				});
-			} catch (error) {
-				console.error('Failed to save schema update to database:', error)
-				toast.error(`Failed to save ${operation || 'changes'} to database`)
-			}
-		} else {
-			console.warn('Cannot save to database: missing uiId')
-			toast.error('Cannot save changes: missing UI ID')
-		}
+		// if (uiId) {
+		// 	try {
+		// 		createVersionAndUpdateUI({
+		// 			uiId: uiId,
+		// 			uiComponent: newSchema,
+		// 			prompt: `Schema updated via ${operation || 'copy/paste/cut/delete'}`,
+		// 			operation: operation || 'Schema Update'
+		// 		}, uidata, {
+		// 			onComplete: () => {
+		// 				console.log('✅ Schema update saved successfully')
+		// 			},
+		// 			onError: (error, step) => {
+		// 				console.error(`❌ Failed to save schema update at ${step}:`, error)
+		// 				toast.error(`Failed to save ${operation || 'changes'}`)
+		// 			}
+		// 		});
+		// 	} catch (error) {
+		// 		console.error('Failed to save schema update to database:', error)
+		// 		toast.error(`Failed to save ${operation || 'changes'} to database`)
+		// 	}
+		// } else {
+		// 	console.warn('Cannot save to database: missing uiId')
+		// 	toast.error('Cannot save changes: missing UI ID')
+		// }
 	}, [uiId, uidata, createVersionAndUpdateUI])
 
 	// Memoize the renderer to prevent unnecessary re-renders
