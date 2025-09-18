@@ -18,7 +18,8 @@ async function bootstrap() {
       'http://localhost:5173', 
       'http://localhost:5174',  
       'https://sa-nest-react-turborepo.pages.dev',  
-      'https://editor.superatom.ai'
+      'https://editor.superatom.ai',
+      'https://dev.editor.superatom.ai'
     ],
     credentials: true,
   });
