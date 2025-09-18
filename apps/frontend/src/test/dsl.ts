@@ -2268,4 +2268,4 @@ export const keyboard_navigation_test = {
   }
 }
 
-export const TEST_DSL = keyboard_navigation_test
+export const TEST_DSL = arrow_keys
