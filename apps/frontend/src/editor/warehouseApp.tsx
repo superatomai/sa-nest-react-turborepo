@@ -1,15 +1,16 @@
 import { useEffect, useState, useRef } from "react"
 import { warehouseFlowDSL, warehouseFlowData } from "./warehouseFlowDSL"
 import FLOWUIRenderer2 from "./components/ui-rendere-2";
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const WarehouseApp = () => {
     // Single state for the entire flow
     const [flowData, setFlowData] = useState<any>(warehouseFlowData);
     const [schema] = useState<any>(warehouseFlowDSL.warehouse_discrepancy_investigation_flow);
     
-    // Preview mode specific states
-    const [previewFlowData, setPreviewFlowData] = useState<any>(null);
-    const [previewSchema, setPreviewSchema] = useState<any>(null);
+    // Preview mode specific states (removed unused previewFlowData and previewSchema)
+    // UI components are now inline with messages
 
     // Mode state
     const [mode, setMode] = useState<'dev' | 'preview'>('preview');
@@ -20,7 +21,7 @@ const WarehouseApp = () => {
     const [devIsLoading, setDevIsLoading] = useState(false)
 
     // Preview mode states
-    const [previewMessages, setPreviewMessages] = useState<Array<{ role: string, content: string }>>([])
+    const [previewMessages, setPreviewMessages] = useState<Array<{ role: string, content: string, hasUI?: boolean, uiSchema?: any, uiData?: any }>>([])
     const [previewInput, setPreviewInput] = useState('');
     const [previewIsLoading, setPreviewIsLoading] = useState(false)
 
@@ -29,6 +30,7 @@ const WarehouseApp = () => {
     
     // Refs for input fields
     const previewTextareaRef = useRef<HTMLTextAreaElement>(null)
+    const devMessagesRef = useRef<HTMLDivElement>(null)
     
         // Local storage key for prompt history
         const PROMPT_HISTORY_KEY = 'prompt_history'
@@ -47,7 +49,17 @@ const WarehouseApp = () => {
                 }
             }
         }, [])
-    
+
+        // Auto-scroll to bottom when new messages are added
+        useEffect(() => {
+            if (devMessagesRef.current) {
+                devMessagesRef.current.scrollTo({
+                    top: devMessagesRef.current.scrollHeight,
+                    behavior: 'smooth'
+                });
+            }
+        }, [devMessages, devIsLoading])
+
         // Save prompt to history and localStorage
         const savePromptToHistory = (prompt: string) => {
             if (!prompt.trim()) return
@@ -103,12 +115,22 @@ const WarehouseApp = () => {
             }
         }
     
-    // Helper function to update the correct state based on mode
+    // Helper function to update the correct state based mode
     const updateFlowState = (updateFunction: (prev: any) => any) => {
+        // Always update flowData since it's used for dev mode and as the base data
+        setFlowData(updateFunction);
+
+        // For preview mode, update ALL messages that have UI components
         if (mode === 'preview') {
-            setPreviewFlowData(updateFunction);
-        } else {
-            setFlowData(updateFunction);
+            setPreviewMessages(prev => prev.map(msg => {
+                if (msg.hasUI && msg.uiData) {
+                    return {
+                        ...msg,
+                        uiData: updateFunction(msg.uiData)
+                    };
+                }
+                return msg;
+            }));
         }
     };
 
@@ -136,27 +158,65 @@ const WarehouseApp = () => {
         },
 
         navigate_to_transactions: () => {
-            console.log('📋 Navigating to transactions');
+            console.log('📋 Navigating to transactions - starting loading');
+
+            // First navigate to transactions step with loading state
             updateFlowState((prev: any) => ({
                 ...prev,
                 currentFlow: {
-                    ...prev.currentFlow,
                     step: 'transactions',
                     breadcrumb: 'Home > Discrepancy Alert > Transactions'
+                },
+                loadingStates: {
+                    ...prev.loadingStates,
+                    transactions: true
                 }
             }));
+
+            console.log('Loading state set, will clear in 2 seconds');
+
+            // Simulate database fetch delay
+            setTimeout(() => {
+                console.log('Clearing loading state');
+                updateFlowState((prev: any) => ({
+                    ...prev,
+                    loadingStates: {
+                        ...prev.loadingStates,
+                        transactions: false
+                    }
+                }));
+            }, 2000);
         },
 
         navigate_to_investigation: () => {
-            console.log('🔍 Navigating to investigation');
+            console.log('🔍 Navigating to investigation - starting loading');
+
+            // First navigate to investigation step with loading state
             updateFlowState((prev: any) => ({
                 ...prev,
                 currentFlow: {
-                    ...prev.currentFlow,
                     step: 'stock_investigation',
                     breadcrumb: 'Home > Discrepancy Alert > Investigation'
+                },
+                loadingStates: {
+                    ...prev.loadingStates,
+                    stockInvestigation: true
                 }
             }));
+
+            console.log('Stock investigation loading state set, will clear in 2.5 seconds');
+
+            // Simulate database fetch delay
+            setTimeout(() => {
+                console.log('Clearing stock investigation loading state');
+                updateFlowState((prev: any) => ({
+                    ...prev,
+                    loadingStates: {
+                        ...prev.loadingStates,
+                        stockInvestigation: false
+                    }
+                }));
+            }, 2500);
         },
 
         navigate_to_stock_investigation: () => {
@@ -210,18 +270,43 @@ const WarehouseApp = () => {
         // Action handlers
         escalate_to_supervisor: () => {
             console.log('🚨 Escalating to supervisor');
+
+            // Show escalation confirmation
+            alert(`🚨 ESCALATION INITIATED\n\n` +
+                `📋 Discrepancy: ${warehouseFlowData.discrepancy.productName}\n` +
+                `📍 Location: ${warehouseFlowData.discrepancy.zoneId}\n` +
+                `⚡ Priority: HIGH\n\n` +
+                `✅ Actions completed:\n` +
+                `• Supervisor notification sent\n` +
+                `• Escalation ticket created\n` +
+                `• Investigation report prepared\n` +
+                `• Case marked for immediate review\n\n` +
+                `📞 Supervisor will be contacted within 15 minutes\n` +
+                `📧 Email notification sent to management team\n` +
+                `🔄 Case status updated to "Escalated"`);
+
             updateFlowState((prev: any) => ({
                 ...prev,
                 resolution: {
                     ...prev.resolution,
                     status: 'escalated',
                     message: 'Critical discrepancy escalated to supervisor for immediate review',
-                    supervisor_notified: true
+                    supervisor_notified: true,
+                    investigation_conducted: false, // No investigation done for immediate escalation
+                    actions_taken: [
+                        'Discrepancy alert received',
+                        'High severity detected',
+                        'Case escalated to supervisor',
+                        'Management team notified',
+                        'Awaiting supervisor review'
+                    ],
+                    escalation_reason: 'High priority discrepancy requires immediate supervisor review',
+                    escalated_at: new Date().toLocaleString()
                 },
                 currentFlow: {
                     ...prev.currentFlow,
                     step: 'resolution',
-                    breadcrumb: 'Home > Discrepancy Alert > Escalation'
+                    breadcrumb: 'Home > Discrepancy Alert > Escalated to Supervisor'
                 }
             }));
         },
@@ -293,6 +378,7 @@ const WarehouseApp = () => {
                         ...prev.resolution,
                         status,
                         message,
+                        investigation_conducted: true, // Recount investigation was completed
                         final_quantity: count,
                         actions_taken: [
                             'Physical recount conducted',
@@ -343,14 +429,41 @@ const WarehouseApp = () => {
             }));
         },
 
-        check_duplicate_scans: () => {
-            console.log('🔍 Checking duplicate scans');
+
+        // Navigation handlers for Step 3 sub-options
+        navigate_to_pick_task_investigation: () => {
+            console.log('🔍 Navigating to PICK task investigation');
             updateFlowState((prev: any) => ({
                 ...prev,
                 currentFlow: {
                     ...prev.currentFlow,
-                    step: 'duplicate_scans',
-                    breadcrumb: 'Home > Investigation > Duplicate Scans'
+                    step: 'pick_task_investigation',
+                    breadcrumb: 'Home > Investigation > PICK Task Analysis'
+                }
+            }));
+        },
+
+        navigate_to_scan_logs: () => {
+            console.log('📊 Navigating to scan logs analysis');
+            updateFlowState((prev: any) => ({
+                ...prev,
+                currentFlow: {
+                    ...prev.currentFlow,
+                    step: 'scan_logs',
+                    breadcrumb: 'Home > Investigation > Scan Logs Analysis'
+                }
+            }));
+        },
+
+
+        navigate_to_camera_footage: () => {
+            console.log('📹 Navigating to camera footage analysis');
+            updateFlowState((prev: any) => ({
+                ...prev,
+                currentFlow: {
+                    ...prev.currentFlow,
+                    step: 'camera_footage',
+                    breadcrumb: 'Home > Investigation > Camera Footage Analysis'
                 }
             }));
         },
@@ -451,6 +564,207 @@ const WarehouseApp = () => {
             alert('Training session scheduled:\n- Date: Next Tuesday 2:00 PM\n- Topic: Accurate Operations Procedures\n- Duration: 2 hours\n- Trainer: Supervisor Johnson');
         },
 
+        schedule_scanner_maintenance: () => {
+            console.log('🔧 Scheduling scanner maintenance');
+            const maintenanceData = {
+                ticketId: 'MNT-' + Math.random().toString(36).substring(2, 8).toUpperCase(),
+                deviceId: 'SC-2847',
+                priority: 'High',
+                scheduledDate: new Date(Date.now() + 24 * 60 * 60 * 1000).toLocaleDateString(), // Tomorrow
+                technicianAssigned: 'Tech Team Alpha',
+                estimatedDuration: '2-3 hours'
+            };
+
+            alert(`🔧 Scanner Maintenance Scheduled Successfully!\n\n` +
+                `📋 Maintenance Ticket: ${maintenanceData.ticketId}\n` +
+                `📱 Device: ${maintenanceData.deviceId} (Faulty Scanner)\n` +
+                `⚡ Priority: ${maintenanceData.priority}\n` +
+                `📅 Scheduled: ${maintenanceData.scheduledDate} at 9:00 AM\n` +
+                `👨‍🔧 Assigned to: ${maintenanceData.technicianAssigned}\n` +
+                `⏱️ Estimated Duration: ${maintenanceData.estimatedDuration}\n\n` +
+                `📧 Notification sent to maintenance team\n` +
+                `📞 Emergency contact: ext. 2847\n` +
+                `🔄 Scanner replacement unit will be provided during maintenance`);
+
+            // Update flow state to show maintenance has been scheduled
+            updateFlowState((prev: any) => ({
+                ...prev,
+                maintenanceScheduled: {
+                    isScheduled: true,
+                    ticketId: maintenanceData.ticketId,
+                    scheduledDate: maintenanceData.scheduledDate,
+                    deviceId: maintenanceData.deviceId
+                }
+            }));
+        },
+
+        update_system_inventory: () => {
+            console.log('🔧 Updating system inventory');
+            alert(`🔧 System Inventory Updated Successfully!\n\n` +
+                `📋 Discrepancy: PICK5847 resolved\n` +
+                `📦 Product: ${warehouseFlowData.discrepancy.productId}\n` +
+                `📍 Location: ${warehouseFlowData.discrepancy.zoneId}\n\n` +
+                `Previous System Count: 8 units (incorrect due to scanner malfunction)\n` +
+                `Updated System Count: 15 units (actual physical quantity)\n` +
+                `Adjustment: +7 units\n\n` +
+                `✅ Investigation findings:\n` +
+                `• Scanner malfunction confirmed\n` +
+                `• Worker followed correct procedures\n` +
+                `• Actual quantity matches expected (15 units)\n\n` +
+                `🔄 Actions completed:\n` +
+                `• System inventory corrected\n` +
+                `• Scanner marked for replacement\n` +
+                `• Maintenance ticket generated\n` +
+                `• Investigation report available`);
+
+            // Update flow state to show resolution
+            updateFlowState((prev: any) => ({
+                ...prev,
+                currentFlow: {
+                    ...prev.currentFlow,
+                    step: 'resolution',
+                    breadcrumb: 'Home > Discrepancy Alert > Resolution Complete'
+                },
+                discrepancy: {
+                    ...prev.discrepancy,
+                    systemQuantity: 15, // Corrected system count
+                    status: 'resolved'
+                },
+                resolution: {
+                    status: "resolved",
+                    message: "Scanner malfunction identified and system inventory corrected.",
+                    investigation_conducted: true, // Full investigation was completed
+                    actions_taken: [
+                        "Investigation conducted - scanner malfunction found",
+                        "System quantity updated from 8 to 15 units",
+                        "Scanner marked for replacement",
+                        "Maintenance ticket generated",
+                        "Investigation report completed"
+                    ],
+                    final_quantity: 15,
+                    supervisor_notified: false,
+                    root_cause: "Hardware failure - scanner device malfunction",
+                    corrective_actions: "System update + equipment replacement"
+                }
+            }));
+        },
+
+        // Investigation report generation handlers
+        generate_pick_task_report: () => {
+            console.log('📋 Generating PICK task investigation report');
+            const reportData = {
+                reportId: 'PICK-RPT-' + Math.random().toString(36).substring(2, 8).toUpperCase(),
+                generatedAt: new Date().toLocaleString(),
+                discrepancyId: 'PICK5847',
+                investigationType: 'PICK Task Analysis',
+                title: 'PICK Task Investigation Report',
+                status: 'completed',
+                sections: [
+                    { label: 'Discrepancy ID', value: 'PICK5847' },
+                    { label: 'Location', value: 'Zone A-12, Shelf 3' },
+                    { label: 'Worker ID', value: 'W2847 (John Smith)' },
+                    { label: 'Scanner Device', value: 'SC-2847 (Faulty)' },
+                    { label: 'Expected Quantity', value: '15 units' },
+                    { label: 'Scanned Quantity', value: '8 units' },
+                    { label: 'Actual Quantity', value: '15 units' },
+                    { label: 'Discrepancy', value: '7 units (Scanner Error)' },
+                    { label: 'Time of Incident', value: '14:35:42' },
+                    { label: 'Investigation Status', value: 'Scanner malfunction confirmed' },
+                    { label: 'Root Cause', value: 'Hardware failure in scanner device' },
+                    { label: 'Worker Compliance', value: 'Followed all procedures correctly' },
+                    { label: 'Immediate Action', value: 'Scanner replaced' },
+                    { label: 'System Update', value: 'Inventory corrected to 15 units' },
+                    { label: 'Recommended Actions', value: 'Schedule equipment maintenance, Replace faulty scanner' },
+                    { label: 'Report Generated By', value: 'System Investigation AI' },
+                ]
+            };
+
+            updateFlowState((prev: any) => ({
+                ...prev,
+                reportModal: {
+                    isOpen: true,
+                    data: reportData
+                }
+            }));
+        },
+
+        generate_scan_logs_report: () => {
+            console.log('📋 Generating scan logs analysis report');
+            const reportData = {
+                reportId: 'SCAN-RPT-' + Math.random().toString(36).substring(2, 8).toUpperCase(),
+                generatedAt: new Date().toLocaleString(),
+                discrepancyId: 'PICK5847',
+                investigationType: 'Scan Logs Analysis',
+                title: 'Scan Logs Analysis Report',
+                status: 'completed',
+                sections: [
+                    { label: 'Discrepancy ID', value: 'PICK5847' },
+                    { label: 'Analysis Period', value: '14:30 - 15:00' },
+                    { label: 'Total Scans Analyzed', value: '47 scan events' },
+                    { label: 'Anomalies Detected', value: '3 critical anomalies' },
+                    { label: 'Scanner Device', value: 'SC-2847' },
+                    { label: 'First Anomaly', value: '14:35:12 - Scanner timeout (5.2s)' },
+                    { label: 'Second Anomaly', value: '14:35:18 - Failed scan attempt' },
+                    { label: 'Third Anomaly', value: '14:35:42 - Incomplete data capture' },
+                    { label: 'Pattern Analysis', value: 'Consistent hardware failure pattern' },
+                    { label: 'Response Time', value: 'Average: 8.3s (Normal: 1.2s)' },
+                    { label: 'Error Rate', value: '6.4% (Normal: <0.1%)' },
+                    { label: 'Data Integrity', value: 'System maintained accuracy' },
+                    { label: 'Root Cause', value: 'Scanner hardware malfunction' },
+                    { label: 'Impact Assessment', value: 'Localized to single device' },
+                    { label: 'Corrective Action', value: 'Device replacement completed' },
+                    { label: 'System Status', value: 'All logs processed successfully' },
+                ]
+            };
+
+            updateFlowState((prev: any) => ({
+                ...prev,
+                reportModal: {
+                    isOpen: true,
+                    data: reportData
+                }
+            }));
+        },
+
+        generate_camera_footage_report: () => {
+            console.log('📋 Generating camera footage analysis report');
+            const reportData = {
+                reportId: 'CAM-RPT-' + Math.random().toString(36).substring(2, 8).toUpperCase(),
+                generatedAt: new Date().toLocaleString(),
+                discrepancyId: 'PICK5847',
+                investigationType: 'Camera Footage Analysis',
+                title: 'Camera Footage Analysis Report',
+                status: 'completed',
+                sections: [
+                    { label: 'Discrepancy ID', value: 'PICK5847' },
+                    { label: 'Camera Location', value: 'Zone A-12, Overhead Cam #3' },
+                    { label: 'Footage Period', value: '14:30:00 - 15:00:00' },
+                    { label: 'Resolution', value: '1080p HD' },
+                    { label: 'Total Duration', value: '30 minutes reviewed' },
+                    { label: 'Key Events Identified', value: '5 significant events' },
+                    { label: 'Event 1', value: '14:34:15 - Worker approaches shelf' },
+                    { label: 'Event 2', value: '14:35:12 - Scanner activation attempt' },
+                    { label: 'Event 3', value: '14:35:42 - Multiple scan attempts visible' },
+                    { label: 'Event 4', value: '14:36:20 - Worker examines scanner display' },
+                    { label: 'Event 5', value: '14:37:45 - Worker completes task manually' },
+                    { label: 'Worker Behavior', value: 'Professional, followed all protocols' },
+                    { label: 'Equipment Malfunction', value: 'Scanner display errors visible' },
+                    { label: 'Security Assessment', value: 'No unauthorized access detected' },
+                    { label: 'Evidence Quality', value: 'Clear footage, well-lit area' },
+                    { label: 'Conclusion', value: 'Hardware failure confirmed, worker compliant' },
+                ]
+            };
+
+            updateFlowState((prev: any) => ({
+                ...prev,
+                reportModal: {
+                    isOpen: true,
+                    data: reportData
+                }
+            }));
+        },
+
+
         // Recount result handlers
         generate_discrepancy_report: () => {
             console.log('📋 Generating discrepancy report');
@@ -495,7 +809,7 @@ const WarehouseApp = () => {
 
         adjust_system_stock: () => {
             console.log('📦 Adjusting system stock');
-            const currentFlowData = mode === 'preview' ? previewFlowData : flowData;
+            const currentFlowData = flowData;
             const enteredCount = currentFlowData?.recountCalculation?.enteredCount || 0;
             updateFlowState((prev: any) => ({
                 ...prev,
@@ -547,16 +861,71 @@ const WarehouseApp = () => {
         // Final resolution handlers
         start_new_investigation: () => {
             console.log('🔄 Starting new investigation');
+            // Reset to initial state with proper flow reset
+            const resetData = {
+                ...warehouseFlowData,
+                currentFlow: {
+                    step: 'alert',
+                    breadcrumb: 'Home > Discrepancy Alert'
+                }
+            };
+            setFlowData(resetData);
+
+            // Also reset preview messages if in preview mode
             if (mode === 'preview') {
-                setPreviewFlowData(warehouseFlowData); // Reset to initial state
-            } else {
-                setFlowData(warehouseFlowData); // Reset to initial state
+                setPreviewMessages([]);
             }
         },
 
         view_full_report: () => {
             console.log('📊 Viewing full report');
-            alert('Full report would include:\n- Complete timeline\n- All actions taken\n- Evidence collected\n- Final resolution\n- Recommendations');
+
+            // Generate comprehensive report data
+            const reportId = `RPT-${Date.now()}`;
+            const generatedAt = new Date().toLocaleString();
+
+            updateFlowState((prev: any) => ({
+                ...prev,
+                reportModal: {
+                    isOpen: true,
+                    data: {
+                        title: "Warehouse Discrepancy Investigation Report",
+                        reportId: reportId,
+                        generatedAt: generatedAt,
+                        generatedBy: "System Administrator",
+                        investigationType: "Inventory Discrepancy",
+                        status: prev.resolution?.status === 'escalated' ? 'escalated' : 'completed',
+                        sections: [
+                            {
+                                title: "Executive Summary",
+                                content: prev.resolution?.status === 'escalated'
+                                    ? `Investigation escalated for ${prev.discrepancy?.productName || 'Product'}. Supervisor review required for discrepancy of ${prev.discrepancy?.discrepancyAmount || 'N/A'} units.`
+                                    : `Investigation completed for ${prev.discrepancy?.productName || 'Product'}. Discrepancy of ${prev.discrepancy?.discrepancyAmount || 'N/A'} units resolved through physical recount and system adjustment.`
+                            },
+                            {
+                                title: "Initial Discrepancy Details",
+                                content: `Product: ${prev.discrepancy?.productName || 'N/A'}\nLocation: ${prev.discrepancy?.zoneId || 'N/A'}\nExpected Quantity: ${prev.discrepancy?.expectedQuantity || 'N/A'} units\nSystem Quantity: ${prev.discrepancy?.systemQuantity || 'N/A'} units\nDiscrepancy: ${prev.discrepancy?.discrepancyAmount || 'N/A'} units missing`
+                            },
+                            {
+                                title: "Investigation Actions Taken",
+                                content: prev.resolution?.actions_taken?.join('\n• ') || "Physical recount conducted\n• System quantity updated\n• Worker training scheduled\n• Discrepancy report generated"
+                            },
+                            {
+                                title: prev.resolution?.status === 'escalated' ? "Escalation Details" : "Final Resolution",
+                                content: prev.resolution?.status === 'escalated'
+                                    ? `Status: Escalated to Supervisor\nReason: ${prev.resolution?.message || 'Requires supervisor review'}\nSupervisor Notified: ${prev.resolution?.supervisor_notified ? 'Yes' : 'No'}\nEscalation Date: ${generatedAt}`
+                                    : `Status: ${prev.resolution?.status || 'Resolved'}\nFinal Quantity: ${prev.resolution?.final_quantity || prev.discrepancy?.expectedQuantity || 'N/A'} units\nSystem Updated: Yes\nSupervisor Notified: ${prev.resolution?.supervisor_notified ? 'Yes' : 'No'}`
+                            },
+                            {
+                                title: "Recommendations",
+                                content: prev.resolution?.status === 'escalated'
+                                    ? "• Supervisor to conduct detailed review\n• Consider additional investigation resources\n• Evaluate need for process improvements\n• Schedule follow-up meeting with warehouse team"
+                                    : "• Implement regular cycle counts for this product category\n• Review scanning procedures with warehouse staff\n• Monitor for similar discrepancies in the coming weeks\n• Consider barcode quality audit for this product line"
+                            }
+                        ]
+                    }
+                }
+            }));
         },
 
         // Report modal handlers
@@ -567,13 +936,131 @@ const WarehouseApp = () => {
                 reportModal: {
                     ...prev.reportModal,
                     isOpen: false
-                },
-                currentFlow: {
-                    ...prev.currentFlow,
-                    step: 'recount_results',
-                    breadcrumb: 'Home > Discrepancy Alert > Recount Results'
                 }
             }));
+        },
+
+        download_report_pdf: () => {
+            console.log('📄 Downloading report as PDF');
+            const getCurrentReportData = () => {
+                const currentData = flowData;
+                return currentData?.reportModal?.data;
+            };
+
+            const reportData = getCurrentReportData();
+            if (!reportData) {
+                alert('No report data available for download.');
+                return;
+            }
+
+            try {
+                // Create new PDF document
+                const doc = new jsPDF();
+                const pageWidth = doc.internal.pageSize.width;
+                const pageHeight = doc.internal.pageSize.height;
+                const margin = 20;
+                let currentY = margin;
+
+                // Add title
+                doc.setFontSize(20);
+                doc.setFont('helvetica', 'bold');
+                doc.text(reportData.title || 'Investigation Report', margin, currentY);
+                currentY += 15;
+
+                // Add a line under title
+                doc.setLineWidth(0.5);
+                doc.line(margin, currentY, pageWidth - margin, currentY);
+                currentY += 15;
+
+                // Add metadata section
+                doc.setFontSize(12);
+                doc.setFont('helvetica', 'normal');
+
+                const metaData = [
+                    `Report ID: ${reportData.reportId}`,
+                    `Generated: ${reportData.generatedAt}`,
+                    `Investigation Type: ${reportData.investigationType}`,
+                    `Status: ${reportData.status}`
+                ];
+
+                metaData.forEach((item, index) => {
+                    const xPos = index % 2 === 0 ? margin : pageWidth / 2;
+                    const yPos = currentY + Math.floor(index / 2) * 8;
+                    doc.text(item, xPos, yPos);
+                });
+                currentY += Math.ceil(metaData.length / 2) * 8 + 10;
+
+                // Add investigation details section
+                doc.setFontSize(14);
+                doc.setFont('helvetica', 'bold');
+                doc.text('Investigation Details', margin, currentY);
+                currentY += 10;
+
+                // Prepare table data
+                const tableData = reportData.sections ? reportData.sections.map((section: any) => [
+                    section.label,
+                    section.value
+                ]) : [];
+
+                // Add table using autoTable
+                autoTable(doc, {
+                    head: [['Section', 'Details']],
+                    body: tableData,
+                    startY: currentY,
+                    margin: { left: margin, right: margin },
+                    styles: {
+                        fontSize: 10,
+                        cellPadding: 5,
+                        overflow: 'linebreak',
+                        halign: 'left'
+                    },
+                    headStyles: {
+                        fillColor: [66, 139, 202],
+                        textColor: 255,
+                        fontStyle: 'bold',
+                        fontSize: 11
+                    },
+                    alternateRowStyles: {
+                        fillColor: [245, 245, 245]
+                    },
+                    columnStyles: {
+                        0: { cellWidth: 60, fontStyle: 'bold' },
+                        1: { cellWidth: 'auto' }
+                    },
+                    didDrawPage: (data) => {
+                        // Add footer on each page
+                        const footerY = pageHeight - 15;
+                        doc.setFontSize(8);
+                        doc.setFont('helvetica', 'normal');
+                        doc.setTextColor(128, 128, 128);
+                        doc.text(
+                            `Generated by Warehouse Management System - ${new Date().toLocaleString()}`,
+                            pageWidth / 2,
+                            footerY,
+                            { align: 'center' }
+                        );
+
+                        // Add page numbers
+                        doc.text(
+                            `Page ${data.pageNumber}`,
+                            pageWidth - margin,
+                            footerY,
+                            { align: 'right' }
+                        );
+                    }
+                });
+
+                // Generate filename
+                const fileName = `${reportData.investigationType?.replace(/\s+/g, '_') || 'report'}_${reportData.reportId || Date.now()}.pdf`;
+
+                // Save the PDF
+                doc.save(fileName);
+
+                console.log(`📄 PDF Report downloaded: ${fileName}`);
+            } catch (error) {
+                console.error('Error generating PDF:', error);
+                alert('Error generating PDF report. Please try again.');
+            }
         },
 
         download_report: () => {
@@ -584,6 +1071,33 @@ const WarehouseApp = () => {
         email_report: () => {
             console.log('📧 Emailing report');
             alert('Report emailed successfully!\n- Recipients: supervisor@warehouse.com, manager@warehouse.com\n- Subject: Discrepancy Report - Immediate Review Required');
+        },
+
+        // Worker details handlers
+        show_worker_details: (event: any) => {
+            console.log('👤 Showing worker details');
+            const workerId = event?.target?.getAttribute?.('data-worker-id') || 'W2847';
+            const workerName = event?.target?.getAttribute?.('data-worker-name') || 'John Smith';
+
+            updateFlowState((prev: any) => ({
+                ...prev,
+                workerDetails: {
+                    isVisible: true,
+                    workerId: workerId,
+                    workerName: workerName
+                }
+            }));
+        },
+
+        hide_worker_details: () => {
+            console.log('❌ Hiding worker details');
+            updateFlowState((prev: any) => ({
+                ...prev,
+                workerDetails: {
+                    ...prev.workerDetails,
+                    isVisible: false
+                }
+            }));
         }
     };
 
@@ -608,7 +1122,7 @@ const WarehouseApp = () => {
                 role: 'assistant',
                 content: 'Development mode: I can help you generate and modify UI components. The warehouse flow is already loaded for testing and development purposes.'
             }]);
-            
+
             setDevIsLoading(false)
         }, 1000)
 	}
@@ -636,13 +1150,12 @@ const WarehouseApp = () => {
         // Simulate processing delay for preview mode
         setTimeout(() => {
             if (isDiscrepancyQuery) {
-                // Load warehouse DSL for preview mode
-                setPreviewFlowData(warehouseFlowData);
-                setPreviewSchema(warehouseFlowDSL.warehouse_discrepancy_investigation_flow);
-                
                 setPreviewMessages(prev => [...prev, {
                     role: 'assistant',
-                    content: 'I\'ve loaded the warehouse discrepancy investigation flow for you. You can now interact with the system to investigate stock discrepancies, review transactions, and perform recounts.'
+                    content: 'I\'ve loaded the warehouse discrepancy investigation flow for you. You can now interact with the system to investigate stock discrepancies, review transactions, and perform recounts.',
+                    hasUI: true,
+                    uiSchema: warehouseFlowDSL.warehouse_discrepancy_investigation_flow,
+                    uiData: warehouseFlowData
                 }]);
             } else {
                 setPreviewMessages(prev => [...prev, {
@@ -713,23 +1226,51 @@ const WarehouseApp = () => {
                             
                             {/* Chat Messages */}
                             {previewMessages.map((msg, i) => (
-                                <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                                    <div className={`flex max-w-[80%] ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
-                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${msg.role === 'user' ? 'ml-3 bg-purple-500' : 'mr-3 bg-gray-700'}`}>
-                                            {msg.role === 'user' ? (
-                                                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                                                </svg>
-                                            ) : (
-                                                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                                                </svg>
-                                            )}
-                                        </div>
-                                        <div className={`rounded-2xl px-4 py-3 ${msg.role === 'user' ? 'bg-purple-500 text-white' : 'bg-gray-100 text-gray-800'}`}>
-                                            <p className="leading-relaxed">{msg.content}</p>
+                                <div key={i} className="space-y-6">
+                                    {/* Message bubble */}
+                                    <div className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                        <div className={`flex max-w-[80%] ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
+                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${msg.role === 'user' ? 'ml-3 bg-purple-500' : 'mr-3 bg-gray-700'}`}>
+                                                {msg.role === 'user' ? (
+                                                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                                    </svg>
+                                                ) : (
+                                                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                                    </svg>
+                                                )}
+                                            </div>
+                                            <div className={`rounded-2xl px-4 py-3 ${msg.role === 'user' ? 'bg-purple-500 text-white' : 'bg-gray-100 text-gray-800'}`}>
+                                                <p className="leading-relaxed">{msg.content}</p>
+                                            </div>
                                         </div>
                                     </div>
+
+                                    {/* UI Component - only for assistant messages with UI */}
+                                    {msg.hasUI && msg.role === 'assistant' && msg.uiSchema && (
+                                        <div className="w-full">
+                                            {/* UI Header */}
+                                            <div className="bg-gradient-to-r from-gray-700 to-gray-800 text-white px-4 py-2 rounded-t-xl">
+                                                <div className="flex items-center gap-2">
+                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                                    </svg>
+                                                    <span className="text-sm font-medium">Warehouse Management System</span>
+                                                </div>
+                                            </div>
+                                            {/* UI Container */}
+                                            <div className="bg-white rounded-b-xl shadow-lg border-x border-b border-gray-200 overflow-hidden" style={{ height: '70vh' }}>
+                                                <div className="h-full overflow-auto">
+                                                    <FLOWUIRenderer2
+                                                        schema={msg.uiSchema}
+                                                        data={msg.uiData}
+                                                        handlers={handlers}
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             ))}
                             
@@ -755,18 +1296,6 @@ const WarehouseApp = () => {
                                 </div>
                             )}
 
-                            {/* Warehouse UI - Show below messages when DSL is loaded */}
-                            {previewSchema && previewFlowData && (
-                                <div className="mt-8 border-t pt-8">
-                                    <div className="bg-white rounded-xl shadow-lg border border-gray-200">
-                                        <FLOWUIRenderer2   
-                                            schema={previewSchema}
-                                            data={previewFlowData}
-                                            handlers={handlers} 
-                                        />
-                                    </div>
-                                </div>
-                            )}
                         </div>
                     </div>
                 </div>
@@ -826,9 +1355,9 @@ const WarehouseApp = () => {
                             </div>
                         </div>
                         <div className="flex justify-center mt-2">
-                            <p className="text-xs text-gray-400">
+                            {/* <p className="text-xs text-gray-400">
                                 ChatGPT can make mistakes. Check important info.
-                            </p>
+                            </p> */}
                         </div>
                     </div>
                 </div>
@@ -854,15 +1383,15 @@ const WarehouseApp = () => {
                             </svg>
                             <span>Preview</span>
                         </button>
-                    </div>					
+                    </div>
                     {/* Preview Content */}
                     <div className="flex-1 overflow-auto relative">
                         {schema ? (
                             <div className="min-h-full bg-white rounded-xl shadow-lg border border-slate-200">
-                                <FLOWUIRenderer2   
+                                <FLOWUIRenderer2
                                     schema={schema}
                                     data={flowData}
-                                    handlers={handlers} 
+                                    handlers={handlers}
                                 />
                             </div>
                         ) : (
@@ -900,7 +1429,7 @@ const WarehouseApp = () => {
                 </div>
 
                 {/* Messages */}
-                <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-gradient-to-b from-slate-50/50 to-white/50">
+                <div ref={devMessagesRef} className="flex-1 overflow-y-auto p-6 space-y-4 bg-gradient-to-b from-slate-50/50 to-white/50">
                     {devMessages.length === 0 && (
                         <div className="text-center py-8">
                             <div className="w-16 h-16 mx-auto bg-gradient-to-br from-violet-100 to-purple-100 rounded-2xl flex items-center justify-center mb-4">

@@ -693,10 +693,11 @@ Requirements:
                     },
                     {
                         role: "user",
-                        content: 
-`
+                        content: currentUI ?
+`EXISTING UI SCHEMA TO MODIFY:
+${JSON.stringify(currentUI, null, 2)}
 
-Create a modern, professional UI for: "${originalPrompt}"
+MODIFICATION REQUEST: "${originalPrompt}"
 
 Data structure:
 ${JSON.stringify(data, null, 2)}
@@ -704,13 +705,28 @@ ${JSON.stringify(data, null, 2)}
 Available data fields: ${data ? Object.keys(data).join(', ') : 'none'}
 ${data && Object.keys(data)[0] ? `Sample item fields: ${Object.keys(data[Object.keys(data)[0]]?.[0] || {}).join(', ')}` : ''}
 
-Requirements:
+INSTRUCTIONS:
+- You are in UPDATE MODE - modify the existing UI schema above
+- Apply the requested changes from the modification request
+- Preserve existing structure and styling where possible
+- Only modify what's specifically requested
+- Maintain data bindings and ensure they work with the new data structure
+- Keep the same design patterns and styling consistency` :
+`CREATE NEW UI FOR: "${originalPrompt}"
+
+Data structure:
+${JSON.stringify(data, null, 2)}
+
+Available data fields: ${data ? Object.keys(data).join(', ') : 'none'}
+${data && Object.keys(data)[0] ? `Sample item fields: ${Object.keys(data[Object.keys(data)[0]]?.[0] || {}).join(', ')}` : ''}
+
+INSTRUCTIONS:
+- You are in CREATE MODE - generate a completely new UI
 - Use modern design patterns
-- Apply professional Tailwind CSS styling  
+- Apply professional Tailwind CSS styling
 - Make it responsive and interactive
 - Include proper data bindings
-- Ensure good visual hierarchy and spacing
-`
+- Ensure good visual hierarchy and spacing`
                     }
                 ],
                 response_format: { type: "json_object" },
@@ -726,7 +742,7 @@ Requirements:
                 parsed = JSON.parse(result);
 
                  // 🔧 NEW: Fix double bindings before validation
-                 parsed = this.fixDoubleBindings(parsed);
+                parsed = this.fixDoubleBindings(parsed);
 
                 // Validate and fix the structure
                 parsed = this.normalizeUIComponent(parsed);
