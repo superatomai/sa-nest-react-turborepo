@@ -76,14 +76,10 @@ class ProjectStore {
   }
 
   addProjectToStore(project: Project) {
-    console.log("project store called, adding project:", project);
     runInAction(() => {
       this.projects.unshift(project);
-      console.log("added project to the start:", JSON.stringify(this.projects));
-      console.log("uupdating the total projects count to ", this.totalProjects + 1);
       this.totalProjects += 1;
       this.selectedProjectId = project.id;
-      console.log("selected project id:" +  this.selectedProjectId + " project id:" + project.id);
     });
   }
 

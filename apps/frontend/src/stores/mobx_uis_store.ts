@@ -49,11 +49,9 @@ class UisStore {
 //   }
 
   addUiToStore(ui: Ui) {
-    console.log("called the addUiToStore function mobx ui store...");
     runInAction(() => {
       projectStore.increaseUiCount(ui.projectId);
       this.uis.unshift(ui);
-      console.log("added ui to the start:", JSON.stringify(this.uis));
       this.totalUis += 1;
     });
   }

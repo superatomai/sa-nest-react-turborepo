@@ -75,17 +75,13 @@ const AddNewUiModal = ({ setShowAddUiModal, projectId }: Props) => {
 
         const ui_id = "ui_" + nanoid(6)
 
-        console.log("creating version first for UI:", ui_id);
       // 1. Create version first
       const version : any = await createVersionMutation.mutateAsync({
         uiId: ui_id, 
         dsl: default_dsl, 
         prompt: "This is a default prompt",
       });
-
-      console.log("Version created:", JSON.stringify(version));
       
-      console.log("creating UI with versionId:", version.version.id);
 
       // 2. Then create UI with versionId
       const newUi : any = await createUiMutation.mutateAsync({
@@ -96,14 +92,13 @@ const AddNewUiModal = ({ setShowAddUiModal, projectId }: Props) => {
         projectId,
       });
 
-      console.log("UI created:", JSON.stringify(newUi));
+
 
       const uiWithVersion = {
         ...newUi.ui,
         version_id: 1,
       };
 
-      console.log("adding Ui to store : ", uiWithVersion);
       // 3. Add to MobX store
       uisStore.addUiToStore(uiWithVersion);
 

@@ -50,9 +50,6 @@ const AddNewProjectModal = ({ setNewProjModalOpen, orgId }: Props) => {
         orgId,
       });
 
-      console.log("new Project created:", newProject);
-
-      console.log("adding this new proj to store...")
       projectStore.addProjectToStore(newProject.project);
 
       setFormData({
