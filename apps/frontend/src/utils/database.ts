@@ -71,7 +71,7 @@ export const createVersionData = (
 export const useCreateVersion = (callbacks?: DatabaseCallbacks) => {
 	return trpc.versionsCreate.useMutation({
 		onSuccess: (response) => {
-			console.log('✅ Version created successfully:', response)
+			// console.log('✅ Version created successfully:', response)
 			if (callbacks?.showToast !== false) {
 				toast.success('Version created successfully')
 			}
@@ -91,7 +91,7 @@ export const useCreateVersion = (callbacks?: DatabaseCallbacks) => {
 export const useUpdateUI = (callbacks?: DatabaseCallbacks) => {
 	return trpc.uisUpdate.useMutation({
 		onSuccess: (response) => {
-			console.log('✅ UI updated successfully:', response)
+			// console.log('✅ UI updated successfully:', response)
 			if (callbacks?.showToast !== false) {
 				toast.success('UI updated successfully')
 			}
@@ -134,12 +134,12 @@ export const useCreateVersionAndUpdateUI = () => {
 				prompt: params.prompt
 			}
 
-			console.log(`💾 Creating version for ${params.operation || 'operation'}:`, params.prompt)
-
+			// console.log(`💾 Creating version for ${params.operation || 'operation'}:`, params.prompt)
+			console.log("creating version with this dsl data:", JSON.stringify(versionData))
 			// Create version
 			createVersionMutation.mutate(versionPayload, {
 				onSuccess: async (versionResponse) => {
-					console.log('✅ Version created:', versionResponse)
+					// console.log('✅ Version created:', versionResponse)
 					callbacks?.onVersionCreated?.(versionResponse)
 
 					// Step 3: Update UI with new version ID
@@ -151,7 +151,7 @@ export const useCreateVersionAndUpdateUI = () => {
 
 						updateUiMutation.mutate(uiUpdatePayload, {
 							onSuccess: (uiResponse) => {
-								console.log('✅ UI updated with new version:', uiResponse)
+								// console.log('✅ UI updated with new version:', uiResponse)
 								// toast.success(`${params.operation || 'Operation'} saved successfully!`)
 								callbacks?.onUIUpdated?.(uiResponse)
 								callbacks?.onComplete?.()

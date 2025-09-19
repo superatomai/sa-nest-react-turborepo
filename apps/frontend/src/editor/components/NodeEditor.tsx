@@ -22,13 +22,13 @@ const NodeEditor: React.FC<NodeEditorProps> = ({
       setText(window.SAEDITOR.text || "");
       setClassName(window.SAEDITOR.className || "");
       setHasText(window.SAEDITOR.hasText || false);
-      console.log('NodeEditor updated:', {
-        text: window.SAEDITOR.text,
-        className: window.SAEDITOR.className,
-        hasText: window.SAEDITOR.hasText,
-        nodeId: window.SAEDITOR.nodeId,
-        textLength: window.SAEDITOR.text?.length || 0
-      });
+      // console.log('NodeEditor updated:', {
+      //   text: window.SAEDITOR.text,
+      //   className: window.SAEDITOR.className,
+      //   hasText: window.SAEDITOR.hasText,
+      //   nodeId: window.SAEDITOR.nodeId,
+      //   textLength: window.SAEDITOR.text?.length || 0
+      // });
     }
   }, [isOpen, selectedNodeId]); // Use selectedNodeId prop instead
 

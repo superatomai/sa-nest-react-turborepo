@@ -19,7 +19,10 @@ const EditorSSE = () => {
 	const [messages, setMessages] = useState<Array<{ role: string, content: string }>>([])
 	const [input, setInput] = useState('')
 
-	const [currentSchema, setCurrentSchema] = useState<UIComponent>(TEST_DSL)
+	const [currentSchema, setCurrentSchema] = useState<UIComponent | null>(
+		// TEST_DSL
+		null
+	)
 	const [projectId, setProjectId] = useState<string>("");
 	const [isDSLLoading, setIsDSLLoading] = useState<boolean>(false);
 	const [isNodeEditorOpen, setIsNodeEditorOpen] = useState<boolean>(false);
@@ -229,89 +232,89 @@ const EditorSSE = () => {
 	}, [uiId, uidata]);
 
 	// Load existing UI DSL on component mount - run after projectId is set
-	// useEffect(() => {
-	// 	const loadExistingUI = async () => {
-	// 		if (!projectId || !uiId || projectId === "") return;
+	useEffect(() => {
+		const loadExistingUI = async () => {
+			if (!projectId || !uiId || projectId === "") return;
 			
-	// 		setIsDSLLoading(true);
-	// 		try {
-	// 			console.log('Loading existing UI for projectId:', projectId, 'uiId:', uiId);
+			setIsDSLLoading(true);
+			try {
+				console.log('Loading existing UI for projectId:', projectId, 'uiId:', uiId);
 			
-	// 			if (uidata && uidata.ui) {
-	// 				const ui_version = uidata.ui.uiVersion;
+				if (uidata && uidata.ui) {
+					const ui_version = uidata.ui.uiVersion;
 
-	// 				let dslToUse = null;
+					let dslToUse = null;
 
-	// 				try {
-	// 					const versionResult = await getVersionQuery.refetch();
-	// 					if (versionResult.data && versionResult.data.versions) {
-	// 						const versions = versionResult.data.versions;
+					try {
+						const versionResult = await getVersionQuery.refetch();
+						if (versionResult.data && versionResult.data.versions) {
+							const versions = versionResult.data.versions;
 							
-	// 						// Load conversations from all versions
-	// 						const conversations: Array<{ role: string, content: string }> = [];
+							// Load conversations from all versions
+							const conversations: Array<{ role: string, content: string }> = [];
 							
-	// 						if (Array.isArray(versions)) {
-	// 							// Sort versions by creation date (assuming id is chronological or there's a createdAt field)
-	// 							const sortedVersions = [...versions].sort((a, b) => a.id - b.id);
+							if (Array.isArray(versions)) {
+								// Sort versions by creation date (assuming id is chronological or there's a createdAt field)
+								const sortedVersions = [...versions].sort((a, b) => a.id - b.id);
 								
-	// 							sortedVersions.forEach(version => {
-	// 								if (version.prompt && version.prompt.trim()) {
-	// 									// Add user message (the prompt)
-	// 									conversations.push({
-	// 										role: 'user',
-	// 										content: version.prompt
-	// 									});
-	// 									// Add assistant response
-	// 									conversations.push({
-	// 										role: 'assistant',
-	// 										content: 'UI generated successfully!'
-	// 									});
-	// 								}
-	// 							});
-	// 						}
+								sortedVersions.forEach(version => {
+									if (version.prompt && version.prompt.trim()) {
+										// Add user message (the prompt)
+										conversations.push({
+											role: 'user',
+											content: version.prompt
+										});
+										// Add assistant response
+										conversations.push({
+											role: 'assistant',
+											content: 'UI generated successfully!'
+										});
+									}
+								});
+							}
 							
-	// 						// Set conversations in messages state
-	// 						if (conversations.length > 0) {
-	// 							setMessages(conversations);
-	// 						}
+							// Set conversations in messages state
+							if (conversations.length > 0) {
+								setMessages(conversations);
+							}
 							
-	// 						// Find the current version's DSL
-	// 						const versionData = Array.isArray(versions) ? 
-	// 							versions.find(v => v.id === ui_version) : null;
-	// 						if (versionData && versionData.dsl) {
-	// 							dslToUse = versionData.dsl;
-	// 						}
-	// 					}
-	// 				} catch (versionError) {
-	// 					console.error('Failed to fetch version data:', versionError);
-	// 				}
+							// Find the current version's DSL
+							const versionData = Array.isArray(versions) ? 
+								versions.find(v => v.id === ui_version) : null;
+							if (versionData && versionData.dsl) {
+								dslToUse = versionData.dsl;
+							}
+						}
+					} catch (versionError) {
+						console.error('Failed to fetch version data:', versionError);
+					}
 
-	// 				// console.log('dsl to use', dslToUse);
-	// 					// Parse and set the DSL if we found it using new utilities
-	// 				if (dslToUse) {
-	// 					try {
-	// 						const uiComponent = parseDSLFromVersion(dslToUse);
+					// console.log('dsl to use', dslToUse);
+						// Parse and set the DSL if we found it using new utilities
+					if (dslToUse) {
+						try {
+							const uiComponent = parseDSLFromVersion(dslToUse);
 
-	// 						if (uiComponent) {
-	// 							console.log('Setting current schema from DSL:', uiComponent);
-	// 							setCurrentSchema(uiComponent);
-	// 						}
+							if (uiComponent) {
+								console.log('Setting current schema from DSL:', uiComponent);
+								setCurrentSchema(uiComponent);
+							}
 
-	// 					} catch (parseError) {
-	// 						console.error('Failed to parse DSL:', parseError);
-	// 					}
-	// 				} else {
-	// 					console.error('No DSL found for this UI');
-	// 				}
-	// 			}
-	// 		} catch (error) {
-	// 			console.error('Failed to load existing UI:', error);
-	// 		} finally {
-	// 			setIsDSLLoading(false);
-	// 		}
-	// 	};
-	// 	loadExistingUI();
-	// }, [projectId, uiId]); // Run when projectId or uiId changes
+						} catch (parseError) {
+							console.error('Failed to parse DSL:', parseError);
+						}
+					} else {
+						console.error('No DSL found for this UI');
+					}
+				}
+			} catch (error) {
+				console.error('Failed to load existing UI:', error);
+			} finally {
+				setIsDSLLoading(false);
+			}
+		};
+		loadExistingUI();
+	}, [projectId, uiId]); // Run when projectId or uiId changes
 
 
 	// Prompt history state
@@ -521,6 +524,12 @@ const EditorSSE = () => {
 
 	// Handle schema updates from copy-paste operations
 	const handleSchemaUpdate = useCallback((newSchema: UIComponent, operation?: string) => {
+		// Log DSL before and after update
+		console.log('📋 DSL UPDATE - Operation:', operation || 'unknown operation')
+		console.log('🔴 ORIGINAL DSL:', JSON.stringify(currentSchema))
+		console.log('🟢 UPDATED DSL:', JSON.stringify(newSchema))
+		console.log('-----------------------------------')
+
 		setCurrentSchema(newSchema)
 		console.log('🔄 Schema updated via:', operation || 'unknown operation', newSchema.id)
 
@@ -546,7 +555,7 @@ const EditorSSE = () => {
 		} else {
 			console.warn('Cannot save to database: missing uiId')
 		}
-	}, [uiId, uidata, createVersionAndUpdateUI])
+	}, [uiId, uidata, createVersionAndUpdateUI, currentSchema])
 
 	// Handle schema updates silently in background (no toasts for node editor)
 	const handleSchemaUpdateSilent = useCallback((newSchema: UIComponent, operation: string) => {
@@ -583,7 +592,7 @@ const EditorSSE = () => {
 		if (selectedNodeId && currentSchema) {
 			// Use the utility function to find the node
 			const selectedNode = findNodeById(currentSchema, selectedNodeId)
-			console.log('Found node:', selectedNode)
+			// console.log('Found node:', selectedNode)
 
 			if (selectedNode) {
 				// Update window.SAEDITOR with selected node data
@@ -595,14 +604,14 @@ const EditorSSE = () => {
 					let textValue = ''
 					let hasStringText = false
 
-					console.log('Extracting text from node:', {
-						selectedNode,
-						nodeProps,
-						directNodeText: (selectedNode as any).text,
-						directPropsText: nodeProps.text,
-						nestedPropsText: nodeProps.props?.text,
-						children: nodeProps.children
-					})
+					// console.log('Extracting text from node:', {
+					// 	selectedNode,
+					// 	nodeProps,
+					// 	directNodeText: (selectedNode as any).text,
+					// 	directPropsText: nodeProps.text,
+					// 	nestedPropsText: nodeProps.props?.text,
+					// 	children: nodeProps.children
+					// })
 
 					// Only consider it "text" if it's actually a string, not an array or object
 					// Priority: props.children -> direct children -> other text properties
@@ -626,16 +635,16 @@ const EditorSSE = () => {
 						hasStringText = true
 					}
 
-					console.log('Final text value:', textValue)
-					console.log('Has string text:', hasStringText)
-					console.log('Setting hasText to:', hasStringText)
+					// console.log('Final text value:', textValue)
+					// console.log('Has string text:', hasStringText)
+					// console.log('Setting hasText to:', hasStringText)
 
 					window.SAEDITOR.text = textValue
 					window.SAEDITOR.className = nodeProps.className || (selectedNode as any).props?.className || ''
 					window.SAEDITOR.nodeId = selectedNodeId
 					window.SAEDITOR.hasText = hasStringText
 
-					console.log('Window.SAEDITOR after update:', window.SAEDITOR)
+					// console.log('Window.SAEDITOR after update:', window.SAEDITOR)
 				}
 				// Update React state to trigger re-render
 				setSelectedNodeId(selectedNodeId)
@@ -832,8 +841,16 @@ const EditorSSE = () => {
 						onUpdate={(text: string, className: string) => {
 							// Update the schema with new text and className
 							if (currentSchema && window.SAEDITOR && window.SAEDITOR.nodeId) {
+								// Log DSL before and after node edit
+								console.log('✏️ NODE EDIT - NodeId:', window.SAEDITOR.nodeId)
+								console.log('🔴 ORIGINAL DSL:', currentSchema)
+
 								const updatedSchema = updateNodeById(currentSchema, window.SAEDITOR.nodeId, text, className)
+
 								if (updatedSchema) {
+									console.log('🟢 UPDATED DSL:', updatedSchema)
+									console.log('-----------------------------------')
+
 									setCurrentSchema(updatedSchema as UIComponent)
 									// Save to database in background without toasts
 									handleSchemaUpdateSilent(updatedSchema as UIComponent, 'node-edit')
