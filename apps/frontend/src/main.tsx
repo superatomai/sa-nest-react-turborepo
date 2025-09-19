@@ -7,6 +7,26 @@ import { trpc, trpcClient } from "./utils/trpc";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import "./index.css";
 
+interface SAEditorType{
+  text: string,
+  className: string,
+  nodeId?: string,
+  hasText?: boolean
+}
+
+declare global {
+  interface Window {
+    SAEDITOR: SAEditorType
+  }
+}
+
+window.SAEDITOR = {
+  text: "",
+  className: "",
+  nodeId: undefined,
+  hasText: false
+}
+
 const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 if (!PUBLISHABLE_KEY) {
   throw new Error("Missing Clerk Publishable Key in .env");

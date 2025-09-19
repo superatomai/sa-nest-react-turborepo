@@ -12,6 +12,7 @@ interface SelectableUIRendererProps {
 	onRefresh?: () => void
 	enableSelection?: boolean // Toggle selection on/off
 	onSchemaUpdate?: (newSchema: UIComponent, operation?: string) => void // Callback for schema updates
+	onNodeSelect?: (nodeId: string) => void // Callback for node selection
 }
 
 /**
@@ -74,7 +75,8 @@ const SelectableUIRenderer: React.FC<SelectableUIRendererProps> = ({
 	isStreaming,
 	onRefresh,
 	enableSelection = false,
-	onSchemaUpdate
+	onSchemaUpdate,
+	onNodeSelect
 }) => {
 	// If selection is disabled, render the normal UI renderer
 	if (!enableSelection) {
@@ -89,7 +91,7 @@ const SelectableUIRenderer: React.FC<SelectableUIRendererProps> = ({
 
 	// If selection is enabled, wrap with NodeSelectionProvider and keyboard interactions
 	return (
-		<NodeSelectionProvider rootSchema={uiComponent} onSchemaUpdate={onSchemaUpdate}>
+		<NodeSelectionProvider rootSchema={uiComponent} onSchemaUpdate={onSchemaUpdate} onNodeSelect={onNodeSelect}>
 			<SelectableUIRendererInner
 				uiComponent={uiComponent}
 				handlers={handlers}

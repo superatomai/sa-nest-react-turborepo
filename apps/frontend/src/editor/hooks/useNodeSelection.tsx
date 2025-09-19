@@ -44,6 +44,9 @@ interface NodeSelectionContextType {
 
 	// Schema update callback
 	onSchemaUpdate?: (newSchema: UIComponent, operation?: string) => void
+
+	// Node selection callback
+	onNodeSelect?: (nodeId: string) => void
 }
 
 const NodeSelectionContext = createContext<NodeSelectionContextType | null>(null)
@@ -52,12 +55,14 @@ interface NodeSelectionProviderProps {
 	children: ReactNode
 	rootSchema: UIComponent | null
 	onSchemaUpdate?: (newSchema: UIComponent, operation?: string) => void
+	onNodeSelect?: (nodeId: string) => void
 }
 
 export const NodeSelectionProvider: React.FC<NodeSelectionProviderProps> = ({
 	children,
 	rootSchema,
-	onSchemaUpdate
+	onSchemaUpdate,
+	onNodeSelect
 }) => {
 	const [isSelectionEnabled, setIsSelectionEnabled] = useState(true)
 	const [selectedNode, setSelectedNode] = useState<SelectionPath | null>(null)
@@ -81,7 +86,12 @@ export const NodeSelectionProvider: React.FC<NodeSelectionProviderProps> = ({
 		if (!isSelectionEnabled) return
 
 		setSelectedNode({ componentId, path })
-	}, [isSelectionEnabled])
+
+		// Call the onNodeSelect callback if provided
+		if (onNodeSelect) {
+			onNodeSelect(componentId)
+		}
+	}, [isSelectionEnabled, onNodeSelect])
 
 	const clearSelection = useCallback(() => {
 		setSelectedNode(null)
@@ -321,7 +331,8 @@ export const NodeSelectionProvider: React.FC<NodeSelectionProviderProps> = ({
 		isNodeSelectable,
 		isNodeSelected,
 		isNodeHovered,
-		onSchemaUpdate
+		onSchemaUpdate,
+		onNodeSelect
 	}
 
 	return (

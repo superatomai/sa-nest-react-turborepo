@@ -1,5 +1,4 @@
 import { useEffect, useState, useMemo, useCallback } from 'react'
-import toast from 'react-hot-toast'
 import { UIComponent } from '../types/dsl'
 import FLOWUIRenderer from './components/ui-renderer'
 import { trpc, trpcClient } from '../utils/trpc'
@@ -9,6 +8,8 @@ import SelectableUIRenderer from './components/SelectableUIRenderer'
 import { DatabaseUtils, parseDSLFromVersion } from '../utils/database'
 import { createDefaultDSL } from '../lib/utils/default-dsl'
 import { TEST_DSL } from '@/test/dsl'
+import NodeEditor from './components/NodeEditor'
+import { findNodeById, updateNodeById } from './utils/node-operations'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000'
 
@@ -21,7 +22,9 @@ const EditorSSE = () => {
 	const [currentSchema, setCurrentSchema] = useState<UIComponent>(TEST_DSL)
 	const [projectId, setProjectId] = useState<string>("");
 	const [isDSLLoading, setIsDSLLoading] = useState<boolean>(false);
-	
+	const [isNodeEditorOpen, setIsNodeEditorOpen] = useState<boolean>(false);
+	const [selectedNodeId, setSelectedNodeId] = useState<string>('');
+
 	// SSE specific states
 	const [isGenerating, setIsGenerating] = useState<boolean>(false);
 	const [sseEvents, setSSEEvents] = useState<Array<{ type: string, message: string, data?: any, timestamp: Date }>>([]);
@@ -522,31 +525,126 @@ const EditorSSE = () => {
 		console.log('🔄 Schema updated via:', operation || 'unknown operation', newSchema.id)
 
 		// Save to database using new database utilities
-		// if (uiId) {
-		// 	try {
-		// 		createVersionAndUpdateUI({
-		// 			uiId: uiId,
-		// 			uiComponent: newSchema,
-		// 			prompt: `Schema updated via ${operation || 'copy/paste/cut/delete'}`,
-		// 			operation: operation || 'Schema Update'
-		// 		}, uidata, {
-		// 			onComplete: () => {
-		// 				console.log('✅ Schema update saved successfully')
-		// 			},
-		// 			onError: (error, step) => {
-		// 				console.error(`❌ Failed to save schema update at ${step}:`, error)
-		// 				toast.error(`Failed to save ${operation || 'changes'}`)
-		// 			}
-		// 		});
-		// 	} catch (error) {
-		// 		console.error('Failed to save schema update to database:', error)
-		// 		toast.error(`Failed to save ${operation || 'changes'} to database`)
-		// 	}
-		// } else {
-		// 	console.warn('Cannot save to database: missing uiId')
-		// 	toast.error('Cannot save changes: missing UI ID')
-		// }
+		if (uiId) {
+			try {
+				createVersionAndUpdateUI({
+					uiId: uiId,
+					uiComponent: newSchema,
+					prompt: `Schema updated via ${operation || 'copy/paste/cut/delete'}`,
+					operation: operation || 'Schema Update'
+				}, uidata, {
+					onComplete: () => {
+						console.log('✅ Schema update saved successfully')
+					},
+					onError: (error, step) => {
+						console.error(`❌ Failed to save schema update at ${step}:`, error)
+					}
+				});
+			} catch (error) {
+				console.error('Failed to save schema update to database:', error)
+			}
+		} else {
+			console.warn('Cannot save to database: missing uiId')
+		}
 	}, [uiId, uidata, createVersionAndUpdateUI])
+
+	// Handle schema updates silently in background (no toasts for node editor)
+	const handleSchemaUpdateSilent = useCallback((newSchema: UIComponent, operation: string) => {
+		console.log('🔄 Saving schema update silently:', operation, newSchema.id)
+
+		// Save to database using new database utilities
+		if (uiId) {
+			try {
+				createVersionAndUpdateUI({
+					uiId: uiId,
+					uiComponent: newSchema,
+					prompt: `Schema updated via ${operation}`,
+					operation: operation || 'Schema Update'
+				}, uidata, {
+					onComplete: () => {
+						console.log('✅ Schema update saved successfully (silent)')
+					},
+					onError: (error, step) => {
+						console.error(`❌ Failed to save schema update at ${step}:`, error)
+						// Only log errors for node editor, no toasts
+					}
+				});
+			} catch (error) {
+				console.error('Failed to save schema update to database:', error)
+			}
+		} else {
+			console.warn('Cannot save to database: missing uiId')
+		}
+	}, [uiId, uidata, createVersionAndUpdateUI])
+
+	// Handle node selection - opens modal when a node is selected
+	const handleNodeSelection = useCallback((selectedNodeId: string) => {
+		console.log('Node selected:', selectedNodeId)
+		if (selectedNodeId && currentSchema) {
+			// Use the utility function to find the node
+			const selectedNode = findNodeById(currentSchema, selectedNodeId)
+			console.log('Found node:', selectedNode)
+
+			if (selectedNode) {
+				// Update window.SAEDITOR with selected node data
+				if (window.SAEDITOR) {
+					// Extract text and className from the node
+					const nodeProps = (selectedNode as any).props || selectedNode
+
+					// Check for text in multiple locations (must be string, not array/object)
+					let textValue = ''
+					let hasStringText = false
+
+					console.log('Extracting text from node:', {
+						selectedNode,
+						nodeProps,
+						directNodeText: (selectedNode as any).text,
+						directPropsText: nodeProps.text,
+						nestedPropsText: nodeProps.props?.text,
+						children: nodeProps.children
+					})
+
+					// Only consider it "text" if it's actually a string, not an array or object
+					// Priority: props.children -> direct children -> other text properties
+					if (typeof (selectedNode as any).props?.children === 'string') {
+						textValue = (selectedNode as any).props.children
+						hasStringText = true
+					} else if (typeof (selectedNode as any).children === 'string') {
+						textValue = (selectedNode as any).children
+						hasStringText = true
+					} else if (typeof (selectedNode as any).text === 'string') {
+						textValue = (selectedNode as any).text
+						hasStringText = true
+					} else if (typeof nodeProps.text === 'string') {
+						textValue = nodeProps.text
+						hasStringText = true
+					} else if (typeof nodeProps.props?.text === 'string') {
+						textValue = nodeProps.props.text
+						hasStringText = true
+					} else if (typeof nodeProps.children === 'string') {
+						textValue = nodeProps.children
+						hasStringText = true
+					}
+
+					console.log('Final text value:', textValue)
+					console.log('Has string text:', hasStringText)
+					console.log('Setting hasText to:', hasStringText)
+
+					window.SAEDITOR.text = textValue
+					window.SAEDITOR.className = nodeProps.className || (selectedNode as any).props?.className || ''
+					window.SAEDITOR.nodeId = selectedNodeId
+					window.SAEDITOR.hasText = hasStringText
+
+					console.log('Window.SAEDITOR after update:', window.SAEDITOR)
+				}
+				// Update React state to trigger re-render
+				setSelectedNodeId(selectedNodeId)
+				// Open the NodeEditor modal
+				console.log('Opening NodeEditor modal')
+				setIsNodeEditorOpen(true)
+			}
+		}
+	}, [currentSchema])
 
 	// Memoize the renderer to prevent unnecessary re-renders
 	const memoizedRenderer = useMemo(() => {
@@ -557,9 +655,10 @@ const EditorSSE = () => {
 				handlers={handlers}
 				enableSelection={true} // Set to false to disable selection
 				onSchemaUpdate={handleSchemaUpdate}
+				onNodeSelect={handleNodeSelection}
 			/>
 		)
-	}, [currentSchema, handlers, handleSchemaUpdate])
+	}, [currentSchema, handlers, handleSchemaUpdate, handleNodeSelection])
 
 	const handleSend = async () => {
 		if (!input.trim()) return
@@ -635,11 +734,39 @@ const EditorSSE = () => {
 
 					{/* Debug Information */}
 					<div className="absolute bottom-6 left-6 max-w-md space-y-2">
+						{/* Selected Node Preview */}
+						{/* { selectedNodeId && (
+							<details open className="bg-indigo-900/95 backdrop-blur-sm text-indigo-300 p-3 rounded-xl text-xs shadow-2xl border border-indigo-700">
+								<summary className="cursor-pointer font-medium hover:text-indigo-200 transition-colors">
+									🎯 Selected Node: {selectedNodeId}
+								</summary>
+								<pre className="mt-3 overflow-auto max-h-48 text-slate-300 bg-slate-800/50 p-3 rounded-lg">
+									{JSON.stringify((() => {
+										if (currentSchema && selectedNodeId) {
+											const node = findNodeById(currentSchema, selectedNodeId);
+											if (node) {
+												return {
+													id: (node as any).id,
+													type: (node as any).type || (node as any).render?.type,
+													props: (node as any).props || (node as any).render?.props,
+													className: (node as any).props?.className || (node as any).className,
+													text: (node as any).props?.children || (node as any).children,
+													hasChildren: !!(node as any).children || !!(node as any).render?.children,
+													timestamp: new Date().toLocaleTimeString()
+												};
+											}
+										}
+										return null;
+									})(), null, 2)}
+								</pre>
+							</details>
+						)} */}
+
 						{/* Schema Preview */}
 						{currentSchema && (
 							<details className="bg-slate-900/95 backdrop-blur-sm text-emerald-400 p-3 rounded-xl text-xs shadow-2xl border border-slate-700">
 								<summary className="cursor-pointer font-medium hover:text-emerald-300 transition-colors">
-									🔍 View Schema
+									🔍 View Full Schema
 								</summary>
 								<pre className="mt-3 overflow-auto max-h-48 text-slate-300 bg-slate-800/50 p-3 rounded-lg">
 									{JSON.stringify(currentSchema, null, 2)}
@@ -695,6 +822,26 @@ const EditorSSE = () => {
 						</div>
 					</div>
 				</div>
+
+				{/* Node Editor - Below header */}
+				{isNodeEditorOpen && (
+					<NodeEditor
+						isOpen={isNodeEditorOpen}
+						selectedNodeId={selectedNodeId}
+						onClose={() => setIsNodeEditorOpen(false)}
+						onUpdate={(text: string, className: string) => {
+							// Update the schema with new text and className
+							if (currentSchema && window.SAEDITOR && window.SAEDITOR.nodeId) {
+								const updatedSchema = updateNodeById(currentSchema, window.SAEDITOR.nodeId, text, className)
+								if (updatedSchema) {
+									setCurrentSchema(updatedSchema as UIComponent)
+									// Save to database in background without toasts
+									handleSchemaUpdateSilent(updatedSchema as UIComponent, 'node-edit')
+								}
+							}
+						}}
+					/>
+				)}
 
 				{/* Messages and SSE Logs */}
 				<div className="flex-1 overflow-y-auto p-6 space-y-4 bg-gradient-to-b from-slate-50/50 to-white/50">

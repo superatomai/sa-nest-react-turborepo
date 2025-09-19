@@ -120,6 +120,7 @@ export const useCreateVersionAndUpdateUI = () => {
 			onUIUpdated?: (uiResponse: any) => void
 			onComplete?: () => void
 			onError?: (error: any, step: 'version' | 'ui') => void
+			showToast?: boolean
 		}
 	) => {
 		try {
@@ -151,13 +152,13 @@ export const useCreateVersionAndUpdateUI = () => {
 						updateUiMutation.mutate(uiUpdatePayload, {
 							onSuccess: (uiResponse) => {
 								console.log('✅ UI updated with new version:', uiResponse)
-								toast.success(`${params.operation || 'Operation'} saved successfully!`)
+								// toast.success(`${params.operation || 'Operation'} saved successfully!`)
 								callbacks?.onUIUpdated?.(uiResponse)
 								callbacks?.onComplete?.()
 							},
 							onError: (error) => {
 								console.error('❌ Failed to update UI:', error)
-								toast.error('Failed to update UI with new version')
+								// toast.error('Failed to update UI with new version')
 								callbacks?.onError?.(error, 'ui')
 							}
 						})

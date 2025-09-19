@@ -340,6 +340,15 @@ export const useKeyboardInteractions = (
     // Only handle keys when selection is enabled and keyboard interactions are enabled
     if (!isSelectionEnabled || !config.enabled) return
 
+    // Check if we're typing in an input or textarea field
+    const target = event.target as HTMLElement
+    const isTypingInInput = target.tagName === 'INPUT' ||
+                          target.tagName === 'TEXTAREA' ||
+                          target.isContentEditable === true
+
+    // Don't handle keyboard shortcuts if user is typing in any input field
+    if (isTypingInInput) return
+
     // Handle Escape key
     if (event.key === 'Escape') {
       event.preventDefault()
