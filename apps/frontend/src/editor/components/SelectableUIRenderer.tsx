@@ -1,13 +1,19 @@
 import React from 'react'
-import FLOWUIRenderer2 from './ui-rendere-2'
+// import FLOWUIRenderer2 from './ui-renderer-2' // Replaced with UpdatedDSLRenderer
 import { NodeSelectionProvider, SelectionControlPanel } from '../hooks/useNodeSelection'
 import { useDefaultKeyboardInteractions } from '../hooks/useKeyboardInteractions'
 import { UIComponent } from '../../types/dsl'
 import { Toaster } from 'react-hot-toast'
+import UpdatedDSLRenderer from './updatedDSLRenderer'
+
+interface NavigationHandler {
+	navigate?: (uiid: string, params?: Record<string, any>) => void;
+	[key: string]: any;
+}
 
 interface SelectableUIRendererProps {
 	uiComponent: UIComponent
-	handlers?: Record<string, Function>
+	handlers?: NavigationHandler
 	isStreaming?: boolean
 	onRefresh?: () => void
 	enableSelection?: boolean // Toggle selection on/off
@@ -20,21 +26,20 @@ interface SelectableUIRendererProps {
  */
 const SelectableUIRendererInner: React.FC<{
 	uiComponent: UIComponent
-	handlers: Record<string, Function>
+	handlers: NavigationHandler
 	isStreaming?: boolean
 	onRefresh?: () => void
-}> = ({ uiComponent, handlers, isStreaming, onRefresh }) => {
+}> = ({ uiComponent, handlers }) => {
 	// Initialize keyboard interactions (gets root schema from context)
 	useDefaultKeyboardInteractions()
 
 	return (
 		<div className="relative">
 			{/* <SelectionControlPanel /> */}
-			<FLOWUIRenderer2
+			<UpdatedDSLRenderer
 				uiComponent={uiComponent}
 				handlers={handlers}
-				isStreaming={isStreaming}
-				onRefresh={onRefresh}
+				onNavigate={handlers.navigate}
 				enableSelection={true}
 			/>
 			<Toaster
@@ -81,9 +86,10 @@ const SelectableUIRenderer: React.FC<SelectableUIRendererProps> = ({
 	// If selection is disabled, render the normal UI renderer
 	if (!enableSelection) {
 		return (
-			<FLOWUIRenderer2
+			<UpdatedDSLRenderer
 				uiComponent={uiComponent}
 				handlers={handlers}
+				onNavigate={handlers.navigate}
 				enableSelection={false}
 			/>
 		)

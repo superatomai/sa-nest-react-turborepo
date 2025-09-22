@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from "react"
 import { warehouseFlowDSL, warehouseFlowData } from "./warehouseFlowDSL"
-import FLOWUIRenderer2 from "./components/ui-rendere-2";
+import FLOWUIRenderer2 from "./components/ui-renderer-2";
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
