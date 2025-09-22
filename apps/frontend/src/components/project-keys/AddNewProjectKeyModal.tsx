@@ -13,9 +13,10 @@ import { useState, useEffect } from 'react'
 import { Input } from '../ui/input'
 import { Textarea } from '../ui/textarea'
 import { trpc } from '@/utils'
-import { nanoid } from 'nanoid'
+import { nanoid, customAlphabet } from 'nanoid'
 import toast from 'react-hot-toast'
 import { projectKeysStore } from '@/stores/mobx_project_keys_store'
+
 
 interface Props {
   showModal: boolean;
@@ -35,7 +36,6 @@ const AddNewProjectKeyModal = ({ showModal, setShowModal, projectId, setShowSucc
   // Mutation with success/error handling
   const createKeyMutation = trpc.projectKeysCreate.useMutation({
     onSuccess: (response) => {
-      console.log('🎯 onSuccess called with response:', response)
       toast.dismiss('creating-key')
 
       if (response?.projectKey) {
@@ -47,13 +47,10 @@ const AddNewProjectKeyModal = ({ showModal, setShowModal, projectId, setShowSucc
         keyName: newKeyForm.name,
         environment: newKeyForm.environment
       }
-      console.log('🔑 Setting createdKeyData:', keyData)
       setCreatedKeyData(keyData)
 
-      console.log('🚪 Closing creation modal')
       setShowModal(false)
 
-      console.log('🎉 Setting showSuccessModal to true after delay')
       setTimeout(() => {
         setShowSuccessModal(true)
       }, 100)
@@ -70,9 +67,11 @@ const AddNewProjectKeyModal = ({ showModal, setShowModal, projectId, setShowSucc
 
   // Generate unique API key with nanoid (36 characters)
   const generateApiKey = () => {
+    const nanoidLowercase = customAlphabet('abcdefghijklmnopqrstuvwxyz0123456789', 28)
+
     const prefix = newKeyForm.environment === 'production' ? 'sa_prod_' :
                   newKeyForm.environment === 'staging' ? 'sa_stag_' : 'sa_dev_'
-    const randomPart = nanoid(28)
+    const randomPart = nanoidLowercase(28)
     return `${prefix}${randomPart}`
   }
 

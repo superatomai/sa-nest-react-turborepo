@@ -90,4 +90,59 @@ catch(error){
 }
 }
 
+  /**
+   * Validates if an API key is valid and returns the associated project information
+   * @param apiKey - The API key to validate
+   * @returns Promise<{isValid: boolean, projectId?: number, keyId?: number}>
+   */
+  async validateApiKey(apiKey: string): Promise<{
+    isValid: boolean;
+    projectId?: number;
+    keyId?: number;
+    keyName?: string;
+    environment?: string;
+  }> {
+    try {
+      console.log("Validating API key for WebSocket connection");
+
+      // Find the API key in the database
+      const keyRecord = await this.drizzleService.db
+        .select({
+          id: projectKeys.id,
+          projectId: projectKeys.projectId,
+          name: projectKeys.name,
+          environment: projectKeys.environment,
+          isActive: projectKeys.isActive,
+          deleted: projectKeys.deleted
+        })
+        .from(projectKeys)
+        .where(and(
+          eq(projectKeys.keyValue, apiKey),
+          eq(projectKeys.deleted, false),
+          eq(projectKeys.isActive, true)
+        ))
+        .limit(1);
+
+      if (keyRecord.length === 0) {
+        console.log("API key validation failed: Key not found or inactive");
+        return { isValid: false };
+      }
+
+      const key = keyRecord[0];
+      console.log(`API key validation successful for project ${key.projectId}, key: ${key.name}`);
+
+      return {
+        isValid: true,
+        projectId: key.projectId,
+        keyId: key.id,
+        keyName: key.name,
+        environment: key.environment || 'default'
+      };
+
+    } catch (error) {
+      console.error("Error validating API key:", error);
+      return { isValid: false };
+    }
+  }
+
 }

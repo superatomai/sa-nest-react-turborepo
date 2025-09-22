@@ -10,6 +10,7 @@ import { Header } from "@/components/Header";
 import AllUis from "@/components/uis/AllUis";
 import { ProjectsLoading } from "@/components/loading-skeleton/projects-loading";
 import NoProjectsFound from "@/components/project/NoProjectsFound";
+import AddNewProject from "@/components/project/AddNewProject";
 
 const LIMIT = 8;
 
