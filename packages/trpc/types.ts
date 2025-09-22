@@ -79,6 +79,29 @@ const mockRouter = t.router({
     }))
     .mutation(() => null),
 
+  // Project Keys CRUD
+  projectKeysGetAll: t.procedure
+    .input(z.object({
+      projectId: z.number().int(),
+    }))
+    .query(() => null),
+
+  projectKeysCreate: t.procedure
+    .input(z.object({
+      projectId: z.number().int(),
+      name: z.string().min(1).max(255),
+      keyValue: z.string().min(1),
+      environment: z.string().min(1).max(50),
+      customInst: z.string().optional(),
+    }))
+    .mutation(() => null),
+
+  projectKeysDelete: t.procedure
+    .input(z.object({
+      keyId: z.number().int(),
+    }))
+    .mutation(() => null),
+
   uisGetAll: t.procedure
     .input(z.object({
       projectId: z.number().int().optional(),

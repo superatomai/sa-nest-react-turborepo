@@ -1,4 +1,4 @@
-import { Routes, Route, useLocation, Navigate } from "react-router-dom";
+import { Routes, Route, useLocation, Navigate, useParams } from "react-router-dom";
 import {
   OrganizationProfile,
   useAuth,
@@ -19,17 +19,24 @@ import { useOrganization } from "@clerk/clerk-react";
 import orgStore from "./stores/mobx_org_store";
 import SignUpPage from "./pages/SignUp";
 import { Toaster } from "react-hot-toast";
+import ProjConfig from "./pages/ProjConfig";
 
 export function App() {
   const { organization, isLoaded: orgLoaded } = useOrganization();
   const { isSignedIn, isLoaded: authLoaded } = useAuth();
   const location = useLocation();
+  const params = useParams();
 
   useEffect(() => {
-    if (orgLoaded) {
-      orgStore.setOrgId(organization?.id ?? null);
+  if (orgLoaded) {
+    if (organization?.id) {
+      orgStore.setOrgId(organization.id);
     }
-  }, [orgLoaded, organization]);
+    else if (!organization) {
+      orgStore.setOrgId(null);
+    }
+  }
+}, [orgLoaded, organization?.id, params]);
 
   const hideSidebar = location.pathname.startsWith("/editor");
   const isPublicRoute = [
@@ -99,6 +106,12 @@ export function App() {
               </ProtectedRoute>
             }
           />
+
+          <Route path="projects/:projectId/configuration" element={
+            <ProtectedRoute>
+              <ProjConfig/>
+            </ProtectedRoute>
+          }/>
 
           <Route
             path="/editor/:uiId"

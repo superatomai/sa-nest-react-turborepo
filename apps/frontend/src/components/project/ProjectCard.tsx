@@ -8,6 +8,7 @@ import { useState } from 'react';
 import ToolTip from '../Tooltip';
 import DeleteProjectModal from './DeleteProjectModal';
 import UpdateProjectModal from './UpdateProject';
+import { useNavigate } from 'react-router-dom';
 
 interface ProjectCardProps {
   ProjectDetails: any;
@@ -16,9 +17,13 @@ interface ProjectCardProps {
 }
 
 const ProjectCard = observer(({ ProjectDetails, selected, onSelect }: ProjectCardProps) => {
+
+  const navigate = useNavigate();
+
   const [showTooltip, setShowTooltip] = useState(false);
   const [showNameTooltip, setShowNameTooltip] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showConfigTooltip, setShowConfigTooltip] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
 
   const hasLongDescription = ProjectDetails.description && ProjectDetails.description.length > 50;
@@ -28,7 +33,7 @@ const ProjectCard = observer(({ ProjectDetails, selected, onSelect }: ProjectCar
     <div className="relative">
       <Card
         onClick={onSelect}
-        className={`cursor-pointer transition-all duration-300 hover:shadow-lg group relative overflow-hidden flex flex-col gap-2 px-3 pt-3 pb-0 ${
+        className={`cursor-pointer rounded-md transition-all duration-300 hover:shadow-lg group relative overflow-visible flex flex-col gap-2 px-3 pt-3 pb-0 ${
           selected
             ? "bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-500 shadow-lg"
             : "hover:bg-gradient-to-br hover:from-gray-50 hover:to-blue-50 border border-gray-200 hover:border-blue-300"
@@ -145,15 +150,21 @@ const ProjectCard = observer(({ ProjectDetails, selected, onSelect }: ProjectCar
           </div>
 
           <div
-            className={`w-full opacity-0 group-hover:opacity-100 ${
+            className={`w-full opacity-0 group-hover:opacity-100  ${
               selected ? "opacity-100" : ""
             } transition-all duration-200 flex justify-between relative py-2`}
           >
             <button
-              className="py-1 px-3 bg-white outline-1 rounded-md text-xs z-20"
-              onClick={(e) => e.stopPropagation()}
+              className="py-1 px-3 bg-white outline-1 rounded-md text-xs z-20 relative cursor-pointer  hover:border-blue-500 hover:text-blue-600"
+              onClick={(e) =>{ 
+                e.stopPropagation()
+                navigate(`${ProjectDetails.id}/configuration`)
+              }}
+              onMouseEnter={() => setShowConfigTooltip(true)}
+              onMouseLeave={() => setShowConfigTooltip(false)}
             >
-              <Icon icon="material-symbols:open-in-new-rounded" />
+              <Icon icon="mynaui:config" />
+              {showConfigTooltip && <ToolTip description="Project Configuration"/>}
             </button>
             <button
               className="py-1 px-3 cursor-pointer bg-white border border-gray-300 rounded-md text-xs z-20 text-gray-600 hover:border-blue-500 hover:text-blue-600 hover:bg-blue-50 transition-all duration-200"
@@ -174,7 +185,7 @@ const ProjectCard = observer(({ ProjectDetails, selected, onSelect }: ProjectCar
             >
               <Icon icon="material-symbols:delete-rounded" />
             </button>
-            <div className="absolute inset-0 bg-gradient-to-t from-[#92B5F7] to-white/80 -left-3 -right-3 bottom-0 top-0 z-10"></div>
+            <div className="absolute inset-0 bg-gradient-to-t from-[#92B5F7] to-white/80 -left-3 -right-3 bottom-0 top-0 z-10 rounded-b-md"></div>
           </div>
         </CardContent>
       </Card>

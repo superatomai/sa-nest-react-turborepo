@@ -60,6 +60,7 @@ export const projects = pgTable("projects", {
 	description: text(),
 	createdAt: timestamp("created_at", { precision: 6,  withTimezone: true, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`),
 	updatedAt: timestamp("updated_at", { precision: 6,  withTimezone: true, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`),
+	globalInst: text("global_inst"),
 	deleted: boolean().default(false).notNull(),
 	orgId: varchar("org_id", { length: 255 }).notNull(),
 	createdBy: varchar("created_by"),
@@ -79,6 +80,27 @@ export const projects = pgTable("projects", {
 		name: "projects_ui_list_fkey"
 	}).onUpdate("cascade").onDelete("restrict"),
 	
+]);
+
+export const projectKeys = pgTable("project_keys", {
+	id: serial().primaryKey().notNull(),
+	projectId: integer("project_id").notNull(),
+	name: varchar("name",{ length: 255 }).notNull(),
+	keyValue: text("key_value").notNull(),
+	environment: varchar("environment",{ length: 50 }),
+	isActive: boolean("is_active").default(true).notNull(),
+	deleted: boolean().default(false).notNull(),
+	customInst: text("custom_inst"),
+	createdBy: varchar("created_by"),
+	updatedBy: varchar("updated_by"),
+	createdAt: timestamp("created_at", { precision: 6, withTimezone: true, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`),
+	updatedAt: timestamp("updated_at", { precision: 6, withTimezone: true, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`),
+}, (table) => [
+	foreignKey({
+			columns: [table.projectId],
+			foreignColumns: [projects.id],
+			name: "project_keys_project_id_fkey"
+		}).onUpdate("cascade").onDelete("restrict"),
 ]);
 
 

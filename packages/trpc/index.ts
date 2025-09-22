@@ -15,6 +15,7 @@ import { UiDataService } from "../../apps/backend/src/services/ui-data.service";
 import { UiUtilsService } from "../../apps/backend/src/services/ui-utils.service";
 import  { UiListService }  from "../../apps/backend/src/ui_list/ui_list.service";
 import { DocsService } from "../../apps/backend/src/docs/docs.service";
+import { ProjectKeysService } from "../../apps/backend/src/project_keys/project_keys.service";
 
 // packages/trpc/index.ts
 export type User = {
@@ -217,6 +218,50 @@ export const appRouter = t.router({
       const service = ctx.nestApp.get(ProjectsService);
       return service.updateProject(input.id, input.data, input.orgId, ctx.user);
     }),
+
+  // ----------------
+  // Project keys CRUD
+  // ----------------
+
+  projectKeysGetAll: t.procedure
+    .input(
+      z.object({
+        projectId : z.number().int(),
+      })
+    )
+    .query(async ({ input, ctx }) => {
+      const projectKeysService = ctx.nestApp.get(ProjectKeysService);
+      return projectKeysService.getAllProjectKeys(input.projectId);
+    }),
+
+  projectKeysCreate: t.procedure
+  .input(
+    z.object(
+      {
+        projectId : z.number().int(),
+        name: z.string().min(1).max(255),
+        keyValue: z.string().min(1),
+        environment: z.string().min(1).max(50),
+        customInst: z.string().optional(),
+      }
+    ))
+    .mutation(async ({input , ctx}) =>{
+      const projectKeysService = ctx.nestApp.get(ProjectKeysService);
+      return projectKeysService.createProjectKey(input.projectId, input.name, input.keyValue, input.environment, input.customInst);
+    }),
+
+  projectKeysDelete: t.procedure
+  .input(
+    z.object(
+    {
+      keyId : z.number().int(),
+    }
+  ))
+  .mutation( async ({input, ctx})=>{
+    const projectKeysService = ctx.nestApp.get(ProjectKeysService);
+    return projectKeysService.deleteProjectKey(input.keyId);
+  }),
+
 
   // ----------------
   // UIs CRUD

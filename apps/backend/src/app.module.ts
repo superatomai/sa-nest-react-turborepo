@@ -12,6 +12,7 @@ import { UiListModule } from './ui_list/ui_list.module';
 import { DocsModule } from './docs/docs.module';
 import { CoreModule } from './core/core.module';
 import { UisModule } from './uis/uis.module';
+import { ProjectKeysModule } from './project_keys/project_keys.module';
 import { DeploymentController } from './controllers/deployment.controller';
 import { DeploymentService } from './services/deployment.service';
 
@@ -27,6 +28,7 @@ import { DeploymentService } from './services/deployment.service';
     UisModule,
     UiListModule,
     DocsModule,
+    ProjectKeysModule,
     TrpcModule
   ],
   controllers: [AppController, DeploymentController],

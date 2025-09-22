@@ -5,14 +5,23 @@ class OrgStore {
 
   constructor() {
     makeAutoObservable(this);
+    // Restore from localStorage on app start
+    const saved = localStorage.getItem('currentOrgId');
+    if (saved) this.orgId = saved;
   }
 
   setOrgId(orgId: string | null) {
     this.orgId = orgId;
+    if (orgId) {
+      localStorage.setItem('currentOrgId', orgId);
+    } else {
+      localStorage.removeItem('currentOrgId');
+    }
   }
 
   reset() {
     this.orgId = null;
+    localStorage.removeItem('currentOrgId');
   }
 }
 

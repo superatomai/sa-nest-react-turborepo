@@ -15,6 +15,20 @@
       "when": 1757516974053,
       "tag": "0001_mute_randall_flagg",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1758354074596,
+      "tag": "0002_large_zeigeist",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1758354610463,
+      "tag": "0003_far_maddog",
+      "breakpoints": true
     }
   ]
 }

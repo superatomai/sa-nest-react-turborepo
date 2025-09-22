@@ -22,7 +22,7 @@ const Projects = () => {
 		return <div>No organization selected</div>;
 	}
 
-	const projectsQuery: any = trpc.projectsGetAll.useQuery(
+	const  projectsQuery: any = trpc.projectsGetAll.useQuery(
 		{ orgId, skip: page * LIMIT, limit: LIMIT },
 		{
 			...(undefined as any),
@@ -82,6 +82,10 @@ const Projects = () => {
 				<ProjectsLoading />
 			</div>
 		);
+	}
+
+	if(projectsQuery.error){
+		return <div className="m-4 text-red-600">Error loading projects: {projectsQuery.error.message}</div>
 	}
 
 	// Show projects page with consistent header

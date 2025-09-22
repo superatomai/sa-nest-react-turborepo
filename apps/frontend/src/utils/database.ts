@@ -1,3 +1,4 @@
+import React, { useEffect } from 'react'
 import { trpc } from './trpc'
 import { UIComponent } from '../types/dsl'
 import toast from 'react-hot-toast'
@@ -25,6 +26,10 @@ export interface DatabaseCallbacks {
 	onSuccess?: (response: any) => void
 	onError?: (error: any) => void
 	showToast?: boolean
+}
+
+export interface QueryCallbacks extends DatabaseCallbacks {
+	onLoading?: (isLoading: boolean) => void
 }
 
 // Data truncation utility - limits arrays to max 10 items
@@ -200,6 +205,39 @@ export const useLoadUI = () => {
 	return trpc.uisGetById.useQuery
 }
 
+// Utility function for loading project by ID
+export const useGetProjectById = (projectId: number, orgId: string, callbacks?: QueryCallbacks) => {
+	const result = trpc.projectsGetById.useQuery(
+		{ id: Number(projectId), orgId: orgId },
+		{
+			enabled: !!projectId && !!orgId, // Only run query if both exist
+		}
+	)
+
+	// Handle callbacks using useEffect
+	useEffect(() => {
+		if (result.isSuccess && result.data) {
+			callbacks?.onSuccess?.(result.data)
+		}
+	}, [result.isSuccess, result.data, callbacks])
+
+	useEffect(() => {
+		if (result.isError) {
+			console.error('❌ Failed to load project:', result.error)
+			if (callbacks?.showToast !== false) {
+				toast.error('Failed to load project details')
+			}
+			callbacks?.onError?.(result.error)
+		}
+	}, [result.isError, result.error, callbacks])
+
+	useEffect(() => {
+		callbacks?.onLoading?.(result.isLoading)
+	}, [result.isLoading, callbacks])
+
+	return result
+}
+
 // Helper function to parse DSL from version data (returns UIComponent directly)
 export const parseDSLFromVersion = (dslString: string): UIComponent | null => {
 	try {
@@ -244,7 +282,8 @@ export const DatabaseUtils = {
 	useUpdateUI,
 	useCreateVersionAndUpdateUI,
 	useLoadVersions,
-	useLoadUI
+	useLoadUI,
+	useGetProjectById
 }
 
 export default DatabaseUtils
