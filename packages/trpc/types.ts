@@ -102,6 +102,69 @@ const mockRouter = t.router({
     }))
     .mutation(() => null),
 
+  // Design System CRUD
+  designSystemGetByProjectId: t.procedure
+    .input(z.object({
+      projectId: z.number().int().positive(),
+      orgId: z.string().min(1),
+    }))
+    .query(() => null),
+
+  designSystemCreate: t.procedure
+    .input(z.object({
+      projectId: z.number().int().positive(),
+      colors: z.any().optional(),
+      typography: z.any().optional(),
+      spacing: z.any().optional(),
+      borders: z.any().optional(),
+      shadows: z.any().optional(),
+      buttons: z.any().optional(),
+      images: z.any().optional(),
+      misc: z.any().optional(),
+      designNotes: z.string().optional(),
+      orgId: z.string().min(1),
+    }))
+    .mutation(() => null),
+
+  designSystemUpdate: t.procedure
+    .input(z.object({
+      projectId: z.number().int().positive(),
+      colors: z.any().optional(),
+      typography: z.any().optional(),
+      spacing: z.any().optional(),
+      borders: z.any().optional(),
+      shadows: z.any().optional(),
+      buttons: z.any().optional(),
+      images: z.any().optional(),
+      misc: z.any().optional(),
+      designNotes: z.string().optional(),
+      orgId: z.string().min(1),
+    }))
+    .mutation(() => null),
+
+  designSystemUpsert: t.procedure
+    .input(z.object({
+      projectId: z.number().int().positive(),
+      colors: z.any().optional(),
+      typography: z.any().optional(),
+      spacing: z.any().optional(),
+      borders: z.any().optional(),
+      shadows: z.any().optional(),
+      buttons: z.any().optional(),
+      images: z.any().optional(),
+      misc: z.any().optional(),
+      designNotes: z.string().optional(),
+      orgId: z.string().min(1),
+    }))
+    .mutation(() => null),
+
+  designSystemDelete: t.procedure
+    .input(z.object({
+      projectId: z.number().int().positive(),
+      orgId: z.string().min(1),
+    }))
+    .mutation(() => null),
+
   uisGetAll: t.procedure
     .input(z.object({
       projectId: z.number().int().optional(),

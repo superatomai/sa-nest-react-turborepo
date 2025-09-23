@@ -1,7 +1,7 @@
 // apps/backend/src/projects/projects.service.ts
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { DrizzleService } from '../../drizzle/drizzle.service';
-import { projects, uis } from '../../drizzle/schema';
+import { projects, uis, designSystem } from '../../drizzle/schema';
 import { eq, and, sql, inArray, desc, count } from 'drizzle-orm';
 import { User } from '@superatom-turbo/trpc';
 import { time, timeStamp } from 'console';
@@ -100,7 +100,20 @@ async getProjectWithDocsAndUi(projId: number, user?: User){
     }
 
     const project = await this.drizzleService.db
-      .select()
+      .select({
+        id: projects.id,
+        name: projects.name,
+        description: projects.description,
+        createdAt: projects.createdAt,
+        updatedAt: projects.updatedAt,
+        orgId: projects.orgId,
+        globalInst: projects.globalInst,
+        docs: projects.docs,
+        uiList: projects.uiList,
+        createdBy: projects.createdBy,
+        updatedBy: projects.updatedBy,
+        deleted: projects.deleted
+      })
       .from(projects)
       .where(and(
         eq(projects.id, id),
@@ -202,6 +215,7 @@ async getProjectWithDocsAndUi(projId: number, user?: User){
       updateData.description = data.description?.trim() || null;
     }
 
+
     const updatedProject = await this.drizzleService.db
       .update(projects)
       .set(updateData)
@@ -237,6 +251,11 @@ async getProjectWithDocsAndUi(projId: number, user?: User){
     if (!existingProject.length) {
       throw new NotFoundException(`Project with ID ${id} not found`);
     }
+
+    // Delete associated design system first (hard delete since it's project-specific)
+    await this.drizzleService.db
+      .delete(designSystem)
+      .where(eq(designSystem.projectId, id));
 
     // Soft delete - set deleted flag to true
     const deletedProject = await this.drizzleService.db

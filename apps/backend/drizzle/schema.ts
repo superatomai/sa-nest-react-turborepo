@@ -104,6 +104,31 @@ export const projectKeys = pgTable("project_keys", {
 ]);
 
 
+export const designSystem = pgTable("design_system", {
+    id: serial('id').primaryKey().notNull(),
+    projectId: integer("project_id").notNull(),
+    colors: jsonb("colors"),
+    typography: jsonb("typography"),
+    spacing: jsonb("spacing"),
+    borders: jsonb("borders"),
+    shadows: jsonb("shadows"),
+    buttons: jsonb("buttons"),
+    images: jsonb("images"),
+    misc: jsonb("misc"),
+    designNotes: text("design_notes"),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "string" })
+      .default(sql`CURRENT_TIMESTAMP`),
+    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "string" })
+      .default(sql`CURRENT_TIMESTAMP`)
+  }, (table) => [  // <-- Direct array, no return needed
+    foreignKey({
+      columns: [table.projectId],
+      foreignColumns: [projects.id],
+      name: "design_system_project_id_fkey"
+    }).onUpdate("cascade").onDelete("restrict")
+  ]);
+
+
 
 export const uis = pgTable("uis", {
 	id: serial().primaryKey().notNull(),

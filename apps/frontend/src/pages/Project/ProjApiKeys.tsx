@@ -9,7 +9,7 @@ import { Key, Settings } from 'lucide-react'
 import { useParams } from 'react-router-dom'
 import orgStore from '@/stores/mobx_org_store'
 import { DatabaseUtils } from '../../utils/database'
-import AllProjectKeys from '@/components/project-keys/AllProjectKeys'
+import AllProjectKeys from '@/components/project/project-keys/AllProjectKeys'
 
 const ProjApiKeys = () => {
   const [activeTab, setActiveTab] = useState('api-keys')

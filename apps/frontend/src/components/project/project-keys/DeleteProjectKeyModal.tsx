@@ -7,7 +7,7 @@ import {
   AlertDialogAction,
   AlertDialogHeader,
   AlertDialogFooter
-} from '../ui/alert-dialog'
+} from '../../ui/alert-dialog'
 import { trpc } from '@/utils'
 import toast from 'react-hot-toast'
 import { projectKeysStore } from '@/stores/mobx_project_keys_store'

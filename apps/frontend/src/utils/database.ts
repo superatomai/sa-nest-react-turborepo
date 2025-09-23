@@ -238,6 +238,25 @@ export const useGetProjectById = (projectId: number, orgId: string, callbacks?: 
 	return result
 }
 
+// Utility function for updating project (including design notes)
+export const useUpdateProject = (callbacks?: DatabaseCallbacks) => {
+	return trpc.projectsUpdate.useMutation({
+		onSuccess: (response) => {
+			if (callbacks?.showToast !== false) {
+				toast.success('Project updated successfully')
+			}
+			callbacks?.onSuccess?.(response)
+		},
+		onError: (error) => {
+			console.error('❌ Update project error:', error)
+			if (callbacks?.showToast !== false) {
+				toast.error('Failed to update project')
+			}
+			callbacks?.onError?.(error)
+		}
+	})
+}
+
 // Helper function to parse DSL from version data (returns UIComponent directly)
 export const parseDSLFromVersion = (dslString: string): UIComponent | null => {
 	try {

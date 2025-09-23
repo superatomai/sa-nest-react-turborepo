@@ -1,11 +1,11 @@
 import { truncateText } from "@/lib/utils/truncate-text";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../ui/card";
 import { useState } from "react";
-import ToolTip from "../Tooltip";
+import ToolTip from "../../Tooltip";
 import { Icon } from "@iconify/react/dist/iconify.js";
 import { getTimeAgo } from "@/lib/utils/time-ago";
 import DeleteProjectKeyModal from "./DeleteProjectKeyModal";
-import { Badge } from "../ui/badge";
+import { Badge } from "../../ui/badge";
 
 type Props = {
   keyDetails: any;

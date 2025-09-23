@@ -4,6 +4,7 @@ import { Separator } from '@/components/ui/separator'
 import { useParams } from 'react-router-dom'
 import orgStore from '@/stores/mobx_org_store'
 import { DatabaseUtils } from '../../utils/database'
+import DesignSystemEditor from '@/components/project/project-design-system/DesignSystemEditor'
 
 const ProjDesignSys = () => {
   const params: any = useParams();
@@ -60,6 +61,8 @@ const ProjDesignSys = () => {
         </div>
 
         <Separator />
+
+        <DesignSystemEditor projectId={params.projectId}/>
 
       </div>
     </div>

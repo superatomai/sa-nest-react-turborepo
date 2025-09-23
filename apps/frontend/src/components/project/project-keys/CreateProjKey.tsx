@@ -8,13 +8,13 @@ import {
   AlertDialogAction,
   AlertDialogHeader,
   AlertDialogFooter
-} from '../ui/alert-dialog'
-import { Label } from '../ui/label'
+} from '../../ui/alert-dialog'
+import { Label } from '../../ui/label'
 import { Plus, Copy } from 'lucide-react'
 import { useState } from 'react'
-import { Button } from '../ui/button'
-import { Input } from '../ui/input'
-import { Textarea } from '../ui/textarea'
+import { Button } from '../../ui/button'
+import { Input } from '../../ui/input'
+import { Textarea } from '../../ui/textarea'
 import { trpc } from '@/utils'
 import { nanoid } from 'nanoid'
 import { useParams } from 'react-router-dom'

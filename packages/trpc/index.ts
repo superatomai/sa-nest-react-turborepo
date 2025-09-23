@@ -16,6 +16,7 @@ import { UiUtilsService } from "../../apps/backend/src/services/ui-utils.service
 import  { UiListService }  from "../../apps/backend/src/ui_list/ui_list.service";
 import { DocsService } from "../../apps/backend/src/docs/docs.service";
 import { ProjectKeysService } from "../../apps/backend/src/project_keys/project_keys.service";
+import { DesignSystemService } from "../../apps/backend/src/design_system/design_system.service";
 
 // packages/trpc/index.ts
 export type User = {
@@ -262,6 +263,98 @@ export const appRouter = t.router({
     return projectKeysService.deleteProjectKey(input.keyId);
   }),
 
+  // ----------------
+  // Design System CRUD
+  // ----------------
+  designSystemGetByProjectId: t.procedure
+    .input(
+      z.object({
+        projectId: z.number().int().positive(),
+        orgId: z.string().min(1),
+      })
+    )
+    .query(async ({ input, ctx }) => {
+      const designSystemService = ctx.nestApp.get(DesignSystemService);
+      return designSystemService.getDesignSystemByProjectId(input.projectId, input.orgId, ctx.user);
+    }),
+
+  designSystemCreate: t.procedure
+    .input(
+      z.object({
+        projectId: z.number().int().positive(),
+        colors: z.any().optional(),
+        typography: z.any().optional(),
+        spacing: z.any().optional(),
+        borders: z.any().optional(),
+        shadows: z.any().optional(),
+        buttons: z.any().optional(),
+        images: z.any().optional(),
+        misc: z.any().optional(),
+        designNotes: z.string().optional(),
+        orgId: z.string().min(1),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      const designSystemService = ctx.nestApp.get(DesignSystemService);
+      const { orgId, ...data } = input;
+      return designSystemService.createDesignSystem(data, orgId, ctx.user);
+    }),
+
+  designSystemUpdate: t.procedure
+    .input(
+      z.object({
+        projectId: z.number().int().positive(),
+        colors: z.any().optional(),
+        typography: z.any().optional(),
+        spacing: z.any().optional(),
+        borders: z.any().optional(),
+        shadows: z.any().optional(),
+        buttons: z.any().optional(),
+        images: z.any().optional(),
+        misc: z.any().optional(),
+        designNotes: z.string().optional(),
+        orgId: z.string().min(1),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      const designSystemService = ctx.nestApp.get(DesignSystemService);
+      const { orgId, projectId, ...data } = input;
+      return designSystemService.updateDesignSystem(projectId, data, orgId, ctx.user);
+    }),
+
+  designSystemUpsert: t.procedure
+    .input(
+      z.object({
+        projectId: z.number().int().positive(),
+        colors: z.any().optional(),
+        typography: z.any().optional(),
+        spacing: z.any().optional(),
+        borders: z.any().optional(),
+        shadows: z.any().optional(),
+        buttons: z.any().optional(),
+        images: z.any().optional(),
+        misc: z.any().optional(),
+        designNotes: z.string().optional(),
+        orgId: z.string().min(1),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      const designSystemService = ctx.nestApp.get(DesignSystemService);
+      const { orgId, projectId, ...data } = input;
+      return designSystemService.upsertDesignSystem(projectId, data, orgId, ctx.user);
+    }),
+
+  designSystemDelete: t.procedure
+    .input(
+      z.object({
+        projectId: z.number().int().positive(),
+        orgId: z.string().min(1),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      const designSystemService = ctx.nestApp.get(DesignSystemService);
+      return designSystemService.deleteDesignSystem(input.projectId, input.orgId, ctx.user);
+    }),
 
   // ----------------
   // UIs CRUD

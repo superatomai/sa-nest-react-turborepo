@@ -7,11 +7,11 @@ import {
   AlertDialogAction,
   AlertDialogHeader,
   AlertDialogFooter
-} from '../ui/alert-dialog'
-import { Label } from '../ui/label'
+} from '../../ui/alert-dialog'
+import { Label } from '../../ui/label'
 import { useState, useEffect } from 'react'
-import { Input } from '../ui/input'
-import { Textarea } from '../ui/textarea'
+import { Input } from '../../ui/input'
+import { Textarea } from '../../ui/textarea'
 import { trpc } from '@/utils'
 import { nanoid, customAlphabet } from 'nanoid'
 import toast from 'react-hot-toast'
