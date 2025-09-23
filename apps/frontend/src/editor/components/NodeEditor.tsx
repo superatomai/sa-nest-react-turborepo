@@ -1,15 +1,11 @@
 import React, { useState, useEffect } from "react";
 
 interface NodeEditorProps {
-  isOpen: boolean;
-  onClose: () => void;
   onUpdate: (text: string, className: string) => void;
   selectedNodeId?: string; // Add this to trigger re-renders
 }
 
 const NodeEditor: React.FC<NodeEditorProps> = ({
-  isOpen,
-  onClose,
   onUpdate,
   selectedNodeId,
 }) => {
@@ -18,7 +14,7 @@ const NodeEditor: React.FC<NodeEditorProps> = ({
   const [hasText, setHasText] = useState(false);
 
   useEffect(() => {
-    if (isOpen && window.SAEDITOR) {
+    if (window.SAEDITOR) {
       setText(window.SAEDITOR.text || "");
       setClassName(window.SAEDITOR.className || "");
       setHasText(window.SAEDITOR.hasText || false);
@@ -30,7 +26,7 @@ const NodeEditor: React.FC<NodeEditorProps> = ({
       //   textLength: window.SAEDITOR.text?.length || 0
       // });
     }
-  }, [isOpen, selectedNodeId]); // Use selectedNodeId prop instead
+  }, [selectedNodeId]); // Use selectedNodeId prop instead
 
   const handleUpdateNode = () => {
     if (window.SAEDITOR) {
@@ -47,54 +43,37 @@ const NodeEditor: React.FC<NodeEditorProps> = ({
     }
   };
 
-  if (!isOpen) return null;
-
   return (
     <div className="bg-white border-b border-gray-200 p-2 shadow-sm">
       <div className="w-full">
-        <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center mb-2">
           <h3 className="text-sm font-semibold text-gray-800">
             Edit Node
           </h3>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 rounded p-1"
-          >
-            <svg
-              className="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
-          </button>
         </div>
 
         <div className="space-y-2">
-          {hasText && (
-            <div className="space-y-1">
-              <label
-                htmlFor="node-text"
-                className="text-xs font-medium text-gray-600 block"
-              >
-                Content
-              </label>
-              <textarea
-                id="node-text"
-                value={text}
-                onChange={(e) => setText(e.target.value)}
-                onKeyDown={handleKeyDown}
-                className="w-full p-1.5 border border-gray-200 rounded text-xs focus:ring-1 focus:ring-blue-400 focus:border-blue-400 resize-y min-h-[40px]"
-                placeholder="Enter text content..."
-              />
-            </div>
-          )}
+          <div className="space-y-1">
+            <label
+              htmlFor="node-text"
+              className="text-xs font-medium text-gray-600 block"
+            >
+              Content
+            </label>
+            <textarea
+              id="node-text"
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              onKeyDown={handleKeyDown}
+              disabled={!hasText}
+              className={`w-full p-1.5 border border-gray-200 rounded text-xs resize-y min-h-[40px] ${
+                hasText
+                  ? 'focus:ring-1 focus:ring-blue-400 focus:border-blue-400'
+                  : 'bg-gray-50 text-gray-400 cursor-not-allowed'
+              }`}
+              placeholder={hasText ? "Enter text content..." : "No text content available for this element"}
+            />
+          </div>
 
           <div className="space-y-1">
             <label
@@ -114,13 +93,7 @@ const NodeEditor: React.FC<NodeEditorProps> = ({
           </div>
         </div>
 
-        <div className="flex justify-end gap-2 mt-2 pt-1.5 border-t border-gray-100">
-          <button
-            onClick={onClose}
-            className="px-2 py-1 text-xs font-medium text-gray-600 bg-gray-50 rounded hover:bg-gray-100"
-          >
-            Cancel
-          </button>
+        <div className="flex justify-end mt-2 pt-1.5 border-t border-gray-100">
           <button
             onClick={handleUpdateNode}
             className="px-2 py-1 text-xs font-medium bg-blue-500 text-white rounded hover:bg-blue-600"

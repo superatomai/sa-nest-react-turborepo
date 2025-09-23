@@ -20,7 +20,6 @@ const EditorSSE = () => {
 	const [currentSchema, setCurrentSchema] = useState<UIComponent | null>(COMPLEX_DSL)
 	const [projectId, setProjectId] = useState<string>("");
 	const [isDSLLoading, setIsDSLLoading] = useState<boolean>(false);
-	const [isNodeEditorOpen, setIsNodeEditorOpen] = useState<boolean>(false);
 	const [selectedNodeId, setSelectedNodeId] = useState<string>('');
 
 	// SSE specific states
@@ -476,9 +475,8 @@ const EditorSSE = () => {
 				}
 				// Update React state to trigger re-render
 				setSelectedNodeId(selectedNodeId)
-				// Open the NodeEditor modal
-				console.log('Opening NodeEditor modal')
-				setIsNodeEditorOpen(true)
+				// NodeEditor is now always visible
+				console.log('Selected node for editing:', selectedNodeId)
 			}
 		}
 	}, [currentSchema])
@@ -581,12 +579,9 @@ const EditorSSE = () => {
 				</div>
 
 				{/* Node Editor - Below header */}
-				{isNodeEditorOpen && (
-					<NodeEditor
-						isOpen={isNodeEditorOpen}
-						selectedNodeId={selectedNodeId}
-						onClose={() => setIsNodeEditorOpen(false)}
-						onUpdate={(text: string, className: string) => {
+				<NodeEditor
+					selectedNodeId={selectedNodeId}
+					onUpdate={(text: string, className: string) => {
 							// Update the schema with new text and className
 							if (currentSchema && window.SAEDITOR && window.SAEDITOR.nodeId) {
 								// Log DSL before and after node edit
@@ -606,7 +601,6 @@ const EditorSSE = () => {
 							}
 						}}
 					/>
-				)}
 
 				{/* Messages and SSE Logs */}
 				<div className="flex-1 overflow-y-auto p-6 space-y-4 bg-gradient-to-b from-slate-50/50 to-white/50">
