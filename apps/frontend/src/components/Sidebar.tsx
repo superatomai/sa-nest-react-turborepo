@@ -34,11 +34,11 @@ import orgStore from "@/stores/mobx_org_store";
 import { truncateText } from "../lib/utils/index";
 
 const navigationItems = [
-  {
-    title: "Home",
-    url: "/",
-    icon: "lucide:home",
-  },
+  // {
+  //   title: "Home",
+  //   url: "/",
+  //   icon: "lucide:home",
+  // },
   {
     title: "Projects",
     url: "/projects",

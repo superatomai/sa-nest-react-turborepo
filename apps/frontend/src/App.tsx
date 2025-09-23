@@ -81,14 +81,14 @@ export function App() {
         <Routes>
           <Route path="/login" element={<Navigate to="/" replace />} />
           <Route path="/sign-up" element={<Navigate to="/" replace />} />
-          <Route
+          {/* <Route
             path="/"
             element={
               <ProtectedRoute>
                 <Home />
               </ProtectedRoute>
             }
-          />
+          /> */}
 
           {/* <Route path="/Schema" element={<Schema />} /> */}
 

@@ -38,8 +38,8 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <ClerkProvider 
       publishableKey={PUBLISHABLE_KEY}
-      signInFallbackRedirectUrl="/"
-      signUpFallbackRedirectUrl="/"
+      signInFallbackRedirectUrl="/projects"
+      signUpFallbackRedirectUrl="/projects"
       afterSignOutUrl="/login"
       signInUrl="/login"
       signUpUrl="/sign-up" 
