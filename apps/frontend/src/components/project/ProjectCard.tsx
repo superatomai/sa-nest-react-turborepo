@@ -158,7 +158,7 @@ const ProjectCard = observer(({ ProjectDetails, selected, onSelect }: ProjectCar
               className="py-1 px-3 bg-white outline-1 rounded-md text-xs z-20 relative cursor-pointer  hover:border-blue-500 hover:text-blue-600"
               onClick={(e) =>{ 
                 e.stopPropagation()
-                navigate(`${ProjectDetails.id}/configuration`)
+                navigate(`${ProjectDetails.id}/api-keys`);
               }}
               onMouseEnter={() => setShowConfigTooltip(true)}
               onMouseLeave={() => setShowConfigTooltip(false)}

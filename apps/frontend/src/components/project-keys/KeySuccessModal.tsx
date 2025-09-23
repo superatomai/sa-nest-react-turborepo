@@ -1,4 +1,3 @@
-import React from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
 import { Button } from '../ui/button'
 import { Input } from '../ui/input'
@@ -15,20 +14,15 @@ interface Props {
 }
 
 const KeySuccessModal = ({ isOpen, onClose, keyValue, keyName, environment }: Props) => {
-  console.log('🏁 KeySuccessModal props:', { isOpen, keyValue, keyName, environment })
 
   const handleCopyKey = () => {
     navigator.clipboard.writeText(keyValue)
     toast.success('API key copied to clipboard!')
   }
 
-  console.log('🤔 KeySuccessModal isOpen check:', isOpen)
   if (!isOpen) {
-    console.log('❌ KeySuccessModal returning null because isOpen is false')
     return null
   }
-
-  console.log('✅ KeySuccessModal rendering modal')
 
   return (
     <div className='fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4'>
@@ -67,7 +61,7 @@ const KeySuccessModal = ({ isOpen, onClose, keyValue, keyName, environment }: Pr
                 variant="outline"
                 size="sm"
                 onClick={handleCopyKey}
-                className="flex-shrink-0 hover:bg-blue-50 hover:border-blue-200"
+                className="flex-shrink-0 hover:bg-blue-50 hover:border-blue-200 cursor-pointer"
               >
                 <Copy className="h-4 w-4" />
               </Button>

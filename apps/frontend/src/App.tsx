@@ -8,9 +8,9 @@ import "./styles/design-system.css";
 import Home from "./pages/Home";
 import Editor from "./pages/Editor";
 import Login from "./pages/Login";
-import Projects from "./pages/Projects";
+import Projects from "./pages/Project/Projects";
 // import { Navbar } from "./components/Navbar";
-import { AppSidebar } from "./components/Sidebar";
+import  AppSidebar  from "./components/Sidebar";
 import { SidebarProvider } from "./components/ui/sidebar";
 import { ProtectedRoute } from "./ProtectedRoute";
 import CreateOrganizationWrapper from "./components/CreateOrganization";
@@ -19,7 +19,10 @@ import { useOrganization } from "@clerk/clerk-react";
 import orgStore from "./stores/mobx_org_store";
 import SignUpPage from "./pages/SignUp";
 import { Toaster } from "react-hot-toast";
-import ProjConfig from "./pages/ProjConfig";
+import ProjApiKeys from "./pages/Project/ProjApiKeys";
+import ProjDoc from "./pages/Project/ProjDoc";
+import ProjDesignSys from "./pages/Project/ProjDesignSys";
+import ProjLogs from "./pages/Project/ProjLogs";
 
 export function App() {
   const { organization, isLoaded: orgLoaded } = useOrganization();
@@ -107,11 +110,40 @@ export function App() {
             }
           />
 
-          <Route path="projects/:projectId/configuration" element={
-            <ProtectedRoute>
-              <ProjConfig/>
-            </ProtectedRoute>
+          <Route 
+            path="projects/:projectId/api-keys" 
+            element={
+              <ProtectedRoute>
+                <ProjApiKeys/>
+              </ProtectedRoute>
           }/>
+
+          <Route
+            path="projects/:projectId/documentation"
+            element={
+              <ProtectedRoute>
+                <ProjDoc/>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="projects/:projectId/design-system"
+            element={
+              <ProtectedRoute>
+                <ProjDesignSys/>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="projects/:projectId/project-logs"
+            element={
+              <ProtectedRoute>
+                <ProjLogs/>
+              </ProtectedRoute>
+            }
+          />
 
           <Route
             path="/editor/:uiId"

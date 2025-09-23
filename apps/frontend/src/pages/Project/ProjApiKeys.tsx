@@ -2,18 +2,16 @@ import React, { useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Separator } from '@/components/ui/separator'
 import { Key, Settings } from 'lucide-react'
 import { useParams } from 'react-router-dom'
-import { projectStore } from '@/stores/mobx_project_store'
 import orgStore from '@/stores/mobx_org_store'
-import { DatabaseUtils } from '../utils/database'
-import AllProjectKeys from '@/components/project-config/AllProjectKeys'
+import { DatabaseUtils } from '../../utils/database'
+import AllProjectKeys from '@/components/project-keys/AllProjectKeys'
 
-const ProjConfig = () => {
+const ProjApiKeys = () => {
   const [activeTab, setActiveTab] = useState('api-keys')
   
 
@@ -27,7 +25,7 @@ const ProjConfig = () => {
   // Show loading state
   if (projectLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="h-full bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="text-lg font-medium">Loading project...</div>
           <div className="text-gray-600 text-sm mt-1">Please wait</div>
@@ -39,7 +37,7 @@ const ProjConfig = () => {
   // Show error state
   if (error || !project) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="h-full bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="text-lg font-medium text-red-600">Project not found</div>
           <div className="text-gray-600 text-sm mt-1">The project could not be loaded</div>
@@ -48,16 +46,9 @@ const ProjConfig = () => {
     );
   }
 
-  
-
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text)
-    // TODO: Add toast notification
-  }
-
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-6xl mx-auto space-y-6">
+    <div className="h-full bg-gray-50 p-6 overflow-auto">
+      <div className="w-full space-y-6">
 
         {/* Header */}
         <div className="space-y-2">
@@ -172,4 +163,4 @@ const ProjConfig = () => {
   )
 }
 
-export default ProjConfig
+export default ProjApiKeys;

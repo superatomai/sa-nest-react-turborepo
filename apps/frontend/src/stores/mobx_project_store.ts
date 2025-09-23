@@ -125,6 +125,7 @@ class ProjectStore {
     runInAction(() => {
       this.projects = this.projects.filter((p) => p.id !== projectId);
       this.totalProjects -= 1;
+      this.selectedProjectId = undefined;
     });
   }
 }
