@@ -20,7 +20,7 @@ export class AppController {
       server: 'SuperAtom Runtime Backend',
       status: 'healthy',
       timestamp: new Date().toISOString(),
-      version: '0.0.3',
+      version: '0.0.2',
       endpoints: {
         system: {
           'GET /': 'System health and API documentation',
@@ -40,6 +40,9 @@ export class AppController {
         },
         deployment: {
           'GET /deployment/pull-reload': 'Pull latest code and reload PM2 process'
+        },
+        webhooks: {
+          'POST /webhooks/clerk': 'Clerk webhook endpoint for organization events (auto-creates demo content)'
         },
         websocket: {
           'WS /': 'WebSocket connection for real-time communication'
