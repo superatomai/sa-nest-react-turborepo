@@ -66,6 +66,12 @@ export function hasChildren(component: UIComponent): boolean {
 export function hasNavigableChildren(componentOrElement: UIComponent | UIElement | any): boolean {
 	if (!componentOrElement || typeof componentOrElement !== 'object') return false
 
+	// Special handling for for loops - if element has 'for' property, it will have dynamic children
+	if ('for' in componentOrElement && componentOrElement.for) {
+		console.log('📍 hasNavigableChildren: Found for loop, returning true')
+		return true
+	}
+
 	let children: any
 	if ('render' in componentOrElement) {
 		// This is a UIComponent
@@ -674,6 +680,13 @@ export function getSiblingsAtPath(schema: UIComponent, path: number[]): (UICompo
 
 	if (!parent) return []
 
+	// Special handling for for loops - return empty array, let keyboard navigation handle it dynamically
+	if ('for' in parent && parent.for) {
+		console.log('📍 getSiblingsAtPath: Found for loop parent, using dynamic navigation')
+		// Return empty array - for loop navigation will be handled by keyboard navigation logic
+		return []
+	}
+
 	// Get navigable children from parent
 	if ('render' in parent) {
 		// Parent is UIComponent
@@ -869,6 +882,23 @@ export function getFirstNavigableChild(
 	console.log('📍 Found element:', element ? (element.id || 'unknown') : 'null')
 
 	if (!element) return null
+
+	// Special handling for for loops - create a virtual first child
+	if ('for' in element && element.for) {
+		console.log('📍 getFirstNavigableChild: Found for loop, creating virtual first child')
+
+		// Create a virtual child representing the first loop item
+		const virtualChild = {
+			...element,
+			for: undefined, // Remove for property
+			id: `${element.id}-0` // First loop item ID
+		} as UIElement
+
+		const childPath = [...elementPath, 0]
+		console.log('✅ Returning virtual for loop child:', { childId: virtualChild.id, childPath })
+
+		return { child: virtualChild, path: childPath }
+	}
 
 	let navigableChildren: any[]
 

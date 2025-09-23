@@ -42,7 +42,7 @@ const SelectableUIRendererInner: React.FC<{
 				onNavigate={handlers.navigate}
 				enableSelection={true}
 			/>
-			<Toaster
+			{/* <Toaster
 				position="top-center"
 				toastOptions={{
 					duration: 2000,
@@ -65,7 +65,7 @@ const SelectableUIRendererInner: React.FC<{
 						},
 					},
 				}}
-			/>
+			/> */}
 		</div>
 	)
 }

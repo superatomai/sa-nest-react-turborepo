@@ -10,6 +10,7 @@ import { createDefaultDSL } from '../lib/utils/default-dsl'
 import { TEST_DSL } from '@/test/dsl'
 import NodeEditor from './components/NodeEditor'
 import { findNodeById, updateNodeById } from './utils/node-operations'
+import { COMPLEX_DSL } from '@/test/complex-dsl'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000'
 
@@ -19,7 +20,7 @@ const EditorSSE = () => {
 	const [messages, setMessages] = useState<Array<{ role: string, content: string }>>([])
 	const [input, setInput] = useState('')
 
-	const [currentSchema, setCurrentSchema] = useState<UIComponent | null>(TEST_DSL)
+	const [currentSchema, setCurrentSchema] = useState<UIComponent | null>(COMPLEX_DSL)
 	const [projectId, setProjectId] = useState<string>("");
 	const [isDSLLoading, setIsDSLLoading] = useState<boolean>(false);
 	const [isNodeEditorOpen, setIsNodeEditorOpen] = useState<boolean>(false);
@@ -720,7 +721,7 @@ const EditorSSE = () => {
 								</div>
 							</div>
 						) : currentSchema ? (
-							<div className="min-h-full bg-white rounded-xl shadow-lg border border-slate-200">
+							<div className="min-h-full bg-white rounded-xl shadow-lg border border-slate-200 p-4">
 								{memoizedRenderer}
 							</div>
 						) : (
