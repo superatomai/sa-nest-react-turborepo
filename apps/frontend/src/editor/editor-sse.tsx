@@ -4,7 +4,7 @@ import { trpc } from '../utils/trpc'
 import { observer } from 'mobx-react-lite'
 import { useParams } from 'react-router-dom'
 import SelectableUIRenderer from './components/SelectableUIRenderer'
-import { DatabaseUtils } from '../utils/database'
+import { DatabaseUtils, parseDSLFromVersion } from '../utils/database'
 import { createDefaultDSL } from '../lib/utils/default-dsl'
 import NodeEditor from './components/NodeEditor'
 import { findNodeById, updateNodeById } from './utils/node-operations'
@@ -17,7 +17,7 @@ const EditorSSE = () => {
 	const [messages, setMessages] = useState<Array<{ role: string, content: string }>>([])
 	const [input, setInput] = useState('')
 
-	const [currentSchema, setCurrentSchema] = useState<UIComponent | null>(COMPLEX_DSL)
+	const [currentSchema, setCurrentSchema] = useState<UIComponent | null>(null)
 	const [projectId, setProjectId] = useState<string>("");
 	const [isDSLLoading, setIsDSLLoading] = useState<boolean>(false);
 	const [selectedNodeId, setSelectedNodeId] = useState<string>('');
@@ -78,89 +78,89 @@ const EditorSSE = () => {
 	}, [uiId, uidata]);
 
 	// Load existing UI DSL on component mount - run after projectId is set
-	// useEffect(() => {
-	// 	const loadExistingUI = async () => {
-	// 		if (!projectId || !uiId || projectId === "") return;
+	useEffect(() => {
+		const loadExistingUI = async () => {
+			if (!projectId || !uiId || projectId === "") return;
 			
-	// 		setIsDSLLoading(true);
-	// 		try {
-	// 			console.log('Loading existing UI for projectId:', projectId, 'uiId:', uiId);
+			setIsDSLLoading(true);
+			try {
+				console.log('Loading existing UI for projectId:', projectId, 'uiId:', uiId);
 			
-	// 			if (uidata && uidata.ui) {
-	// 				const ui_version = uidata.ui.uiVersion;
+				if (uidata && uidata.ui) {
+					const ui_version = uidata.ui.uiVersion;
 
-	// 				let dslToUse = null;
+					let dslToUse = null;
 
-	// 				try {
-	// 					const versionResult = await getVersionQuery.refetch();
-	// 					if (versionResult.data && versionResult.data.versions) {
-	// 						const versions = versionResult.data.versions;
+					try {
+						const versionResult = await getVersionQuery.refetch();
+						if (versionResult.data && versionResult.data.versions) {
+							const versions = versionResult.data.versions;
 							
-	// 						// Load conversations from all versions
-	// 						const conversations: Array<{ role: string, content: string }> = [];
+							// Load conversations from all versions
+							const conversations: Array<{ role: string, content: string }> = [];
 							
-	// 						if (Array.isArray(versions)) {
-	// 							// Sort versions by creation date (assuming id is chronological or there's a createdAt field)
-	// 							const sortedVersions = [...versions].sort((a, b) => a.id - b.id);
+							if (Array.isArray(versions)) {
+								// Sort versions by creation date (assuming id is chronological or there's a createdAt field)
+								const sortedVersions = [...versions].sort((a, b) => a.id - b.id);
 								
-	// 							sortedVersions.forEach(version => {
-	// 								if (version.prompt && version.prompt.trim()) {
-	// 									// Add user message (the prompt)
-	// 									conversations.push({
-	// 										role: 'user',
-	// 										content: version.prompt
-	// 									});
-	// 									// Add assistant response
-	// 									conversations.push({
-	// 										role: 'assistant',
-	// 										content: 'UI generated successfully!'
-	// 									});
-	// 								}
-	// 							});
-	// 						}
+								sortedVersions.forEach(version => {
+									if (version.prompt && version.prompt.trim()) {
+										// Add user message (the prompt)
+										conversations.push({
+											role: 'user',
+											content: version.prompt
+										});
+										// Add assistant response
+										conversations.push({
+											role: 'assistant',
+											content: 'UI generated successfully!'
+										});
+									}
+								});
+							}
 							
-	// 						// Set conversations in messages state
-	// 						if (conversations.length > 0) {
-	// 							setMessages(conversations);
-	// 						}
+							// Set conversations in messages state
+							if (conversations.length > 0) {
+								setMessages(conversations);
+							}
 							
-	// 						// Find the current version's DSL
-	// 						const versionData = Array.isArray(versions) ? 
-	// 							versions.find(v => v.id === ui_version) : null;
-	// 						if (versionData && versionData.dsl) {
-	// 							dslToUse = versionData.dsl;
-	// 						}
-	// 					}
-	// 				} catch (versionError) {
-	// 					console.error('Failed to fetch version data:', versionError);
-	// 				}
+							// Find the current version's DSL
+							const versionData = Array.isArray(versions) ? 
+								versions.find(v => v.id === ui_version) : null;
+							if (versionData && versionData.dsl) {
+								dslToUse = versionData.dsl;
+							}
+						}
+					} catch (versionError) {
+						console.error('Failed to fetch version data:', versionError);
+					}
 
-	// 				// console.log('dsl to use', dslToUse);
-	// 					// Parse and set the DSL if we found it using new utilities
-	// 				if (dslToUse) {
-	// 					try {
-	// 						const uiComponent = parseDSLFromVersion(dslToUse);
+					// console.log('dsl to use', dslToUse);
+						// Parse and set the DSL if we found it using new utilities
+					if (dslToUse) {
+						try {
+							const uiComponent = parseDSLFromVersion(dslToUse);
 
-	// 						if (uiComponent) {
-	// 							console.log('Setting current schema from DSL:', uiComponent);
-	// 							setCurrentSchema(uiComponent);
-	// 						}
+							if (uiComponent) {
+								console.log('Setting current schema from DSL:', uiComponent);
+								setCurrentSchema(uiComponent);
+							}
 
-	// 					} catch (parseError) {
-	// 						console.error('Failed to parse DSL:', parseError);
-	// 					}
-	// 				} else {
-	// 					console.error('No DSL found for this UI');
-	// 				}
-	// 			}
-	// 		} catch (error) {
-	// 			console.error('Failed to load existing UI:', error);
-	// 		} finally {
-	// 			setIsDSLLoading(false);
-	// 		}
-	// 	};
-	// 	loadExistingUI();
-	// }, [projectId, uiId]); // Run when projectId or uiId changes
+						} catch (parseError) {
+							console.error('Failed to parse DSL:', parseError);
+						}
+					} else {
+						console.error('No DSL found for this UI');
+					}
+				}
+			} catch (error) {
+				console.error('Failed to load existing UI:', error);
+			} finally {
+				setIsDSLLoading(false);
+			}
+		};
+		loadExistingUI();
+	}, [projectId, uiId]); // Run when projectId or uiId changes
 
 
 	// Prompt history state
