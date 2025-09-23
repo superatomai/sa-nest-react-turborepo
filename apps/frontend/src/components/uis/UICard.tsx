@@ -27,7 +27,7 @@ const UICard = ({ UICardDetails }: Props) => {
       <Card
         tabIndex={0}
         className={`relative group hover:shadow-md transition-all duration-200 rounded-2xl border-2 border-blue-200/50 
-                        bg-gradient-to-br from-blue-50/80 to-white px-3 pt-2 pb-0 overflow-hidden max-w-sm
+                        bg-gradient-to-br from-blue-50/80 to-white px-3 pt-2 pb-0 overflow-show max-w-sm
                         focus:outline-blue-800
                         focus:border-blue-400 focus:shadow-lg cursor-pointer`}
       >
@@ -131,7 +131,7 @@ const UICard = ({ UICardDetails }: Props) => {
           >
             <Icon icon="material-symbols:delete-rounded" />
           </button>
-          <div className="absolute inset-0 bg-gradient-to-t from-[#92B5F7] to-white/80 -left-3 -right-3 bottom-0 top-0 z-10"></div>
+          <div className="absolute inset-0 bg-gradient-to-t from-[#92B5F7] rounded-b-xl to-white/80 -left-3 -right-3 bottom-0 top-0 z-10"></div>
         </div>
       </Card>
       {showDeleteUiModal && (

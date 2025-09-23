@@ -77,7 +77,7 @@ export function App() {
     <SidebarProvider className="overflow-hidden">
       <div className="">{!hideSidebar && <AppSidebar />}</div>
       {/* {!hideNavbar && <Navbar />} */}
-      <div className="h-screen  w-full flex-1">
+      <div className="h-screen overflow-auto w-full flex-1">
         <Routes>
           <Route path="/login" element={<Navigate to="/" replace />} />
           <Route path="/sign-up" element={<Navigate to="/" replace />} />

@@ -520,14 +520,14 @@ const EditorSSE = () => {
 
 
 	return (
-		<div className="flex h-screen bg-white">
+		<div className="flex h-screen bg-white overflow-hidden">
 			{/* Left Side - Generated React Component */}
-			<div className="flex-1 bg-white bg-opacity-90 border-r border-gray-300 shadow-xl">
-				<div className="h-full flex flex-col">					
+			<div className="flex-1 bg-white bg-opacity-90 border-r border-gray-300 shadow-xl overflow-hidden">
+				<div className="h-full flex flex-col">
 					{/* Preview Content */}
-					<div className="flex-1 relative">
+					<div className="flex-1 relative overflow-y-auto">
 						{isDSLLoading ? (
-							<div className="min-h-full flex items-center justify-center bg-white rounded-xl shadow-lg border border-slate-200">
+							<div className="h-full flex items-center justify-center bg-white">
 								<div className="text-center space-y-6">
 									<div className="relative w-20 h-20 mx-auto">
 										<div className="absolute inset-0 bg-gradient-to-r from-indigo-400 via-purple-500 to-pink-500 rounded-full opacity-75 animate-spin"></div>
@@ -549,11 +549,11 @@ const EditorSSE = () => {
 								</div>
 							</div>
 						) : currentSchema ? (
-							<div className="min-h-full bg-white rounded-xl shadow-lg border border-slate-200">
+							<div className="p-4">
 								{memoizedRenderer}
 							</div>
 						) : (
-							<div className="min-h-full flex items-center justify-center">
+							<div className="h-full flex items-center justify-center">
 								<div className="text-center space-y-4">
 									<div className="w-24 h-24 mx-auto bg-gradient-to-br from-indigo-100 to-purple-100 rounded-2xl flex items-center justify-center">
 										<svg className="w-12 h-12 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -570,7 +570,7 @@ const EditorSSE = () => {
 			</div>
 
 			{/* Right Side - Chat Interface with SSE Logs */}
-			<div className="w-96 bg-slate-200 flex flex-col shadow-2xl">
+			<div className="w-96 bg-slate-200 flex flex-col shadow-2xl overflow-hidden">
 				{/* Chat Header */}
 				<div className="px-6 py-4 bg-purple-500 text-white">
 					<div className="flex items-center space-x-3">
