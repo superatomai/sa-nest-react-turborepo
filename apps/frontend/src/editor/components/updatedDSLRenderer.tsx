@@ -441,13 +441,13 @@ export const UpdatedDSLRenderer: React.FC<UpdatedDSLRendererProps> = React.memo(
                     const visualFeedback = figmaSelection.getVisualFeedbackStyles(elementId, componentPath);
                     const outlineStyles = useOutlineStyles(visualFeedback.isSelected, visualFeedback.isHovered, visualFeedback.isParent);
 
-                    // Add data attribute for keyboard navigation
+                    // Add data attributes for keyboard navigation and event delegation
                     containerProps['data-component-id'] = elementId;
+                    containerProps['data-component-path'] = JSON.stringify(componentPath);
 
                     containerProps.style = {
                         ...containerProps.style,
                         ...outlineStyles,
-                        cursor: 'pointer',
                         transition: 'outline 0.2s ease, background-color 0.2s ease'
                     };
 
@@ -467,13 +467,7 @@ export const UpdatedDSLRenderer: React.FC<UpdatedDSLRendererProps> = React.memo(
                         figmaSelection.handleDoubleClick(e, elementId, componentPath);
                     };
 
-                    containerProps.onMouseEnter = () => {
-                        figmaSelection.handleMouseEnter(elementId, componentPath);
-                    };
-
-                    containerProps.onMouseLeave = () => {
-                        figmaSelection.handleMouseLeave();
-                    };
+                    // Note: Hover handlers are now handled via event delegation in useFigmaSelection
                 }
 
                 // Render the container with its original type and props, containing loop items
@@ -554,10 +548,7 @@ export const UpdatedDSLRenderer: React.FC<UpdatedDSLRendererProps> = React.memo(
                 // Add cursor pointer for better UX
                 resolvedProps.style = {
                     ...resolvedProps.style,
-                    cursor: 'pointer',
-                    userSelect: 'none' as const,
-                    WebkitUserSelect: 'none' as const,
-                    WebkitTouchCallout: 'none' as const
+                    cursor: 'pointer'
                 };
             }
         }
@@ -572,14 +563,14 @@ export const UpdatedDSLRenderer: React.FC<UpdatedDSLRendererProps> = React.memo(
             // Apply outline-based styles instead of rings
             const outlineStyles = useOutlineStyles(visualFeedback.isSelected, visualFeedback.isHovered, visualFeedback.isParent);
 
-            // Add data attribute for keyboard navigation
+            // Add data attributes for keyboard navigation and event delegation
             resolvedProps['data-component-id'] = elementId;
+            resolvedProps['data-component-path'] = JSON.stringify(componentPath);
 
             // Merge styles
             resolvedProps.style = {
                 ...resolvedProps.style,
                 ...outlineStyles,
-                cursor: 'pointer',
                 transition: 'outline 0.2s ease, background-color 0.2s ease'
             };
 
@@ -609,14 +600,7 @@ export const UpdatedDSLRenderer: React.FC<UpdatedDSLRendererProps> = React.memo(
                 figmaSelection.handleDoubleClick(e, elementId, componentPath);
             };
 
-            // Add Figma-style hover handlers for ALL elements
-            resolvedProps.onMouseEnter = () => {
-                figmaSelection.handleMouseEnter(elementId, componentPath);
-            };
-
-            resolvedProps.onMouseLeave = () => {
-                figmaSelection.handleMouseLeave();
-            };
+            // Note: Hover handlers are now handled via event delegation in useFigmaSelection
         }
 
         // Resolve key for React element
@@ -743,7 +727,7 @@ export const UpdatedDSLRenderer: React.FC<UpdatedDSLRendererProps> = React.memo(
                 return <td key={resolvedKey} {...resolvedProps}>{renderChildren()}</td>;
 
             default:
-                console.warn(`Unknown element type: ${actualElement.type}`);
+                // console.warn(`Unknown element type: ${actualElement.type}`);
                 return <div key={resolvedKey} {...resolvedProps}>{renderChildren()}</div>;
         }
     };
@@ -766,7 +750,15 @@ export const UpdatedDSLRenderer: React.FC<UpdatedDSLRendererProps> = React.memo(
 
     // Wrap the entire DSL tree with error boundary for top-level errors
     return (
-        <div className="updated-dsl-renderer">
+        <div
+            className="updated-dsl-renderer"
+            style={{
+                userSelect: 'none',
+                WebkitUserSelect: 'none',
+                WebkitTouchCallout: 'none',
+                msUserSelect: 'none'
+            }}
+        >
             {withConditionalErrorBoundary(
                 renderElement(uiComponent, fullContext, []),
                 'UIComponent',

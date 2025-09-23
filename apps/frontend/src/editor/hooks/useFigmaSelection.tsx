@@ -29,29 +29,6 @@ export const useFigmaSelection = (): FigmaSelectionHook => {
 	const nodeSelection = useNodeSelection()
 	const [isCtrlPressed, setIsCtrlPressed] = useState(false)
 
-	// Track Ctrl key state for hover feedback
-	useEffect(() => {
-		const handleKeyDown = (e: KeyboardEvent) => {
-			if (e.ctrlKey || e.metaKey) {
-				setIsCtrlPressed(true)
-			}
-		}
-
-		const handleKeyUp = (e: KeyboardEvent) => {
-			if (!e.ctrlKey && !e.metaKey) {
-				setIsCtrlPressed(false)
-			}
-		}
-
-		window.addEventListener('keydown', handleKeyDown)
-		window.addEventListener('keyup', handleKeyUp)
-
-		return () => {
-			window.removeEventListener('keydown', handleKeyDown)
-			window.removeEventListener('keyup', handleKeyUp)
-		}
-	}, [])
-
 	/**
 	 * Find common parent between two paths
 	 */
@@ -178,7 +155,10 @@ export const useFigmaSelection = (): FigmaSelectionHook => {
 	}, [nodeSelection, getHoverTarget])
 
 	/**
-	 * Handle double-click drilling - respects selection level
+	 * Handle double-click with conditional behavior:
+	 * - Both inside and outside: drill down maximum 1 level from selected toward cursor
+	 * - Never drills more than 1 level regardless of how deep the clicked element is
+	 * This provides consistent and controlled drilling navigation
 	 */
 	const handleDoubleClick = useCallback((e: React.MouseEvent, componentId: string, path: number[]) => {
 		if (!nodeSelection.isSelectionEnabled) return
@@ -196,20 +176,98 @@ export const useFigmaSelection = (): FigmaSelectionHook => {
 			return
 		}
 
-		// Check if the clicked element's parent is selected
-		const parentPath = path.slice(0, -1)
-		const isParentSelected = currentSelection.path.length === parentPath.length &&
-			JSON.stringify(currentSelection.path) === JSON.stringify(parentPath)
+		// Check if the double-clicked element is actually inside the currently selected element
+		// This means the clicked path should start with the selected path (be a true descendant)
+		const isActuallyInside = path.length > currentSelection.path.length &&
+			JSON.stringify(path.slice(0, currentSelection.path.length)) === JSON.stringify(currentSelection.path)
 
-		if (isParentSelected) {
-			// Parent is selected - can drill down to this element
-			nodeSelection.selectNode(componentId, path)
-		} else {
-			// Parent not selected - select the parent first (same as single click)
-			const target = getHoverTarget(componentId, path)
-			if (target) {
-				nodeSelection.selectNode(target.componentId, target.path)
+		// Check if they share a common parent (but clicked element is not necessarily inside selected)
+		const commonDepth = findCommonParentDepth(currentSelection.path, path)
+		const hasCommonParent = commonDepth > 0
+
+		const isInsideSelected = isActuallyInside
+
+		if (isInsideSelected) {
+			// Inside selected element: drill down maximum 1 level toward cursor
+			const maxLevelsAvailable = path.length - currentSelection.path.length
+			const levelsToGo = Math.min(1, maxLevelsAvailable)
+
+			console.log('Inside selection, drilling down:', {
+				from: currentSelection.path,
+				toward: path,
+				maxLevelsAvailable,
+				levelsToGo
+			})
+
+			if (levelsToGo > 0) {
+				// Build target path by going down the specified number of levels
+				const targetPath = [...currentSelection.path]
+				for (let i = 0; i < levelsToGo; i++) {
+					const nextIndex = currentSelection.path.length + i
+					if (nextIndex < path.length) {
+						targetPath.push(path[nextIndex])
+					}
+				}
+
+				console.log('Inside target path calculated:', { targetPath })
+
+				if (nodeSelection.rootSchema) {
+					const targetElement = SchemaUtils.findComponentByPath(nodeSelection.rootSchema, targetPath)
+					if (targetElement) {
+						const targetId = 'render' in targetElement ? targetElement.id : targetElement.id
+						console.log('Selecting inside target:', { targetId, targetPath })
+						nodeSelection.selectNode(targetId, targetPath)
+						return
+					} else {
+						console.log('Could not find inside target at path:', targetPath)
+					}
+				}
 			}
+		} else {
+			// Outside selected element: drill down from selected toward clicked element
+			// But check if we have enough levels to drill down
+			const maxLevelsAvailable = path.length - currentSelection.path.length
+			const levelsToGo = Math.min(1, maxLevelsAvailable)
+
+			console.log('Outside selection, drilling down:', {
+				from: currentSelection.path,
+				toward: path,
+				maxLevelsAvailable,
+				levelsToGo
+			})
+
+			if (levelsToGo > 0) {
+				// Build target path by going down the specified number of levels
+				const targetPath = [...currentSelection.path]
+				for (let i = 0; i < levelsToGo; i++) {
+					const nextIndex = currentSelection.path.length + i
+					if (nextIndex < path.length) {
+						targetPath.push(path[nextIndex])
+					}
+				}
+
+				console.log('Target path calculated:', { targetPath })
+
+				if (targetPath.length > currentSelection.path.length && nodeSelection.rootSchema) {
+					const targetElement = SchemaUtils.findComponentByPath(nodeSelection.rootSchema, targetPath)
+					if (targetElement) {
+						const targetId = 'render' in targetElement ? targetElement.id : targetElement.id
+						console.log('Selecting target:', { targetId, targetPath })
+						nodeSelection.selectNode(targetId, targetPath)
+						return
+					} else {
+						console.log('Could not find element at target path:', targetPath)
+					}
+				}
+			} else {
+				console.log('Cannot drill down, clicked element is at same level or higher')
+			}
+		}
+
+		// Fallback: if we can't find the parent element, use single-click logic
+		const target = getHoverTarget(componentId, path)
+		if (target) {
+			nodeSelection.selectNode(target.componentId, target.path)
 		}
 
 		// Clear hover after selection
@@ -258,6 +316,88 @@ export const useFigmaSelection = (): FigmaSelectionHook => {
 			parentOutlineStyle
 		}
 	}, [nodeSelection])
+
+	// Track Ctrl key state and set up event delegation on UI root
+	useEffect(() => {
+		const handleKeyDown = (e: KeyboardEvent) => {
+			if (e.ctrlKey || e.metaKey) {
+				setIsCtrlPressed(true)
+			}
+		}
+
+		const handleKeyUp = (e: KeyboardEvent) => {
+			if (!e.ctrlKey && !e.metaKey) {
+				setIsCtrlPressed(false)
+			}
+		}
+
+		// Event delegation for hover - single listener on UI root element
+		const handleMouseOver = (e: MouseEvent) => {
+			if (!nodeSelection.isSelectionEnabled) return
+
+			const target = e.target as Element
+			const componentElement = target.closest('[data-component-id]')
+
+			if (componentElement) {
+				const componentId = componentElement.getAttribute('data-component-id')
+				const pathStr = componentElement.getAttribute('data-component-path')
+
+				if (componentId && pathStr) {
+					try {
+						const path = JSON.parse(pathStr)
+						if (isCtrlPressed) {
+							// Direct hover when Ctrl is pressed
+							nodeSelection.setHoveredNode(componentId, path)
+						} else {
+							// Use hierarchical logic when Ctrl is not pressed
+							const target = getHoverTarget(componentId, path)
+							if (target) {
+								nodeSelection.setHoveredNode(target.componentId, target.path)
+							}
+						}
+					} catch (error) {
+						// Invalid path JSON, ignore
+					}
+				}
+			}
+		}
+
+		const handleMouseOut = (e: MouseEvent) => {
+			if (!nodeSelection.isSelectionEnabled) return
+
+			const target = e.target as Element
+			const relatedTarget = e.relatedTarget as Element
+
+			// Only clear hover if we're not moving to another component element
+			const currentComponent = target.closest('[data-component-id]')
+			const nextComponent = relatedTarget?.closest('[data-component-id]')
+
+			if (currentComponent && currentComponent !== nextComponent) {
+				nodeSelection.setHoveredNode(null)
+			}
+		}
+
+		// Find the UI root element and attach listeners only to it
+		const uiRoot = document.querySelector('.updated-dsl-renderer')
+
+		window.addEventListener('keydown', handleKeyDown)
+		window.addEventListener('keyup', handleKeyUp)
+
+		if (uiRoot) {
+			uiRoot.addEventListener('mouseover', handleMouseOver, true)
+			uiRoot.addEventListener('mouseout', handleMouseOut, true)
+		}
+
+		return () => {
+			window.removeEventListener('keydown', handleKeyDown)
+			window.removeEventListener('keyup', handleKeyUp)
+
+			if (uiRoot) {
+				uiRoot.removeEventListener('mouseover', handleMouseOver, true)
+				uiRoot.removeEventListener('mouseout', handleMouseOut, true)
+			}
+		}
+	}, [nodeSelection, isCtrlPressed, getHoverTarget])
 
 	return {
 		handleMouseEnter,

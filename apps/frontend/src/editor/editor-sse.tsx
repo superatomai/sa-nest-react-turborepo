@@ -527,7 +527,7 @@ const EditorSSE = () => {
 			<div className="flex-1 bg-white bg-opacity-90 border-r border-gray-300 shadow-xl">
 				<div className="h-full flex flex-col">					
 					{/* Preview Content */}
-					<div className="flex-1 overflow-auto relative">
+					<div className="flex-1 relative">
 						{isDSLLoading ? (
 							<div className="min-h-full flex items-center justify-center bg-white rounded-xl shadow-lg border border-slate-200">
 								<div className="text-center space-y-6">
@@ -551,7 +551,7 @@ const EditorSSE = () => {
 								</div>
 							</div>
 						) : currentSchema ? (
-							<div className="min-h-full bg-white rounded-xl shadow-lg border border-slate-200 p-4">
+							<div className="min-h-full bg-white rounded-xl shadow-lg border border-slate-200">
 								{memoizedRenderer}
 							</div>
 						) : (
@@ -576,15 +576,7 @@ const EditorSSE = () => {
 				{/* Chat Header */}
 				<div className="px-6 py-4 bg-purple-500 text-white">
 					<div className="flex items-center space-x-3">
-						<div className="w-10 h-10 bg-purple-600 rounded-full flex items-center justify-center">
-							<svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-								<path d="M12 2C13.1 2 14 2.9 14 4C14 5.1 13.1 6 12 6C10.9 6 10 5.1 10 4C10 2.9 10.9 2 12 2ZM21 9V7L15 1H5C3.89 1 3 1.89 3 3V19C3 20.11 3.89 21 5 21H11V19H5V3H13V9H21Z" />
-							</svg>
-						</div>
-						<div>
-							<h2 className="text-lg font-semibold">SA AI Assistant</h2>
-							<p className="text-sm text-white/70">UI Generation with Live Logs</p>
-						</div>
+						<button>Preview</button>
 					</div>
 				</div>
 
