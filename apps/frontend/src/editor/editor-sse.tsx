@@ -549,7 +549,7 @@ const EditorSSE = () => {
 								</div>
 							</div>
 						) : currentSchema ? (
-							<div className="p-4">
+							<div className="">
 								{memoizedRenderer}
 							</div>
 						) : (
