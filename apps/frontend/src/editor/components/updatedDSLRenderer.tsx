@@ -1,8 +1,11 @@
 import React from 'react';
-import { UIComponent, UIElement, UIElementSchema, Expression } from '@/types/dsl';
+import { UIComponent, UIElement, UIElementSchema } from '@/types/dsl';
 import { useNodeSelection } from '../hooks/useNodeSelection';
+import { useFigmaSelection } from '../hooks/useFigmaSelection';
+import { useOutlineStyles } from './SelectionOutline';
 import { withConditionalErrorBoundary } from './DSLErrorBoundary';
 import { DynamicComponent } from './ComponentRegistry';
+import { SchemaUtils } from '../../utils/schema-utilities';
 
 interface UpdatedDSLRendererProps {
     uiComponent: UIComponent;
@@ -296,19 +299,21 @@ export const UpdatedDSLRenderer: React.FC<UpdatedDSLRendererProps> = React.memo(
 
     // Use selection hook - will be null if not within NodeSelectionProvider
     let selectionHook = null;
+    let figmaSelection = null;
     try {
         selectionHook = useNodeSelection();
+        figmaSelection = useFigmaSelection();
     } catch {
         // Not within NodeSelectionProvider - selection disabled
         selectionHook = null;
+        figmaSelection = null;
     }
 
 
     const renderElement = (
         element: UIElement | UIComponent | string,
         localContext: Record<string, any> = {},
-        componentPath: number[] = [],
-        isWithinForLoop: boolean = false
+        componentPath: number[] = []
     ): React.ReactNode => {
         // Handle primitive values
         if (typeof element === 'string') {
@@ -358,66 +363,119 @@ export const UpdatedDSLRenderer: React.FC<UpdatedDSLRendererProps> = React.memo(
                 if (actualElement.elseIf) {
                     const elseIfCondition = resolver.resolveValue(actualElement.elseIf, localContext);
                     if (!elseIfCondition) {
-                        return actualElement.else ? renderElement(actualElement.else as UIElement, localContext, componentPath, isWithinForLoop) : null;
+                        return actualElement.else ? renderElement(actualElement.else as UIElement, localContext, componentPath) : null;
                     }
                 } else {
-                    return actualElement.else ? renderElement(actualElement.else as UIElement, localContext, componentPath, isWithinForLoop) : null;
+                    return actualElement.else ? renderElement(actualElement.else as UIElement, localContext, componentPath) : null;
                 }
             }
         }
 
-        // Handle loops
+        // Handle loops - render the original element as container with loop items inside
         if (actualElement.for) {
             const items = resolver.resolveValue(actualElement.for.in, localContext);
             if (Array.isArray(items)) {
-                return items.map((item, index) => {
+                const forDef = actualElement.for;
+
+                // Create loop items
+                const loopItems = items.map((item, index) => {
                     const itemContext = {
                         ...localContext,
-                        [actualElement.for!.as]: item,
-                        ...(actualElement.for!.index ? { [actualElement.for!.index]: index } : {})
+                        [forDef.as]: item,
+                        ...(forDef.index ? { [forDef.index]: index } : {})
                     };
 
                     // Generate unique key for each loop item
                     let key: string;
-                    if (actualElement.for!.key) {
-                        // Handle key as a binding path (e.g., 'user.id')
-                        if (typeof actualElement.for!.key === 'string') {
-                            const resolvedKey = resolver.getRawValue(actualElement.for!.key, itemContext);
+                    if (forDef.key) {
+                        if (typeof forDef.key === 'string') {
+                            const resolvedKey = resolver.getRawValue(forDef.key, itemContext);
                             key = resolvedKey ? String(resolvedKey) : `${actualElement.id}-${index}`;
                         } else {
-                            // Handle key as expression/binding object
-                            const resolvedKey = resolver.resolveValue(actualElement.for!.key, itemContext);
+                            const resolvedKey = resolver.resolveValue(forDef.key, itemContext);
                             key = resolvedKey ? String(resolvedKey) : `${actualElement.id}-${index}`;
                         }
-                    } else if (actualElement.key) {
-                        const resolvedKey = resolver.resolveValue(actualElement.key, itemContext);
-                        key = resolvedKey ? String(resolvedKey) : `${actualElement.id}-${index}`;
                     } else {
-                        // Fallback to element ID + index
                         key = `${actualElement.id}-${index}`;
                     }
 
+                    // Create loop element with unique ID but same structure
                     const loopElement = {
                         ...actualElement,
                         for: undefined,
                         key: undefined,
-                        // Create unique ID for each loop item
                         id: `${actualElement.id}-${index}`
                     } as UIElement;
 
-                    // Create unique component path for each loop item
                     const loopItemPath = [...componentPath, index];
 
                     return (
                         <React.Fragment key={key}>
                             {withConditionalErrorBoundary(
-                                renderElement(loopElement, itemContext, loopItemPath, true),
+                                renderElement(loopElement, itemContext, loopItemPath),
                                 loopElement.type,
                                 `${key}-boundary`
                             )}
                         </React.Fragment>
                     );
                 });
+
+                // Create container element with original props and classes
+                const containerElement = {
+                    ...actualElement,
+                    for: undefined,
+                    // The children will be the loop items
+                    children: undefined
+                } as UIElement;
+
+                // Resolve container props with original classes
+                const containerProps = containerElement.props ?
+                    Object.entries(containerElement.props).reduce((acc, [key, value]) => {
+                        acc[key] = resolver.resolveValue(value, localContext);
+                        return acc;
+                    }, {} as Record<string, any>) : {};
+
+                // Add selection functionality to container
+                const elementId = componentId || containerElement.id;
+                if (enableSelection && selectionHook && figmaSelection && selectionHook.isSelectionEnabled) {
+                    const visualFeedback = figmaSelection.getVisualFeedbackStyles(elementId, componentPath);
+                    const outlineStyles = useOutlineStyles(visualFeedback.isSelected, visualFeedback.isHovered, visualFeedback.isParent);
+
+                    // Add data attributes for keyboard navigation and event delegation
+                    containerProps['data-component-id'] = elementId;
+                    containerProps['data-component-path'] = JSON.stringify(componentPath);
+
+                    containerProps.style = {
+                        ...containerProps.style,
+                        ...outlineStyles,
+                        transition: 'outline 0.2s ease, background-color 0.2s ease'
+                    };
+
+                    const figmaClasses = [];
+                    if (visualFeedback.isSelected) figmaClasses.push('figma-selected');
+                    if (visualFeedback.isHovered) figmaClasses.push('figma-hovered');
+                    if (visualFeedback.shouldShowOutline) figmaClasses.push('figma-outlined');
+
+                    const existingClassName = containerProps.className || '';
+                    containerProps.className = [existingClassName, ...figmaClasses].filter(Boolean).join(' ');
+
+                    containerProps.onClick = (e: React.MouseEvent) => {
+                        figmaSelection.handleClick(e, elementId, componentPath);
+                    };
+
+                    containerProps.onDoubleClick = (e: React.MouseEvent) => {
+                        figmaSelection.handleDoubleClick(e, elementId, componentPath);
+                    };
+
+                    // Note: Hover handlers are now handled via event delegation in useFigmaSelection
+                }
+
+                // Render the container with its original type and props, containing loop items
+                return React.createElement(
+                    containerElement.type,
+                    containerProps,
+                    ...loopItems
+                );
             }
         }
 
@@ -490,87 +548,59 @@ export const UpdatedDSLRenderer: React.FC<UpdatedDSLRendererProps> = React.memo(
                 // Add cursor pointer for better UX
                 resolvedProps.style = {
                     ...resolvedProps.style,
-                    cursor: 'pointer',
-                    userSelect: 'none' as const,
-                    WebkitUserSelect: 'none' as const,
-                    WebkitTouchCallout: 'none' as const
+                    cursor: 'pointer'
                 };
             }
         }
 
-        // Add selection functionality if enabled
-        if (enableSelection && selectionHook && selectionHook.isSelectionEnabled) {
-            let isSelectable = selectionHook.isNodeSelectable(componentPath);
-            const isSelected = selectionHook.isNodeSelected(componentId || actualElement.id, componentPath);
-            const isHovered = selectionHook.isNodeHovered(componentId || actualElement.id, componentPath);
+        // Add Figma-style selection functionality if enabled
+        if (enableSelection && selectionHook && figmaSelection && selectionHook.isSelectionEnabled) {
+            const elementId = componentId || actualElement.id;
 
-            // Special handling for for loop generated items
-            if (isWithinForLoop) {
-                // Elements within for loops should be selectable regardless of selection level
-                isSelectable = true;
-            }
+            // Get Figma-style visual feedback for ALL elements (hover will determine what's selectable)
+            const visualFeedback = figmaSelection.getVisualFeedbackStyles(elementId, componentPath);
 
+            // Apply outline-based styles instead of rings
+            const outlineStyles = useOutlineStyles(visualFeedback.isSelected, visualFeedback.isHovered, visualFeedback.isParent);
 
-            if (isSelectable) {
-                // Add selection styles
-                let selectionStyles = 'relative transition-all duration-200 ';
+            // Add data attributes for keyboard navigation and event delegation
+            resolvedProps['data-component-id'] = elementId;
+            resolvedProps['data-component-path'] = JSON.stringify(componentPath);
 
-                if (isSelected) {
-                    selectionStyles += 'ring-2 ring-blue-500 ring-offset-2 bg-blue-50/50 ';
-                } else if (isHovered) {
-                    selectionStyles += 'ring-2 ring-blue-300 ring-offset-1 bg-blue-50/30 ';
-                } else {
-                    selectionStyles += 'hover:ring-2 hover:ring-blue-200 hover:ring-offset-1 hover:bg-blue-50/20 ';
+            // Merge styles
+            resolvedProps.style = {
+                ...resolvedProps.style,
+                ...outlineStyles,
+                transition: 'outline 0.2s ease, background-color 0.2s ease'
+            };
+
+            // Add Figma-style CSS classes
+            const existingClassName = resolvedProps.className || '';
+            const figmaClasses = [];
+            if (visualFeedback.isSelected) figmaClasses.push('figma-selected');
+            if (visualFeedback.isHovered) figmaClasses.push('figma-hovered');
+            if (visualFeedback.shouldShowOutline) figmaClasses.push('figma-outlined');
+
+            resolvedProps.className = [existingClassName, ...figmaClasses].filter(Boolean).join(' ');
+
+            // Add Figma-style event handlers for ALL elements
+            const originalOnClick = resolvedProps.onClick;
+            resolvedProps.onClick = (e: React.MouseEvent) => {
+                // Handle original click if it exists (but don't stop propagation)
+                if (originalOnClick && typeof originalOnClick === 'function') {
+                    originalOnClick(e);
                 }
 
-                selectionStyles += 'cursor-pointer ';
+                // Handle Figma-style selection (works for any element)
+                figmaSelection.handleClick(e, elementId, componentPath);
+            };
 
-                // Merge with existing className
-                const existingClassName = resolvedProps.className || '';
-                resolvedProps.className = `${existingClassName} ${selectionStyles}`.trim();
+            // Add double-click handler using unified Figma logic
+            resolvedProps.onDoubleClick = (e: React.MouseEvent) => {
+                figmaSelection.handleDoubleClick(e, elementId, componentPath);
+            };
 
-                // Add selection event handlers
-                const originalOnClick = resolvedProps.onClick;
-
-                resolvedProps.onClick = (e: React.MouseEvent) => {
-                    e.stopPropagation();
-
-                    // Handle original click if it exists
-                    if (originalOnClick && typeof originalOnClick === 'function') {
-                        originalOnClick(e);
-                    }
-
-                    // Handle selection
-                    selectionHook.selectNode(componentId || actualElement.id, componentPath);
-                };
-
-                // Add double-click handler for navigation
-                resolvedProps.onDoubleClick = (e: React.MouseEvent) => {
-                    e.stopPropagation();
-                    if (isSelected) {
-                        selectionHook.navigateToChildren();
-                    }
-                };
-
-                // Add hover handlers
-                resolvedProps.onMouseEnter = (e: React.MouseEvent) => {
-                    e.stopPropagation();
-                    selectionHook.setHoveredNode(componentId || actualElement.id, componentPath);
-                };
-
-                resolvedProps.onMouseLeave = (e: React.MouseEvent) => {
-                    e.stopPropagation();
-                    selectionHook.setHoveredNode(null);
-                };
-
-                // Add selection indicator with positioning
-                if (isSelected || isHovered) {
-                    resolvedProps.style = {
-                        ...resolvedProps.style,
-                        position: 'relative'
-                    };
-                }
-            }
+            // Note: Hover handlers are now handled via event delegation in useFigmaSelection
         }
 
         // Resolve key for React element
@@ -600,11 +630,11 @@ export const UpdatedDSLRenderer: React.FC<UpdatedDSLRendererProps> = React.memo(
                         const value = resolver.resolveValue(child, localContext);
                         return value !== undefined ? String(value) : null;
                     }
-                    return <React.Fragment key={index}>{renderElement(child as UIElement, localContext, [...componentPath, index], isWithinForLoop)}</React.Fragment>;
+                    return <React.Fragment key={index}>{renderElement(child as UIElement, localContext, [...componentPath, index])}</React.Fragment>;
                 }).filter(Boolean);
             }
 
-            return renderElement(actualElement.children as UIElement, localContext, [...componentPath, 0], isWithinForLoop);
+            return renderElement(actualElement.children as UIElement, localContext, [...componentPath, 0]);
         };
 
         // Check for dynamic components first
@@ -697,7 +727,7 @@ export const UpdatedDSLRenderer: React.FC<UpdatedDSLRendererProps> = React.memo(
                 return <td key={resolvedKey} {...resolvedProps}>{renderChildren()}</td>;
 
             default:
-                console.warn(`Unknown element type: ${actualElement.type}`);
+                // console.warn(`Unknown element type: ${actualElement.type}`);
                 return <div key={resolvedKey} {...resolvedProps}>{renderChildren()}</div>;
         }
     };
@@ -720,9 +750,17 @@ export const UpdatedDSLRenderer: React.FC<UpdatedDSLRendererProps> = React.memo(
 
     // Wrap the entire DSL tree with error boundary for top-level errors
     return (
-        <div className="updated-dsl-renderer">
+        <div
+            className="updated-dsl-renderer"
+            style={{
+                userSelect: 'none',
+                WebkitUserSelect: 'none',
+                WebkitTouchCallout: 'none',
+                msUserSelect: 'none'
+            }}
+        >
             {withConditionalErrorBoundary(
-                renderElement(uiComponent, fullContext, [], false),
+                renderElement(uiComponent, fullContext, []),
                 'UIComponent',
                 uiComponent.id,
                 true // Force wrap root element

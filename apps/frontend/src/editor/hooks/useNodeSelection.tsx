@@ -87,11 +87,18 @@ export const NodeSelectionProvider: React.FC<NodeSelectionProviderProps> = ({
 
 		setSelectedNode({ componentId, path })
 
+		// Auto-adjust selection level to match the selected path depth
+		// This allows Figma-style selection to work at any level
+		const targetLevel = Math.max(0, path.length - 1)
+		if (targetLevel !== selectionLevel) {
+			setSelectionLevel(targetLevel)
+		}
+
 		// Call the onNodeSelect callback if provided
 		if (onNodeSelect) {
 			onNodeSelect(componentId)
 		}
-	}, [isSelectionEnabled, onNodeSelect])
+	}, [isSelectionEnabled, onNodeSelect, selectionLevel])
 
 	const clearSelection = useCallback(() => {
 		setSelectedNode(null)
