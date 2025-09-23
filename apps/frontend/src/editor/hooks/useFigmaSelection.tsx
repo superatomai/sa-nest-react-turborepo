@@ -1,4 +1,4 @@
-import { useCallback } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useNodeSelection } from './useNodeSelection'
 import { SchemaUtils } from '../../utils/schema-utilities'
 
@@ -19,13 +19,38 @@ interface FigmaSelectionHook {
 
 /**
  * Figma-style selection hook that implements:
- * 1. Hover shows outline on immediate parent frame
- * 2. Single click selects parent frame
- * 3. Ctrl+click selects the actual target element
- * 4. Outline-based visual feedback
+ * 1. Hover shows outline based on selection hierarchy
+ * 2. Single click selects hierarchical target (common parent logic)
+ * 3. Ctrl+click selects the exact element under cursor (bypasses hierarchy)
+ * 4. Double-click drills into children when parent is selected
+ * 5. Outline-based visual feedback with dotted parent outlines
  */
 export const useFigmaSelection = (): FigmaSelectionHook => {
 	const nodeSelection = useNodeSelection()
+	const [isCtrlPressed, setIsCtrlPressed] = useState(false)
+
+	// Track Ctrl key state for hover feedback
+	useEffect(() => {
+		const handleKeyDown = (e: KeyboardEvent) => {
+			if (e.ctrlKey || e.metaKey) {
+				setIsCtrlPressed(true)
+			}
+		}
+
+		const handleKeyUp = (e: KeyboardEvent) => {
+			if (!e.ctrlKey && !e.metaKey) {
+				setIsCtrlPressed(false)
+			}
+		}
+
+		window.addEventListener('keydown', handleKeyDown)
+		window.addEventListener('keyup', handleKeyUp)
+
+		return () => {
+			window.removeEventListener('keydown', handleKeyDown)
+			window.removeEventListener('keyup', handleKeyUp)
+		}
+	}, [])
 
 	/**
 	 * Find common parent between two paths
@@ -102,15 +127,22 @@ export const useFigmaSelection = (): FigmaSelectionHook => {
 
 	/**
 	 * Handle mouse enter - show hover feedback using common parent logic
+	 * When Ctrl is pressed, show direct hover on the exact element
 	 */
 	const handleMouseEnter = useCallback((componentId: string, path: number[]) => {
 		if (!nodeSelection.isSelectionEnabled) return
 
-		const target = getHoverTarget(componentId, path)
-		if (target) {
-			nodeSelection.setHoveredNode(target.componentId, target.path)
+		if (isCtrlPressed) {
+			// Direct hover when Ctrl is pressed
+			nodeSelection.setHoveredNode(componentId, path)
+		} else {
+			// Use hierarchical logic when Ctrl is not pressed
+			const target = getHoverTarget(componentId, path)
+			if (target) {
+				nodeSelection.setHoveredNode(target.componentId, target.path)
+			}
 		}
-	}, [nodeSelection, getHoverTarget])
+	}, [nodeSelection, getHoverTarget, isCtrlPressed])
 
 	/**
 	 * Handle mouse leave - clear hover feedback
@@ -121,6 +153,7 @@ export const useFigmaSelection = (): FigmaSelectionHook => {
 
 	/**
 	 * Handle click - select the hover target (what was shown on hover)
+	 * Ctrl+click allows direct selection bypassing hierarchy
 	 */
 	const handleClick = useCallback((e: React.MouseEvent, componentId: string, path: number[]) => {
 		if (!nodeSelection.isSelectionEnabled) return
@@ -128,10 +161,16 @@ export const useFigmaSelection = (): FigmaSelectionHook => {
 		e.stopPropagation()
 		e.preventDefault()
 
-		// Use the same logic as hover to determine what should be selected
-		const target = getHoverTarget(componentId, path)
-		if (target) {
-			nodeSelection.selectNode(target.componentId, target.path)
+		// Check for Ctrl+click (or Cmd+click on Mac)
+		if (e.ctrlKey || e.metaKey) {
+			// Direct selection - bypass hierarchy logic
+			nodeSelection.selectNode(componentId, path)
+		} else {
+			// Use the same logic as hover to determine what should be selected
+			const target = getHoverTarget(componentId, path)
+			if (target) {
+				nodeSelection.selectNode(target.componentId, target.path)
+			}
 		}
 
 		// Clear hover after selection

@@ -1,19 +1,16 @@
 import { useEffect, useState, useMemo, useCallback } from 'react'
 import { UIComponent } from '../types/dsl'
-import FLOWUIRenderer from './components/ui-renderer'
-import { trpc, trpcClient } from '../utils/trpc'
+import { trpc } from '../utils/trpc'
 import { observer } from 'mobx-react-lite'
 import { useParams } from 'react-router-dom'
 import SelectableUIRenderer from './components/SelectableUIRenderer'
-import { DatabaseUtils, parseDSLFromVersion } from '../utils/database'
+import { DatabaseUtils } from '../utils/database'
 import { createDefaultDSL } from '../lib/utils/default-dsl'
-import { TEST_DSL } from '@/test/dsl'
 import NodeEditor from './components/NodeEditor'
 import { findNodeById, updateNodeById } from './utils/node-operations'
 import { COMPLEX_DSL } from '@/test/complex-dsl'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000'
-
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
 const default_ui_schema: UIComponent = createDefaultDSL()
 		
 const EditorSSE = () => {
@@ -71,154 +68,6 @@ const EditorSSE = () => {
 			console.error('❌ Failed to store docs:', error);
 		}
 	});	
-
-	// useEffect(() => {
-	// 	//initialising the project using tRPC services
-	// 	(async () => {
-	// 		if (!projectId || projectId === "") return;
-
-	// 		console.log('🚀 Initializing project: ', projectId);
-
-	// 		try {
-	// 			// 1. Check if data agent is connected to the project (still via HTTP since it's WebSocket related)
-	// 			console.log('📡 Checking data agent connection...');
-	// 			const agentStatusResponse = await fetch(`${API_URL}/agent-status/${projectId}`);
-	// 			const agentStatusData = await agentStatusResponse.json();
-				
-	// 			if (!agentStatusData.success || !agentStatusData.data.hasAgent) {
-	// 				console.warn('⚠️ No data agent connected to project', projectId);
-	// 				return ;
-	// 			} 
-
-	// 			console.log('✅ Data agent connected:', agentStatusData.data);
-
-	// 			// 2. Get project with docs and UI list using tRPC
-	// 			console.log('📚 Fetching project, docs and UI list via tRPC...');
-
-	// 			const projectResult = await trpcClient.projectWithDocsAndUi.query({ projId: parseInt(projectId) });
-	// 			let docsData = null;
-	// 			let existingUiList = null;
-
-	// 			if (projectResult && projectResult.project && projectResult.project.length > 0) {
-	// 				const project = projectResult.project[0];
-	// 				console.log('✅ Project data loaded:', project);
-					
-	// 				// 3. Load docs if project has docs reference  
-	// 				if (project.docs) {
-	// 					console.log('📖 Loading documentation from database...');
-	// 					try {
-	// 						// Use trpcClient for direct calls instead of hooks
-	// 						const dbDocsData = await trpcClient.getDocs.query({ id: project.docs });
-	// 						if (dbDocsData) {
-	// 							docsData = dbDocsData;
-	// 							setProjectDocs(docsData);
-	// 							console.log('✅ Documentation loaded from database');
-	// 						}
-	// 					} catch (docsError) {
-	// 						console.warn('⚠️ Failed to load docs from database:', docsError);
-	// 						return;
-	// 					}
-	// 				} else {
-	// 					console.warn('⚠️ No docs found');
-	// 				}
-					
-	// 				// Fallback to WebSocket docs if not loaded from database
-	// 				if (!docsData) {
-	// 					console.log('📡 Fetching documentation from WebSocket...');
-	// 					const docsResponse = await fetch(`${API_URL}/init-docs?projectId=${projectId}`);
-	// 					if (docsResponse.ok) {
-	// 						docsData = await docsResponse.json();
-	// 						setProjectDocs(docsData);
-	// 						console.log('✅ Docs fetched from WebSocket');
-
-
-	// 						//save the docs to the database
-	// 						if (docsData.success) {
-	// 							console.log('💾 Saving docs to database...');
-	// 							createDocsMutation.mutate({
-	// 								projId: parseInt(projectId),
-	// 								docs: docsData.data
-	// 							})
-	// 						}
-	// 					} else {
-	// 						console.warn('⚠️ Failed to fetch docs from WebSocket');
-	// 						return;
-	// 					}
-	// 				}
-
-	// 				// 4. Load existing UI list if project has one
-	// 				if (project.uiList) {
-	// 					console.log('🎨 Loading existing UI suggestions from database...');
-	// 					try {
-	// 						const uiListData = await trpcClient.getUiList.query({ id: project.uiList });
-	// 						if (uiListData && (uiListData as any).uiList && (uiListData as any).uiList.length > 0) {
-	// 							const dbUiList = (uiListData as any).uiList[0];
-	// 							if (dbUiList && dbUiList.uiList) {
-	// 								existingUiList = dbUiList.uiList;
-	// 								setUiSuggestions(existingUiList);
-	// 								console.log('✅ Existing UI suggestions loaded:', existingUiList);
-	// 							}
-	// 						}
-	// 					} catch (uiListError) {
-	// 						console.warn('⚠️ Failed to load UI suggestions from database:', uiListError);
-	// 						return;
-	// 					}
-	// 				}
-	// 			}  else {
-	// 				console.warn('⚠️ No project data found');
-	// 				return;
-	// 			}
-
-	// 			// 5. Generate new UI suggestions if we don't have them and have docs
-	// 			if (!existingUiList && docsData && agentStatusData.data.hasAgent) {
-	// 				console.log('🤖 Generating new UI suggestions from docs...');
-
-	// 				try {
-	// 					const suggestionsResponse = await fetch(`${API_URL}/init-ui`, {
-	// 						method: 'POST',
-	// 						headers: {
-	// 							'Content-Type': 'application/json',
-	// 						},
-	// 						body: JSON.stringify({
-	// 							docsInfo: docsData.data || docsData,
-	// 							projectId: projectId
-	// 						})
-	// 					});
-
-	// 					if (suggestionsResponse.ok) {
-	// 						const suggestionsData = await suggestionsResponse.json();
-	// 						const suggestions = suggestionsData.data || [];
-	// 						setUiSuggestions(suggestions);
-	// 						console.log('✅ UI suggestions generated:', suggestions);
-
-	// 						// 6. Save suggestions to database using tRPC
-	// 						if (suggestions.length > 0) {
-	// 							console.log('💾 Saving UI suggestions to database...');
-	// 							createUiListMutation.mutate({
-	// 								projId: parseInt(projectId),
-	// 								uiList: suggestions
-	// 							})
-	// 						}
-	// 					} else {
-	// 						console.warn('⚠️ Failed to generate UI suggestions:', suggestionsResponse.statusText);
-	// 						return;
-	// 					}
-	// 				} catch (error) {
-	// 					console.error('❌ Error generating UI suggestions:', error);
-	// 					return;
-	// 				}
-	// 			}
-
-	// 			console.log('✅ Project initialization complete');
-
-
-	// 		} catch (error) {
-	// 			console.error('❌ Error during project initialization:', error);
-	// 			return;
-	// 		}
-	// 	})();
-
-	// }, [projectId])
 
 	useEffect(() => {
 		if (uiId && uidata) {
@@ -319,11 +168,7 @@ const EditorSSE = () => {
 	const [promptHistory, setPromptHistory] = useState<string[]>([])
 	const [historyIndex, setHistoryIndex] = useState(-1)
 
-	// 	// Health check query (optional - to test tRPC connection)
-	// const healthQuery = trpc.health.useQuery(undefined, {
-	// 	refetchInterval: false, // Don't auto-refetch
-	// 	retry: false
-	// })
+
 
 	// Local storage key for prompt history
 	const PROMPT_HISTORY_KEY = 'prompt_history'
@@ -342,16 +187,6 @@ const EditorSSE = () => {
 			}
 		}
 	}, [])
-
-	// useEffect(() => {
-	// 	// Optional: Log health check result
-	// 	if (healthQuery.data) {
-	// 		console.log('tRPC Health check:', healthQuery.data)
-	// 	}
-	// 	if (healthQuery.error) {
-	// 		console.error('tRPC connection error:', healthQuery.error)
-	// 	}
-	// }, [healthQuery.data, healthQuery.error])
 
 	// Save prompt to history and localStorage
 	const savePromptToHistory = (prompt: string) => {
@@ -523,10 +358,6 @@ const EditorSSE = () => {
 	// Handle schema updates from copy-paste operations
 	const handleSchemaUpdate = useCallback((newSchema: UIComponent, operation?: string) => {
 		// Log DSL before and after update
-		console.log('📋 DSL UPDATE - Operation:', operation || 'unknown operation')
-		console.log('🔴 ORIGINAL DSL:', JSON.stringify(currentSchema))
-		console.log('🟢 UPDATED DSL:', JSON.stringify(newSchema))
-		console.log('-----------------------------------')
 
 		setCurrentSchema(newSchema)
 		console.log('🔄 Schema updated via:', operation || 'unknown operation', newSchema.id)
@@ -586,7 +417,6 @@ const EditorSSE = () => {
 
 	// Handle node selection - opens modal when a node is selected
 	const handleNodeSelection = useCallback((selectedNodeId: string) => {
-		console.log('Node selected:', selectedNodeId)
 		if (selectedNodeId && currentSchema) {
 			// Use the utility function to find the node
 			const selectedNode = findNodeById(currentSchema, selectedNodeId)
@@ -736,78 +566,6 @@ const EditorSSE = () => {
 									<p className="text-slate-500 max-w-sm">Describe what you want to build and watch it come to life</p>
 								</div>
 							</div>
-						)}
-					</div>
-
-					{/* Debug Information */}
-					<div className="absolute bottom-6 left-6 max-w-md space-y-2">
-						{/* Selected Node Preview */}
-						{/* { selectedNodeId && (
-							<details open className="bg-indigo-900/95 backdrop-blur-sm text-indigo-300 p-3 rounded-xl text-xs shadow-2xl border border-indigo-700">
-								<summary className="cursor-pointer font-medium hover:text-indigo-200 transition-colors">
-									🎯 Selected Node: {selectedNodeId}
-								</summary>
-								<pre className="mt-3 overflow-auto max-h-48 text-slate-300 bg-slate-800/50 p-3 rounded-lg">
-									{JSON.stringify((() => {
-										if (currentSchema && selectedNodeId) {
-											const node = findNodeById(currentSchema, selectedNodeId);
-											if (node) {
-												return {
-													id: (node as any).id,
-													type: (node as any).type || (node as any).render?.type,
-													props: (node as any).props || (node as any).render?.props,
-													className: (node as any).props?.className || (node as any).className,
-													text: (node as any).props?.children || (node as any).children,
-													hasChildren: !!(node as any).children || !!(node as any).render?.children,
-													timestamp: new Date().toLocaleTimeString()
-												};
-											}
-										}
-										return null;
-									})(), null, 2)}
-								</pre>
-							</details>
-						)} */}
-
-						{/* Schema Preview */}
-						{currentSchema && (
-							<details className="bg-slate-900/95 backdrop-blur-sm text-emerald-400 p-3 rounded-xl text-xs shadow-2xl border border-slate-700">
-								<summary className="cursor-pointer font-medium hover:text-emerald-300 transition-colors">
-									🔍 View Full Schema
-								</summary>
-								<pre className="mt-3 overflow-auto max-h-48 text-slate-300 bg-slate-800/50 p-3 rounded-lg">
-									{JSON.stringify(currentSchema, null, 2)}
-								</pre>
-							</details>
-						)}
-						
-						{/* UI Suggestions Preview */}
-						{uiSuggestions.length > 0 && (
-							<details className="bg-blue-900/95 backdrop-blur-sm text-blue-300 p-3 rounded-xl text-xs shadow-2xl border border-blue-700">
-								<summary className="cursor-pointer font-medium hover:text-blue-200 transition-colors">
-									💡 UI Suggestions ({uiSuggestions.length})
-								</summary>
-								<div className="mt-3 overflow-auto max-h-48 space-y-2">
-									{uiSuggestions.map((suggestion, idx) => (
-										<div key={idx} className="text-slate-300 bg-slate-800/50 p-2 rounded text-xs">
-											<div className="font-medium text-blue-300">{suggestion.name}</div>
-											<div className="text-xs text-slate-400">{suggestion.description}</div>
-										</div>
-									))}
-								</div>
-							</details>
-						)}
-						
-						{/* Project Docs Info */}
-						{projectDocs && (
-							<details className="bg-purple-900/95 backdrop-blur-sm text-purple-300 p-3 rounded-xl text-xs shadow-2xl border border-purple-700">
-								<summary className="cursor-pointer font-medium hover:text-purple-200 transition-colors">
-									📚 Project Docs
-								</summary>
-								<div className="mt-3 text-slate-300 bg-slate-800/50 p-3 rounded-lg text-xs">
-									Docs loaded: {projectDocs.success ? '✅' : '❌'}
-								</div>
-							</details>
 						)}
 					</div>
 				</div>

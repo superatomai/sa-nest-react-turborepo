@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
 import { UIComponent } from '../types/dsl'
-import FLOWUIRenderer from './components/ui-renderer'
 import { trpc } from '../utils/trpc'
 import { observer } from 'mobx-react-lite'
 import { useParams } from 'react-router-dom'
 import { DatabaseUtils, parseDSLFromVersion } from '../utils/database'
 import { createDefaultDSL } from '../lib/utils/default-dsl'
+import FLOWUIRenderer2 from './components/ui-renderer-2'
 
 const default_ui_schema: UIComponent = createDefaultDSL()
 
@@ -369,7 +369,7 @@ const StudioTestPage = () => {
 						) : currentSchema ? (
 							<div className="min-h-full bg-white rounded-xl shadow-lg border border-slate-200">
 								
-								<FLOWUIRenderer schema={currentSchema} data={data} handlers={handlers} />
+								{/* <FLOWUIRenderer2 schema={currentSchema} data={data} handlers={handlers} /> */}
 							</div>
 						) : (
 							<div className="min-h-full flex items-center justify-center">
