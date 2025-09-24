@@ -44,19 +44,20 @@ const NodeEditor: React.FC<NodeEditorProps> = ({
   };
 
   return (
-    <div className="bg-white border-b border-gray-200 p-2 shadow-sm">
+    // bg-gradient-to-r from-teal-100 to-cyan-100
+    <div className="bg-cyan-50 border-b border-teal-200 p-3 shadow-sm">
       <div className="w-full">
         <div className="flex items-center mb-2">
-          <h3 className="text-sm font-semibold text-gray-800">
+          <h3 className="text-sm font-semibold text-teal-800">
             Edit Node
           </h3>
         </div>
 
-        <div className="space-y-2">
+        <div className="space-y-3">
           <div className="space-y-1">
             <label
               htmlFor="node-text"
-              className="text-xs font-medium text-gray-600 block"
+              className="text-xs font-medium text-teal-700 block"
             >
               Content
             </label>
@@ -66,10 +67,10 @@ const NodeEditor: React.FC<NodeEditorProps> = ({
               onChange={(e) => setText(e.target.value)}
               onKeyDown={handleKeyDown}
               disabled={!hasText}
-              className={`w-full p-1.5 border border-gray-200 rounded text-xs resize-y min-h-[40px] ${
+              className={`w-full p-2 border rounded-md text-xs resize-y min-h-[40px] shadow-sm transition-all duration-200 ${
                 hasText
-                  ? 'focus:ring-1 focus:ring-blue-400 focus:border-blue-400'
-                  : 'bg-gray-50 text-gray-400 cursor-not-allowed'
+                  ? 'bg-white border-teal-300 text-teal-900 focus:ring-2 focus:ring-teal-500 focus:border-teal-500'
+                  : 'bg-white border-teal-200 text-teal-400 cursor-not-allowed'
               }`}
               placeholder={hasText ? "Enter text content..." : "No text content available for this element"}
             />
@@ -78,7 +79,7 @@ const NodeEditor: React.FC<NodeEditorProps> = ({
           <div className="space-y-1">
             <label
               htmlFor="node-class"
-              className="text-xs font-medium text-gray-600 block"
+              className="text-xs font-medium text-teal-700 block"
             >
               ClassName
             </label>
@@ -87,16 +88,16 @@ const NodeEditor: React.FC<NodeEditorProps> = ({
               value={className}
               onChange={(e) => setClassName(e.target.value)}
               onKeyDown={handleKeyDown}
-              className="w-full p-1.5 border border-gray-200 rounded text-xs focus:ring-1 focus:ring-blue-400 focus:border-blue-400 resize-y min-h-[40px]"
+              className="w-full p-2 bg-white border border-teal-300 rounded-md text-xs text-teal-900 focus:ring-2 focus:ring-teal-500 focus:border-teal-500 resize-y min-h-[40px] shadow-sm transition-all duration-200"
               placeholder="e.g., bg-blue-500 text-white"
             />
           </div>
         </div>
 
-        <div className="flex justify-end mt-2 pt-1.5 border-t border-gray-100">
+        <div className="flex justify-end mt-3 pt-2 border-t border-teal-200">
           <button
             onClick={handleUpdateNode}
-            className="px-2 py-1 text-xs font-medium bg-blue-500 text-white rounded hover:bg-blue-600"
+            className="px-3 py-1.5 text-xs font-medium bg-gradient-to-r from-teal-600 to-teal-700 text-white rounded-md hover:from-teal-700 hover:to-teal-800 shadow-sm hover:shadow-md transition-all duration-200"
           >
             Update
           </button>

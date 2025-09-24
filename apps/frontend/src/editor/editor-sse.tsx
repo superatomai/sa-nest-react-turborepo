@@ -534,18 +534,18 @@ const EditorSSE = () => {
 					</div>
 				</div>
 			</div>
+			{/* bg-gradient-to-r from-teal-100 to-cyan-100 */}
 
 			{/* Right Side - Chat Interface with SSE Logs */}
-			<div className="w-96 bg-slate-200 flex flex-col shadow-2xl overflow-hidden">
+			<div className="w-96 bg-gradient-to-b from-teal-50 to-cyan-50 flex flex-col shadow-2xl overflow-hidden">
 				{/* Chat Header */}
-				<div className="py-1">
-					<div className="flex items-center">
+				<div className="px-4 py-3 bg-cyan-50  border-b border-teal-200">
+					<div className="flex items-center justify-end">
 						<button
 							onClick={() => editorModeStore.toggleMode()}
-							className=" p-1.5 flex justify-center items-center hover:bg-slate-400 outline rounded-lg font-medium transition-all duration-200"
+							className="px-3 bg-white py-1.5 text-xs font-medium text-teal-700 hover:text-white hover:bg-teal-600 rounded-md transition-all duration-200 shadow-sm hover:shadow-md"
 						>
-							<span className="w-2 h-2 rounded-full"></span>
-							<span>{editorModeStore.currentMode.toUpperCase()}</span>
+							{editorModeStore.currentMode.toUpperCase()}
 						</button>
 					</div>
 				</div>
@@ -578,47 +578,47 @@ const EditorSSE = () => {
 				)}
 
 				{/* Messages and SSE Logs */}
-				<div className="flex-1 overflow-y-auto p-6 space-y-4 bg-gradient-to-b from-slate-50/50 to-white/50">
+				<div className="flex-1 overflow-y-auto p-4 space-y-3">
 					{messages.length === 0 && (
-						<div className="text-center py-8">
-							<div className="w-16 h-16 mx-auto bg-gradient-to-br from-violet-100 to-purple-100 rounded-2xl flex items-center justify-center mb-4">
-								<svg className="w-8 h-8 text-violet-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<div className="text-center py-12">
+							<div className="w-12 h-12 mx-auto bg-gradient-to-br from-teal-100 to-cyan-100 rounded-lg flex items-center justify-center mb-3 shadow-sm">
+								<svg className="w-6 h-6 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 									<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
 								</svg>
 							</div>
-							<p className="text-slate-500 text-sm">Start a conversation to generate your UI with live logs</p>
+							<p className="text-teal-600 text-sm">Describe your UI to get started</p>
 						</div>
 					)}
-					
+
 					{messages.map((msg, i) => (
 						<div key={i} className={`${msg.role === 'user' ? 'text-right' : 'text-left'}`}>
-							<div className={`inline-block p-2.5 rounded-2xl max-w-[85%] shadow-sm ${msg.role === 'user'
-								? 'bg-blue-500 text-white'
-								: 'bg-white border border-gray-200 text-gray-800 shadow-md'
+							<div className={`inline-block px-3 py-2 rounded-lg max-w-[85%] text-sm shadow-sm ${msg.role === 'user'
+								? 'bg-gradient-to-r from-teal-600 to-teal-700 text-white'
+								: 'bg-white border border-teal-200 text-teal-800'
 								}`}>
-								<p className="text-sm leading-relaxed">{msg.content}</p>
+								{msg.content}
 							</div>
 						</div>
 					))}
-					
+
 					{/* SSE Live Logs */}
 					{isGenerating && (
 						<div className="text-left">
-							<div className="bg-gray-900 rounded-2xl p-4 shadow-lg">
-								<div className="flex items-center space-x-2 mb-3">
-									<div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-									<span className="text-green-400 text-xs font-medium">LIVE LOGS</span>
+							<div className="bg-gradient-to-r from-teal-50 to-cyan-50 border border-teal-200 rounded-lg p-3 shadow-sm">
+								<div className="flex items-center space-x-2 mb-2">
+									<div className="w-2 h-2 bg-teal-600 rounded-full animate-pulse"></div>
+									<span className="text-teal-700 text-xs font-medium">GENERATING</span>
 								</div>
-								<div className="space-y-1 max-h-32 overflow-y-auto">
+								<div className="space-y-1 max-h-24 overflow-y-auto">
 									{sseEvents.map((event, index) => (
-										<div key={index} className="text-xs font-mono">
-											<span className="text-gray-400">
+										<div key={index} className="text-xs font-mono text-teal-700">
+											<span className="text-teal-500">
 												{event.timestamp.toLocaleTimeString()}
 											</span>
 											<span className={`ml-2 ${
-												event.type === 'error' ? 'text-red-400' :
-												event.type === 'complete' ? 'text-green-400' :
-												'text-blue-400'
+												event.type === 'error' ? 'text-red-600' :
+												event.type === 'complete' ? 'text-teal-600' :
+												'text-blue-600'
 											}`}>
 												{event.message}
 											</span>
@@ -628,17 +628,17 @@ const EditorSSE = () => {
 							</div>
 						</div>
 					)}
-					
+
 					{isGenerating && (
 						<div className="text-left">
-							<div className="inline-block p-4 rounded-2xl bg-white border border-slate-200 shadow-md">
-								<div className="flex items-center space-x-3">
+							<div className="inline-block px-3 py-2 rounded-lg bg-white border border-teal-200 shadow-sm">
+								<div className="flex items-center space-x-2">
 									<div className="flex space-x-1">
-										<div className="w-2 h-2 bg-violet-500 rounded-full animate-bounce" />
-										<div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }} />
-										<div className="w-2 h-2 bg-indigo-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
+										<div className="w-1.5 h-1.5 bg-teal-600 rounded-full animate-bounce" />
+										<div className="w-1.5 h-1.5 bg-teal-600 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }} />
+										<div className="w-1.5 h-1.5 bg-teal-600 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
 									</div>
-									<span className="text-sm text-slate-600">Generating your UI with SSE...</span>
+									<span className="text-xs text-teal-600">Processing...</span>
 								</div>
 							</div>
 						</div>
@@ -646,9 +646,19 @@ const EditorSSE = () => {
 				</div>
 
 				{/* Input Area */}
-				<div className="border-t border-slate-200/60 bg-white/80 backdrop-blur-sm p-2.5">
-					<div className="space-y-3">
+				<div className="border-t border-teal-200 bg-gradient-to-r from-teal-50 to-cyan-50 p-3">
+					<div className="relative">
 						<textarea
+							ref={(textarea) => {
+								if (textarea) {
+									// Auto-resize functionality
+									textarea.style.height = 'auto'
+									const scrollHeight = textarea.scrollHeight
+									const maxHeight = 120 // max height in px (about 4-5 lines)
+									textarea.style.height = Math.min(scrollHeight, maxHeight) + 'px'
+									textarea.style.overflowY = scrollHeight > maxHeight ? 'auto' : 'hidden'
+								}
+							}}
 							value={input}
 							onChange={(e) => {
 								setInput(e.target.value)
@@ -669,38 +679,30 @@ const EditorSSE = () => {
 									navigateHistory('down')
 								}
 							}}
-							className="w-full p-4 border border-slate-200 rounded-xl resize-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 bg-white/70 backdrop-blur-sm placeholder-slate-400"
-							placeholder="Describe your UI... (e.g., 'Show me list of users in a table')"
-							rows={3}
+							className="w-full pr-12 pl-3 py-3 bg-white border border-teal-300 text-teal-900 rounded-lg resize-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-all duration-200 text-sm placeholder-teal-400 shadow-sm"
+							placeholder="Describe your UI..."
+							style={{ minHeight: '44px' }}
 							disabled={isGenerating}
 						/>
-						<div className="flex justify-between items-center">
-							<p className="text-xs text-slate-500">
-								Enter to send • Shift+Enter for new line • ↑/↓ for history
-							</p>
-							<button
-								onClick={handleSend}
-								disabled={isGenerating || !input.trim()}
-								className="px-6 py-3 bg-purple-500 text-white rounded-xl hover:bg-purple-600 disabled:bg-gray-400 disabled:cursor-not-allowed transition-all duration-200 font-medium shadow-lg hover:shadow-xl transform hover:scale-105 disabled:transform-none"
-							>
-								{isGenerating ? (
-									<div className="flex items-center space-x-2">
-										<svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
-											<circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" className="opacity-25"></circle>
-											<path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" className="opacity-75"></path>
-										</svg>
-										<span>Generating...</span>
-									</div>
-								) : (
-									<div className="flex items-center space-x-2">
-										<span>Generate SSE</span>
-										<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-											<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-										</svg>
-									</div>
-								)}
-							</button>
-						</div>
+						<button
+							onClick={handleSend}
+							disabled={isGenerating || !input.trim()}
+							className="absolute right-2 bottom-2 p-2 text-teal-500 hover:text-white hover:bg-gradient-to-r hover:from-teal-600 hover:to-teal-700 rounded-md disabled:text-teal-300 disabled:cursor-not-allowed transition-all duration-200 shadow-sm hover:shadow-md"
+						>
+							{isGenerating ? (
+								<svg className="animate-spin w-5 h-5 text-teal-600" fill="none" viewBox="0 0 24 24">
+									<circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" className="opacity-25"></circle>
+									<path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" className="opacity-75"></path>
+								</svg>
+							) : (
+								<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+								</svg>
+							)}
+						</button>
+					</div>
+					<div className="mt-2 text-xs text-teal-600">
+						Enter to send • Shift+Enter for new line • ↑/↓ for history
 					</div>
 				</div>
 			</div>
