@@ -79,8 +79,9 @@ export function App() {
       {/* {!hideNavbar && <Navbar />} */}
       <div className="h-screen overflow-auto w-full flex-1">
         <Routes>
-          <Route path="/login" element={<Navigate to="/" replace />} />
-          <Route path="/sign-up" element={<Navigate to="/" replace />} />
+          <Route path="/login" element={<Navigate to="/projects" replace />} />
+          <Route path="/sign-up" element={<Navigate to="/projects" replace />} />
+          <Route path = '/' element={<Navigate to="/projects" replace />}/>
           {/* <Route
             path="/"
             element={

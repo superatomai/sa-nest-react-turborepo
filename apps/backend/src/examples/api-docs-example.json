@@ -1,0 +1,766 @@
+{
+  "version": "1.0.0",
+  "baseUrl": "https://api.example.com/v1",
+  "apis": {
+    "/auth/login": {
+      "path": "/auth/login",
+      "method": "POST",
+      "summary": "User authentication",
+      "description": "Authenticate user with email and password to receive access token",
+      "input": {
+        "body": {
+          "email": "string",
+          "password": "string",
+          "rememberMe": "boolean?"
+        }
+      },
+      "output": {
+        "success": {
+          "statusCode": 200,
+          "data": {
+            "accessToken": "string",
+            "refreshToken": "string",
+            "user": {
+              "id": "string",
+              "email": "string",
+              "name": "string",
+              "role": "string"
+            },
+            "expiresIn": 3600
+          }
+        },
+        "error": {
+          "statusCode": 401,
+          "message": "Invalid credentials",
+          "error": "Unauthorized"
+        }
+      },
+      "example": {
+        "request": {
+          "email": "john.doe@example.com",
+          "password": "SecurePass123!",
+          "rememberMe": true
+        },
+        "response": {
+          "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+          "refreshToken": "refresh_token_here",
+          "user": {
+            "id": "usr_123456",
+            "email": "john.doe@example.com",
+            "name": "John Doe",
+            "role": "admin"
+          },
+          "expiresIn": 3600
+        }
+      },
+      "auth": false
+    },
+    "/users": {
+      "path": "/users",
+      "method": "GET",
+      "summary": "List all users",
+      "description": "Retrieve paginated list of users with optional filters",
+      "input": {
+        "query": {
+          "page": "number?",
+          "limit": "number?",
+          "search": "string?",
+          "role": "enum:admin|user|guest?",
+          "status": "enum:active|inactive|suspended?",
+          "sortBy": "enum:name|email|createdAt?",
+          "sortOrder": "enum:asc|desc?"
+        }
+      },
+      "output": {
+        "success": {
+          "statusCode": 200,
+          "data": {
+            "users": [
+              {
+                "id": "string",
+                "email": "string",
+                "name": "string",
+                "role": "string",
+                "status": "string",
+                "avatar": "string?",
+                "createdAt": "datetime",
+                "lastLogin": "datetime?"
+              }
+            ],
+            "pagination": {
+              "page": "number",
+              "limit": "number",
+              "total": "number",
+              "totalPages": "number"
+            }
+          }
+        },
+        "error": {
+          "statusCode": 403,
+          "message": "Insufficient permissions",
+          "error": "Forbidden"
+        }
+      },
+      "example": {
+        "request": "GET /users?page=1&limit=10&role=admin&sortBy=createdAt&sortOrder=desc",
+        "response": {
+          "users": [
+            {
+              "id": "usr_123456",
+              "email": "john.doe@example.com",
+              "name": "John Doe",
+              "role": "admin",
+              "status": "active",
+              "avatar": "https://example.com/avatars/john.jpg",
+              "createdAt": "2024-01-15T10:30:00Z",
+              "lastLogin": "2024-01-20T14:22:00Z"
+            },
+            {
+              "id": "usr_789012",
+              "email": "jane.smith@example.com",
+              "name": "Jane Smith",
+              "role": "admin",
+              "status": "active",
+              "avatar": null,
+              "createdAt": "2024-01-10T08:15:00Z",
+              "lastLogin": "2024-01-19T16:45:00Z"
+            }
+          ],
+          "pagination": {
+            "page": 1,
+            "limit": 10,
+            "total": 45,
+            "totalPages": 5
+          }
+        }
+      },
+      "auth": "bearer"
+    },
+    "/users/:id": {
+      "path": "/users/:id",
+      "method": "GET",
+      "summary": "Get user by ID",
+      "description": "Retrieve detailed information about a specific user",
+      "input": {
+        "params": {
+          "id": "string"
+        }
+      },
+      "output": {
+        "success": {
+          "statusCode": 200,
+          "data": {
+            "id": "string",
+            "email": "string",
+            "name": "string",
+            "role": "string",
+            "status": "string",
+            "avatar": "string?",
+            "bio": "string?",
+            "phone": "string?",
+            "address": {
+              "street": "string?",
+              "city": "string?",
+              "country": "string?",
+              "zipCode": "string?"
+            },
+            "preferences": {
+              "notifications": "boolean",
+              "newsletter": "boolean",
+              "theme": "string"
+            },
+            "createdAt": "datetime",
+            "updatedAt": "datetime",
+            "lastLogin": "datetime?"
+          }
+        },
+        "error": {
+          "statusCode": 404,
+          "message": "User not found",
+          "error": "Not Found"
+        }
+      },
+      "example": {
+        "request": "GET /users/usr_123456",
+        "response": {
+          "id": "usr_123456",
+          "email": "john.doe@example.com",
+          "name": "John Doe",
+          "role": "admin",
+          "status": "active",
+          "avatar": "https://example.com/avatars/john.jpg",
+          "bio": "Software developer passionate about clean code",
+          "phone": "+1234567890",
+          "address": {
+            "street": "123 Main St",
+            "city": "San Francisco",
+            "country": "USA",
+            "zipCode": "94105"
+          },
+          "preferences": {
+            "notifications": true,
+            "newsletter": false,
+            "theme": "dark"
+          },
+          "createdAt": "2024-01-15T10:30:00Z",
+          "updatedAt": "2024-01-18T12:00:00Z",
+          "lastLogin": "2024-01-20T14:22:00Z"
+        }
+      },
+      "auth": "bearer"
+    },
+    "/users": {
+      "path": "/users",
+      "method": "POST",
+      "summary": "Create new user",
+      "description": "Create a new user account with the provided information",
+      "input": {
+        "body": {
+          "email": "string",
+          "password": "string",
+          "name": "string",
+          "role": "enum:admin|user|guest",
+          "phone": "string?",
+          "bio": "string?",
+          "sendWelcomeEmail": "boolean?"
+        }
+      },
+      "output": {
+        "success": {
+          "statusCode": 201,
+          "data": {
+            "id": "string",
+            "email": "string",
+            "name": "string",
+            "role": "string",
+            "status": "string",
+            "createdAt": "datetime"
+          },
+          "message": "User created successfully"
+        },
+        "error": {
+          "statusCode": 409,
+          "message": "Email already exists",
+          "error": "Conflict"
+        }
+      },
+      "example": {
+        "request": {
+          "email": "new.user@example.com",
+          "password": "SecurePass123!",
+          "name": "New User",
+          "role": "user",
+          "phone": "+9876543210",
+          "sendWelcomeEmail": true
+        },
+        "response": {
+          "id": "usr_345678",
+          "email": "new.user@example.com",
+          "name": "New User",
+          "role": "user",
+          "status": "active",
+          "createdAt": "2024-01-21T09:00:00Z"
+        }
+      },
+      "auth": "bearer"
+    },
+    "/users/:id": {
+      "path": "/users/:id",
+      "method": "PUT",
+      "summary": "Update user",
+      "description": "Update user information by ID",
+      "input": {
+        "params": {
+          "id": "string"
+        },
+        "body": {
+          "name": "string?",
+          "phone": "string?",
+          "bio": "string?",
+          "avatar": "string?",
+          "address": {
+            "street": "string?",
+            "city": "string?",
+            "country": "string?",
+            "zipCode": "string?"
+          },
+          "preferences": {
+            "notifications": "boolean?",
+            "newsletter": "boolean?",
+            "theme": "string?"
+          }
+        }
+      },
+      "output": {
+        "success": {
+          "statusCode": 200,
+          "data": {
+            "id": "string",
+            "email": "string",
+            "name": "string",
+            "updatedAt": "datetime"
+          },
+          "message": "User updated successfully"
+        },
+        "error": {
+          "statusCode": 404,
+          "message": "User not found",
+          "error": "Not Found"
+        }
+      },
+      "example": {
+        "request": {
+          "name": "John Updated",
+          "bio": "Updated bio text",
+          "preferences": {
+            "theme": "light"
+          }
+        },
+        "response": {
+          "id": "usr_123456",
+          "email": "john.doe@example.com",
+          "name": "John Updated",
+          "updatedAt": "2024-01-21T10:00:00Z"
+        }
+      },
+      "auth": "bearer"
+    },
+    "/users/:id": {
+      "path": "/users/:id",
+      "method": "DELETE",
+      "summary": "Delete user",
+      "description": "Soft delete a user account",
+      "input": {
+        "params": {
+          "id": "string"
+        },
+        "query": {
+          "hardDelete": "boolean?"
+        }
+      },
+      "output": {
+        "success": {
+          "statusCode": 200,
+          "message": "User deleted successfully"
+        },
+        "error": {
+          "statusCode": 404,
+          "message": "User not found",
+          "error": "Not Found"
+        }
+      },
+      "example": {
+        "request": "DELETE /users/usr_123456?hardDelete=false",
+        "response": {
+          "message": "User deleted successfully"
+        }
+      },
+      "auth": "bearer"
+    },
+    "/projects": {
+      "path": "/projects",
+      "method": "GET",
+      "summary": "List projects",
+      "description": "Get all projects for the authenticated user's organization",
+      "input": {
+        "query": {
+          "orgId": "string",
+          "limit": "number?",
+          "skip": "number?",
+          "search": "string?",
+          "status": "enum:active|archived?"
+        }
+      },
+      "output": {
+        "success": {
+          "statusCode": 200,
+          "data": {
+            "projects": [
+              {
+                "id": "number",
+                "name": "string",
+                "description": "string?",
+                "createdAt": "datetime",
+                "updatedAt": "datetime",
+                "uisCount": "number"
+              }
+            ],
+            "totalCount": "number"
+          }
+        },
+        "error": {
+          "statusCode": 403,
+          "message": "Access denied to organization",
+          "error": "Forbidden"
+        }
+      },
+      "example": {
+        "request": "GET /projects?orgId=org_123&limit=10&skip=0",
+        "response": {
+          "projects": [
+            {
+              "id": 1,
+              "name": "E-commerce Platform",
+              "description": "Main company e-commerce website",
+              "createdAt": "2024-01-01T00:00:00Z",
+              "updatedAt": "2024-01-20T12:00:00Z",
+              "uisCount": 15
+            },
+            {
+              "id": 2,
+              "name": "Admin Dashboard",
+              "description": "Internal admin dashboard",
+              "createdAt": "2024-01-05T00:00:00Z",
+              "updatedAt": "2024-01-19T16:00:00Z",
+              "uisCount": 8
+            }
+          ],
+          "totalCount": 2
+        }
+      },
+      "auth": "bearer"
+    },
+    "/projects/:id/docs": {
+      "path": "/projects/:id/docs",
+      "method": "GET",
+      "summary": "Get project API documentation",
+      "description": "Retrieve the API documentation for a specific project",
+      "input": {
+        "params": {
+          "id": "number"
+        }
+      },
+      "output": {
+        "success": {
+          "statusCode": 200,
+          "data": {
+            "id": "number",
+            "projectId": "number",
+            "apiDocs": "object",
+            "version": "number",
+            "createdAt": "datetime",
+            "updatedAt": "datetime"
+          }
+        },
+        "error": {
+          "statusCode": 404,
+          "message": "Documentation not found for this project",
+          "error": "Not Found"
+        }
+      },
+      "example": {
+        "request": "GET /projects/1/docs",
+        "response": {
+          "id": 1,
+          "projectId": 1,
+          "apiDocs": "{ ...this entire structure... }",
+          "version": 3,
+          "createdAt": "2024-01-10T10:00:00Z",
+          "updatedAt": "2024-01-20T15:30:00Z"
+        }
+      },
+      "auth": "bearer"
+    },
+    "/projects/:id/docs": {
+      "path": "/projects/:id/docs",
+      "method": "PUT",
+      "summary": "Update project API documentation",
+      "description": "Update or create API documentation for a project",
+      "input": {
+        "params": {
+          "id": "number"
+        },
+        "body": {
+          "apiDocs": "object"
+        }
+      },
+      "output": {
+        "success": {
+          "statusCode": 200,
+          "data": {
+            "id": "number",
+            "projectId": "number",
+            "version": "number",
+            "updatedAt": "datetime"
+          },
+          "message": "Documentation updated successfully"
+        },
+        "error": {
+          "statusCode": 400,
+          "message": "Invalid documentation format",
+          "error": "Bad Request"
+        }
+      },
+      "example": {
+        "request": {
+          "apiDocs": {
+            "version": "1.0.1",
+            "baseUrl": "https://api.updated.com",
+            "apis": {}
+          }
+        },
+        "response": {
+          "id": 1,
+          "projectId": 1,
+          "version": 4,
+          "updatedAt": "2024-01-21T11:00:00Z"
+        }
+      },
+      "auth": "bearer"
+    },
+    "/analytics/usage": {
+      "path": "/analytics/usage",
+      "method": "GET",
+      "summary": "Get API usage statistics",
+      "description": "Retrieve usage statistics and analytics for API endpoints",
+      "input": {
+        "query": {
+          "startDate": "date",
+          "endDate": "date",
+          "endpoint": "string?",
+          "groupBy": "enum:hour|day|week|month?"
+        }
+      },
+      "output": {
+        "success": {
+          "statusCode": 200,
+          "data": {
+            "totalRequests": "number",
+            "uniqueUsers": "number",
+            "avgResponseTime": "number",
+            "errorRate": "number",
+            "endpoints": [
+              {
+                "path": "string",
+                "method": "string",
+                "requests": "number",
+                "avgResponseTime": "number",
+                "errorCount": "number"
+              }
+            ],
+            "timeline": [
+              {
+                "timestamp": "datetime",
+                "requests": "number",
+                "errors": "number"
+              }
+            ]
+          }
+        },
+        "error": {
+          "statusCode": 400,
+          "message": "Invalid date range",
+          "error": "Bad Request"
+        }
+      },
+      "example": {
+        "request": "GET /analytics/usage?startDate=2024-01-01&endDate=2024-01-31&groupBy=day",
+        "response": {
+          "totalRequests": 15420,
+          "uniqueUsers": 234,
+          "avgResponseTime": 145.6,
+          "errorRate": 0.023,
+          "endpoints": [
+            {
+              "path": "/users",
+              "method": "GET",
+              "requests": 5230,
+              "avgResponseTime": 120.5,
+              "errorCount": 12
+            }
+          ],
+          "timeline": [
+            {
+              "timestamp": "2024-01-01T00:00:00Z",
+              "requests": 520,
+              "errors": 3
+            }
+          ]
+        }
+      },
+      "auth": "bearer"
+    },
+    "/webhooks/subscribe": {
+      "path": "/webhooks/subscribe",
+      "method": "POST",
+      "summary": "Subscribe to webhook events",
+      "description": "Register a webhook URL to receive event notifications",
+      "input": {
+        "body": {
+          "url": "string",
+          "events": ["string"],
+          "secret": "string?",
+          "active": "boolean?",
+          "description": "string?"
+        }
+      },
+      "output": {
+        "success": {
+          "statusCode": 201,
+          "data": {
+            "id": "string",
+            "url": "string",
+            "events": ["string"],
+            "secret": "string",
+            "active": "boolean",
+            "createdAt": "datetime"
+          },
+          "message": "Webhook subscription created"
+        },
+        "error": {
+          "statusCode": 400,
+          "message": "Invalid webhook URL",
+          "error": "Bad Request"
+        }
+      },
+      "example": {
+        "request": {
+          "url": "https://myapp.com/webhooks/receive",
+          "events": ["user.created", "user.updated", "user.deleted"],
+          "secret": "webhook_secret_123",
+          "active": true,
+          "description": "User management events"
+        },
+        "response": {
+          "id": "wh_abc123",
+          "url": "https://myapp.com/webhooks/receive",
+          "events": ["user.created", "user.updated", "user.deleted"],
+          "secret": "webhook_secret_123",
+          "active": true,
+          "createdAt": "2024-01-21T12:00:00Z"
+        }
+      },
+      "auth": "bearer"
+    },
+    "/files/upload": {
+      "path": "/files/upload",
+      "method": "POST",
+      "summary": "Upload file",
+      "description": "Upload a file to the server with optional metadata",
+      "input": {
+        "body": {
+          "file": "file",
+          "folder": "string?",
+          "tags": ["string"],
+          "public": "boolean?",
+          "metadata": "object?"
+        }
+      },
+      "output": {
+        "success": {
+          "statusCode": 201,
+          "data": {
+            "id": "string",
+            "filename": "string",
+            "originalName": "string",
+            "mimeType": "string",
+            "size": "number",
+            "url": "string",
+            "thumbnailUrl": "string?",
+            "createdAt": "datetime"
+          }
+        },
+        "error": {
+          "statusCode": 413,
+          "message": "File size exceeds limit",
+          "error": "Payload Too Large"
+        }
+      },
+      "example": {
+        "request": {
+          "file": "binary",
+          "folder": "avatars",
+          "tags": ["profile", "user"],
+          "public": true
+        },
+        "response": {
+          "id": "file_xyz789",
+          "filename": "avatar_123456.jpg",
+          "originalName": "profile.jpg",
+          "mimeType": "image/jpeg",
+          "size": 245632,
+          "url": "https://cdn.example.com/avatars/avatar_123456.jpg",
+          "thumbnailUrl": "https://cdn.example.com/avatars/thumb_avatar_123456.jpg",
+          "createdAt": "2024-01-21T13:00:00Z"
+        }
+      },
+      "auth": "bearer"
+    },
+    "/search": {
+      "path": "/search",
+      "method": "GET",
+      "summary": "Global search",
+      "description": "Search across multiple resources in the system",
+      "input": {
+        "query": {
+          "q": "string",
+          "type": "enum:users|projects|docs|all?",
+          "limit": "number?",
+          "offset": "number?"
+        }
+      },
+      "output": {
+        "success": {
+          "statusCode": 200,
+          "data": {
+            "results": [
+              {
+                "type": "string",
+                "id": "string",
+                "title": "string",
+                "description": "string?",
+                "url": "string",
+                "score": "number"
+              }
+            ],
+            "total": "number",
+            "facets": {
+              "type": {
+                "users": "number",
+                "projects": "number",
+                "docs": "number"
+              }
+            }
+          }
+        },
+        "error": {
+          "statusCode": 400,
+          "message": "Search query too short",
+          "error": "Bad Request"
+        }
+      },
+      "example": {
+        "request": "GET /search?q=dashboard&type=all&limit=10",
+        "response": {
+          "results": [
+            {
+              "type": "project",
+              "id": "2",
+              "title": "Admin Dashboard",
+              "description": "Internal admin dashboard",
+              "url": "/projects/2",
+              "score": 0.95
+            },
+            {
+              "type": "docs",
+              "id": "5",
+              "title": "Dashboard API Documentation",
+              "description": "API docs for dashboard endpoints",
+              "url": "/docs/5",
+              "score": 0.87
+            }
+          ],
+          "total": 2,
+          "facets": {
+            "type": {
+              "users": 0,
+              "projects": 1,
+              "docs": 1
+            }
+          }
+        }
+      },
+      "auth": "bearer"
+    }
+  }
+}

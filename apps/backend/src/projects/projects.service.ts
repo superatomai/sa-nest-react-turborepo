@@ -73,7 +73,6 @@ async getProjectWithDocsAndUi(projId: number, user?: User){
       .select({
         id: projects.id,
         name: projects.name,
-        docs: projects.docs,
         uiList: projects.uiList,
       })
       .from(projects)
@@ -108,7 +107,6 @@ async getProjectWithDocsAndUi(projId: number, user?: User){
         updatedAt: projects.updatedAt,
         orgId: projects.orgId,
         globalInst: projects.globalInst,
-        docs: projects.docs,
         uiList: projects.uiList,
         createdBy: projects.createdBy,
         updatedBy: projects.updatedBy,

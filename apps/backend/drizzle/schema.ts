@@ -31,17 +31,6 @@ export const prismaMigrations = pgTable("_prisma_migrations", {
 	appliedStepsCount: integer("applied_steps_count").default(0).notNull(),
 });
 
-export const docs = pgTable("docs",{
-	id: serial().primaryKey().notNull(),
-	createdAt: timestamp("created_at", { precision: 6, withTimezone: true, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`),
-	updatedAt: timestamp("updated_at", { precision: 6, withTimezone: true, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`),
-	deleted: boolean().default(false).notNull(),
-	createdBy: varchar("created_by"),
-	updatedBy: varchar("updated_by"),
-	docs: jsonb("docs").notNull().$type<any[]>(),
-	version: integer("version").notNull(),
-});
-
 export const uiList = pgTable("ui_list",{
 	id: serial().primaryKey().notNull(),
 	createdAt: timestamp("created_at", { precision: 6, withTimezone: true, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`),
@@ -65,21 +54,32 @@ export const projects = pgTable("projects", {
 	orgId: varchar("org_id", { length: 255 }).notNull(),
 	createdBy: varchar("created_by"),
 	updatedBy: varchar("updated_by"),
-	docs: integer("docs"),
 	uiList: integer("ui_list"),
 }, (table) => [
-	foreignKey({
-		columns: [table.docs],
-		foreignColumns: [docs.id],
-		name: "projects_docs_fkey"
-	}).onUpdate("cascade").onDelete("restrict"),
-
 	foreignKey({
 		columns: [table.uiList],
 		foreignColumns: [uiList.id],
 		name: "projects_ui_list_fkey"
 	}).onUpdate("cascade").onDelete("restrict"),
-	
+
+]);
+
+export const docs = pgTable("docs",{
+	id: serial().primaryKey().notNull(),
+	projectId: integer("project_id").notNull().unique(),
+	createdAt: timestamp("created_at", { precision: 6, withTimezone: true, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`),
+	updatedAt: timestamp("updated_at", { precision: 6, withTimezone: true, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`),
+	deleted: boolean().default(false).notNull(),
+	createdBy: varchar("created_by"),
+	updatedBy: varchar("updated_by"),
+	apiDocs: jsonb("api_docs").$type<any[]>(),
+	version: integer("version").notNull(),
+}, (table) => [
+	foreignKey({
+		columns: [table.projectId],
+		foreignColumns: [projects.id],
+		name: "docs_project_id_fkey"
+	}).onUpdate("cascade").onDelete("restrict")
 ]);
 
 export const projectKeys = pgTable("project_keys", {
