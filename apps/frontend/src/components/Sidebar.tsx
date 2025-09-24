@@ -194,7 +194,7 @@ const AppSidebar = () => {
             )}
             <SidebarGroupContent>
               {sidebar.open ? (
-                <div className="px-2 py-1">
+                <div className="px-2 py-1 max-w-[150px] overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                   <OrganizationSwitcher
                     createOrganizationMode="modal"
                     afterLeaveOrganizationUrl="/create-organization"
@@ -208,7 +208,7 @@ const AppSidebar = () => {
                   />
                 </div>
               ) : (
-                <div className="flex justify-center px-2 relative">
+                <div className="flex justify-center px-2 relative  ">
                   <OrganizationSwitcher
                     createOrganizationMode="modal"
                     afterLeaveOrganizationUrl="/create-organization"

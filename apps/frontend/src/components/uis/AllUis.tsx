@@ -22,10 +22,6 @@ function AllUis({ projectId, selectedProject }: Props) {
     }
   }, [uisQuery.isSuccess, uisQuery.data]);
 
-  useEffect(()=>{
-    console.log("uisStore.uis changed, mapping these uis:", JSON.stringify(uisStore.uis));
-  },[uisStore.uis])
-
   const uis = uisStore.uis;
   const isLoading = uisQuery.isLoading;
   const hasError = uisQuery.error;

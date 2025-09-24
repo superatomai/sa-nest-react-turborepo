@@ -534,6 +534,7 @@ export const appRouter = t.router({
   // ----------------
   // Docs CRUD
   // ----------------
+  // Get docs by docs ID (backward compatibility)
   getDocs: t.procedure
     .input(z.object({ id: z.number() }))
     .query(async ({ input, ctx }) => {
@@ -543,12 +544,22 @@ export const appRouter = t.router({
       return docsService.getDocs(input.id, userForService);
     }),
 
-  // Create a new doc and attach to a project
+  // Get docs by project ID
+  getDocsByProjectId: t.procedure
+    .input(z.object({ projectId: z.number() }))
+    .query(async ({ input, ctx }) => {
+      const docsService = ctx.nestApp.get(DocsService);
+      const userForService = ctx.user ? { id: ctx.user.id } as any : undefined;
+
+      return docsService.getDocsByProjectId(input.projectId, userForService);
+    }),
+
+  // Create a new doc for a project (one-to-one)
   createDocs: t.procedure
     .input(
       z.object({
         projId: z.number(),
-        docs: z.array(z.any()), // adapt type as needed
+        apiDocs: z.any(), // Can be array or object
       })
     )
     .mutation(async ({ input, ctx }) => {
@@ -556,18 +567,18 @@ export const appRouter = t.router({
       const userForService = ctx.user ? { id: ctx.user.id } as any : undefined;
 
       return docsService.createDocs(
-        { docs: input.docs },
+        { apiDocs: input.apiDocs },
         input.projId,
         userForService
       );
     }),
 
-  // Update an existing doc
+  // Update an existing doc by docs ID (backward compatibility)
   updateDocs: t.procedure
     .input(
       z.object({
         id: z.number(),
-        docs: z.array(z.any()), // adapt type as needed
+        apiDocs: z.any(), // Can be array or object
       })
     )
     .mutation(async ({ input, ctx }) => {
@@ -575,7 +586,59 @@ export const appRouter = t.router({
       const userForService = ctx.user ? { id: ctx.user.id } as any : undefined;
 
       return docsService.updateDocs(
-        { id: input.id, docs: input.docs },
+        { id: input.id, apiDocs: input.apiDocs },
+        userForService
+      );
+    }),
+
+  // Update docs by project ID
+  updateDocsByProjectId: t.procedure
+    .input(
+      z.object({
+        projectId: z.number(),
+        apiDocs: z.any(), // Can be array or object
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      const docsService = ctx.nestApp.get(DocsService);
+      const userForService = ctx.user ? { id: ctx.user.id } as any : undefined;
+
+      return docsService.updateDocsByProjectId(
+        input.projectId,
+        { apiDocs: input.apiDocs },
+        userForService
+      );
+    }),
+
+  // Delete docs by project ID
+  deleteDocsByProjectId: t.procedure
+    .input(
+      z.object({
+        projectId: z.number(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      const docsService = ctx.nestApp.get(DocsService);
+      const userForService = ctx.user ? { id: ctx.user.id } as any : undefined;
+
+      return docsService.deleteDocsByProjectId(input.projectId, userForService);
+    }),
+
+  // Upsert docs - create if not exists, update if exists
+  upsertDocs: t.procedure
+    .input(
+      z.object({
+        projectId: z.number(),
+        apiDocs: z.any(), // Can be array or object
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      const docsService = ctx.nestApp.get(DocsService);
+      const userForService = ctx.user ? { id: ctx.user.id } as any : undefined;
+
+      return docsService.upsertDocs(
+        input.projectId,
+        { apiDocs: input.apiDocs },
         userForService
       );
     }),

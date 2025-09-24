@@ -414,7 +414,7 @@ const EditorSSE = () => {
 		}
 	}, [uiId, uidata, createVersionAndUpdateUI])
 
-	// Handle node selection - opens modal when a node is selected
+	// Handle node selection
 	const handleNodeSelection = useCallback((selectedNodeId: string) => {
 		if (selectedNodeId && currentSchema) {
 			// Use the utility function to find the node
@@ -585,14 +585,14 @@ const EditorSSE = () => {
 							// Update the schema with new text and className
 							if (currentSchema && window.SAEDITOR && window.SAEDITOR.nodeId) {
 								// Log DSL before and after node edit
-								console.log('✏️ NODE EDIT - NodeId:', window.SAEDITOR.nodeId)
-								console.log('🔴 ORIGINAL DSL:', currentSchema)
+								// console.log('✏️ NODE EDIT - NodeId:', window.SAEDITOR.nodeId)
+								// console.log('🔴 ORIGINAL DSL:', currentSchema)
 
 								const updatedSchema = updateNodeById(currentSchema, window.SAEDITOR.nodeId, text, className)
 
 								if (updatedSchema) {
-									console.log('🟢 UPDATED DSL:', updatedSchema)
-									console.log('-----------------------------------')
+									// console.log('🟢 UPDATED DSL:', updatedSchema)
+									// console.log('-----------------------------------')
 
 									setCurrentSchema(updatedSchema as UIComponent)
 									// Save to database in background without toasts

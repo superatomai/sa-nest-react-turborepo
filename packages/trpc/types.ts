@@ -257,21 +257,46 @@ const mockRouter = t.router({
     }))
     .mutation(() => null),
 
+  // Docs CRUD
   getDocs: t.procedure
     .input(z.object({ id: z.number() }))
+    .query(() => null),
+
+  getDocsByProjectId: t.procedure
+    .input(z.object({ projectId: z.number() }))
     .query(() => null),
 
   createDocs: t.procedure
     .input(z.object({
       projId: z.number(),
-      docs: z.array(z.any()),
+      apiDocs: z.any(),
     }))
     .mutation(() => null),
 
   updateDocs: t.procedure
     .input(z.object({
       id: z.number(),
-      docs: z.array(z.any()),
+      apiDocs: z.any(),
+    }))
+    .mutation(() => null),
+
+  updateDocsByProjectId: t.procedure
+    .input(z.object({
+      projectId: z.number(),
+      apiDocs: z.any(),
+    }))
+    .mutation(() => null),
+
+  deleteDocsByProjectId: t.procedure
+    .input(z.object({
+      projectId: z.number(),
+    }))
+    .mutation(() => null),
+
+  upsertDocs: t.procedure
+    .input(z.object({
+      projectId: z.number(),
+      apiDocs: z.any(),
     }))
     .mutation(() => null),
 });

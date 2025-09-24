@@ -43,6 +43,13 @@
       "when": 1758628490978,
       "tag": "0005_glorious_iron_monger",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1758692628812,
+      "tag": "0006_slippery_multiple_man",
+      "breakpoints": true
     }
   ]
 }
