@@ -7,6 +7,7 @@ import { t_llm_query_response, t_uis_list_response, z_llm_query_response, z_uis_
 import { UI_PROMPT } from './ui-gen-prompts';
 import { QUERY_PROMPT } from './query-gen-prompts';
 import { UI_LIST_PROMPT } from 'src/prompts/uilist-gen';
+import { UIComponent, UIComponentSchema } from 'src/types/dsl';
 
 
 @Injectable()
@@ -671,18 +672,19 @@ Requirements:
 
 
     async  generateUIFromData2(
-        data: any,
-        originalPrompt: string,
-        graphqlQuery: string,
-        graphqlVariables?: Record<string, any>,
+        prompt: string,
+        currentUI: UIComponent,
         projectId?: string,
-        currentUI?: T_UI_Component
     ) {
+
+        console.log('🎨 Generating UI for prompt', prompt);
+        const data  = currentUI.data || {};
         try {
 
              if (!this.openai) {
                 return {success:false, error:'OpenAI API key not configured. Please set OPENAI_API_KEY environment variable.'};
             }
+
 
             const completion = await this.openai.chat.completions.create({
                 model: "openai/gpt-5-mini",
@@ -693,40 +695,34 @@ Requirements:
                     },
                     {
                         role: "user",
-                        content: currentUI ?
-`EXISTING UI SCHEMA TO MODIFY:
+                        content: `CURRENT UI COMPONENT TO WORK WITH:
 ${JSON.stringify(currentUI, null, 2)}
 
-MODIFICATION REQUEST: "${originalPrompt}"
+USER REQUEST: "${prompt}"
 
-Data structure:
+Data structure available:
 ${JSON.stringify(data, null, 2)}
 
 Available data fields: ${data ? Object.keys(data).join(', ') : 'none'}
 ${data && Object.keys(data)[0] ? `Sample item fields: ${Object.keys(data[Object.keys(data)[0]]?.[0] || {}).join(', ')}` : ''}
 
 INSTRUCTIONS:
-- You are in UPDATE MODE - modify the existing UI schema above
-- Apply the requested changes from the modification request
-- Preserve existing structure and styling where possible
-- Only modify what's specifically requested
-- Maintain data bindings and ensure they work with the new data structure
-- Keep the same design patterns and styling consistency` :
-`CREATE NEW UI FOR: "${originalPrompt}"
+Based on the user request above, analyze what needs to be done and decide the best approach:
 
-Data structure:
-${JSON.stringify(data, null, 2)}
+1. **MODIFY EXISTING**: If the request is to change existing elements (styling, text, structure)
+2. **ADD NEW**: If the request is to add new components or elements to the existing UI
+3. **RESTRUCTURE**: If the request requires reorganizing or changing the layout
+4. **ENHANCE**: If the request is to improve or extend existing functionality
 
-Available data fields: ${data ? Object.keys(data).join(', ') : 'none'}
-${data && Object.keys(data)[0] ? `Sample item fields: ${Object.keys(data[Object.keys(data)[0]]?.[0] || {}).join(', ')}` : ''}
-
-INSTRUCTIONS:
-- You are in CREATE MODE - generate a completely new UI
-- Use modern design patterns
-- Apply professional Tailwind CSS styling
-- Make it responsive and interactive
-- Include proper data bindings
-- Ensure good visual hierarchy and spacing`
+IMPORTANT RULES:
+- Always return a complete UIComponent with the same id as the current one
+- The render property should contain the updated UIElement tree
+- Children can be: strings, objects, arrays, UIElements, or nested UIComponents
+- Preserve existing data bindings unless specifically asked to change them
+- Maintain existing styling patterns unless specifically asked to change them
+- If adding new elements, integrate them naturally into the existing structure
+- Keep the same component-level properties (states, methods, effects) unless asked to modify them
+- Update the data property if new data structure is needed`
                     }
                 ],
                 response_format: { type: "json_object" },
@@ -736,25 +732,32 @@ INSTRUCTIONS:
             const result = completion.choices[0].message.content?.trim();
             if (!result) return { success: false, error: 'No response from OpenAI' };
 
-            let parsed: T_UI_Component;
+            let parsed: UIComponent;
 
             try {
                 parsed = JSON.parse(result);
 
-                 // 🔧 NEW: Fix double bindings before validation
-                parsed = this.fixDoubleBindings(parsed);
-
-                // Validate and fix the structure
-                parsed = this.normalizeUIComponent(parsed);
-
-                // Validate against Zod schema
-                const validatedResult = Z_UI_Component.safeParse(parsed);
+                // Validate against UIComponent schema
+                const validatedResult = UIComponentSchema.safeParse(parsed);
                 if (validatedResult.success) {
                     console.log('✅ Schema validation passed');
                     return { success: true, data: validatedResult.data };
                 } else {
-                    console.warn('⚠️  Schema validation failed, but using generated UI anyway');
-                    // console.warn('Validation errors:', validatedResult.error.issues.slice(0, 5)); // Show first 5 errors
+                    console.warn('⚠️  Schema validation failed:');
+                    console.warn('Validation errors:', validatedResult.error.issues.slice(0, 5)); // Show first 5 errors
+
+                    // Check specifically for missing IDs which are critical
+                    const missingIdErrors = validatedResult.error.issues.filter(issue =>
+                        issue.path.includes('id') || issue.message.includes('id')
+                    );
+
+                    if (missingIdErrors.length > 0) {
+                        console.error('❌ Critical ID validation errors found:', missingIdErrors);
+                        return { success: false, error: 'Missing required ID fields in generated UI. LLM must provide IDs for all elements.' };
+                    }
+
+                    // For other validation errors, return the data anyway but log the issues
+                    console.warn('Non-critical validation issues found, using generated UI anyway');
                     return { success: true, data: parsed };
                 }
 
@@ -777,14 +780,16 @@ INSTRUCTIONS:
                 const sampleItem = data[arrayKey]?.[0] || {};
                 const itemFields = Object.keys(sampleItem);
 
-                const fallback_ui = {
+                const fallback_ui: UIComponent = {
                     id: "fallback-data-view",
-                    type: "div",
-                    query: graphqlQuery,
-                    variables: graphqlVariables || {},
-                    props: {
-                        className: "min-h-screen bg-gray-50 py-8"
-                    },
+                    name: "Fallback Data View",
+                    data: data,
+                    render: {
+                        id: "root-div",
+                        type: "div",
+                        props: {
+                            className: "min-h-screen bg-gray-50 py-8"
+                        },
                     children: [
                         {
                             id: "container",
@@ -879,19 +884,22 @@ INSTRUCTIONS:
                             ]
                         }
                     ]
+                    }
                 };
 
                 return { success: true, data: fallback_ui };
             } else {
                 // Return a styled info display for non-array data
 
-                const fallback_ui = {
+                const fallback_ui2: UIComponent = {
                     id: "fallback-info-view",
-                    type: "div",
-                    query: graphqlQuery,
-                    variables: graphqlVariables || {},
-                    props: { className: "min-h-screen bg-gray-50 py-8" },
-                    children: [
+                    name: "Fallback Info View",
+                    data: data,
+                    render: {
+                        id: "root-div",
+                        type: "div",
+                        props: { className: "min-h-screen bg-gray-50 py-8" },
+                        children: [
                         {
                             id: "info-container",
                             type: "div",
@@ -931,8 +939,9 @@ INSTRUCTIONS:
                             ]
                         }
                     ]
+                    }
                 };
-                return { success: true, data: fallback_ui };
+                return { success: true, data: fallback_ui2 };
             }
         }
     }

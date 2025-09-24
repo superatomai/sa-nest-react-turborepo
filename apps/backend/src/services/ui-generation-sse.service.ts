@@ -3,21 +3,18 @@ import { LlmService } from './llm.service';
 import { WebSocketManagerService } from './websocket-manager.service';
 import { ProjectSchemaCacheService } from './project-schema-cache.service';
 import { SSEService, SSEController } from './sse.service';
-import { T_UI_Component } from '../types/ui-schema';
 import { nanoid } from 'nanoid';
+import { UIComponent, UIElement } from 'src/types/dsl';
 
 export interface GenerateUISSERequest {
 	prompt: string;
-	currentSchema: T_UI_Component;
+	currentSchema:UIComponent;
 	projectId: string;
 }
 
 export interface GenerateUISSEResponse {
 	success: boolean;
-	data?: {
-		ui: T_UI_Component;
-		data: Record<string, any>;
-	};
+	data?: UIComponent
 	metadata?: {
 		projectId: string;
 		originalPrompt: string;
@@ -64,106 +61,134 @@ export class UiGenerationSSEService {
 
 			console.log(`Processing  prompt for project ${projectId}: "${prompt}"`);
 
-			// Step 1: Get docs schema
-			sseController.sendMessage('status', '📋 Getting docs schema via WebSocket...');
-			let schemaData;
+			let hasActiveAgent = false;
+			let query = '';
+			let variables: Record<string, any> = {};
+			let data: any = {};
+			let exec_query: any = {
+				key: nanoid(6),
+				graphql: "",
+			};
+			// Check if there's an active data agent connection for the project
 			try {
-				schemaData = await this.projectSchemaCacheService.getProjectSchema(projectId);
-				if (!schemaData.success) {
-					sseController.sendError('Failed to fetch project schema via WebSocket', {
-						originalError: schemaData.error,
-						suggestion: 'The WebSocket connection may be unstable. Please try again.'
-					});
-					return;
-				}
-				sseController.sendMessage('status', '✅ Received schema from WebSocket');
+				sseController.sendMessage('status', '🔌 Checking for active data agent connection...');
+				const checkAgentConnection = await this.webSocketManager.checkAgentConnectionForProject(projectId);
+				hasActiveAgent = checkAgentConnection.hasAgent;
+				sseController.sendMessage('status', hasActiveAgent ? '✅ Active data agent found' : '❌ No active data agent found');
 			} catch (error) {
-				sseController.sendError('WebSocket connection failed for docs retrieval', {
+				console.error('Error checking agent connection:', error);
+				sseController.sendError('Error checking agent connection', {
 					originalError: error instanceof Error ? error.message : 'Unknown error',
 					suggestion: 'Please check your project WebSocket connection and try again.'
 				});
-				return;
 			}
 
-			// Step 2: Generate GraphQL query from prompt
-			sseController.sendMessage('status', '🔍 Generating GraphQL query...');
-			const graphqlResult = await this.llmService.generateGraphQLFromPromptForProject2(
-				prompt,
-				projectId,
-				schemaData.data
-			);
 
-			if (!graphqlResult.success || !graphqlResult.data) {
-				sseController.sendError('Failed to generate GraphQL query');
-				return;
-			}
-
-			const { query, variables } = graphqlResult.data;
-			console.log(`Generated GraphQL query for project ${projectId}:`, query);
-
-			sseController.sendMessage('status', '✅ Generated GraphQL query', {
-				query: query.length > 100 ? query.substring(0, 100) + '...' : query
-			});
-
-			// Step 3: Execute query via WebSocket to user's data agent
-			sseController.sendMessage('status', '⚡ Executing query via WebSocket...');
-			console.log('Executing query for project', projectId, query, JSON.stringify(variables || {}, null, 2));
-
-			let exec_query:any = {
-				id: nanoid(6),
-				graphql: "",
-			}
-
-			const prev_queries = this.getQueryFromDSL(currentSchema);
-			if(prev_queries.length > 0){
-				exec_query = prev_queries[0];
-			}
-
-			if (query) {
-				exec_query = {
-					id: nanoid(6),
-					graphql: query,
-					vars: variables
-				};
-			}
-
-			let data = {};
-
-			if(exec_query.graphql){
-				console.log("exec_query", exec_query);
-				// const ws_data = await this.webSocketManager.executeQueryForUser(projectId, exec_query.graphql, exec_query.vars);
-				// console.log(`Received data for project ${projectId}:`, ws_data);
-				// data = ws_data.data;/
-				const ws_data = await this.executeQuery(projectId, exec_query.graphql, exec_query.vars);
-
-				if (!ws_data.success) {
-					sseController.sendError('Failed to execute query via WebSocket', {
-						originalError: ws_data.error,
-						query: query.length > 200 ? query.substring(0, 200) + '...' : query,
-						suggestion: 'The WebSocket query execution failed. Please check your data connection and try again.'
+			if(hasActiveAgent) {
+				// Step 1: Get docs schema
+				sseController.sendMessage('status', '📋 Getting docs schema via WebSocket...');
+				let schemaData;
+				try {
+					schemaData = await this.projectSchemaCacheService.getProjectSchema(projectId);
+					if (!schemaData.success) {
+						sseController.sendError('Failed to fetch project schema via WebSocket', {
+							originalError: schemaData.error,
+							suggestion: 'The WebSocket connection may be unstable. Please try again.'
+						});
+						return;
+					}
+					sseController.sendMessage('status', '✅ Received schema from WebSocket');
+				} catch (error) {
+					sseController.sendError('WebSocket connection failed for docs retrieval', {
+						originalError: error instanceof Error ? error.message : 'Unknown error',
+						suggestion: 'Please check your project WebSocket connection and try again.'
 					});
 					return;
 				}
 	
-				console.log(`Received data for project ${projectId}:`, ws_data.data);
-				data = ws_data.data.data;
+				// Step 2: Generate GraphQL query from prompt
+				sseController.sendMessage('status', '🔍 Generating GraphQL query...');
+				const graphqlResult = await this.llmService.generateGraphQLFromPromptForProject2(
+					prompt,
+					projectId,
+					schemaData.data
+				);
+	
+				if (!graphqlResult.success || !graphqlResult.data) {
+					sseController.sendError('Failed to generate GraphQL query');
+					return;
+				}
+	
+				const { query, variables } = graphqlResult.data;
+				console.log(`Generated GraphQL query for project ${projectId}:`, query);
+	
+				sseController.sendMessage('status', '✅ Generated GraphQL query', {
+					query: query.length > 100 ? query.substring(0, 100) + '...' : query
+				});
+	
+				// Step 3: Execute query via WebSocket to user's data agent
+				sseController.sendMessage('status', '⚡ Executing query via WebSocket...');
+				console.log('Executing query for project', projectId, query, JSON.stringify(variables || {}, null, 2));
+
+				const prev_queries = this.getQueryFromDSL(currentSchema);
+				if(prev_queries.length > 0){
+					exec_query = prev_queries[0];
+				}
+
+				if (query) {
+					exec_query = {
+						id: nanoid(6),
+						graphql: query,
+						vars: variables
+					};
+				}
+	
+				if(exec_query.graphql){
+					console.log("exec_query", exec_query);
+					// const ws_data = await this.webSocketManager.executeQueryForUser(projectId, exec_query.graphql, exec_query.vars);
+					// console.log(`Received data for project ${projectId}:`, ws_data);
+					// data = ws_data.data;/
+					const ws_data = await this.executeQuery(projectId, exec_query.graphql, exec_query.vars);
+	
+					if (!ws_data.success) {
+						sseController.sendError('Failed to execute query via WebSocket', {
+							originalError: ws_data.error,
+							query: query.length > 200 ? query.substring(0, 200) + '...' : query,
+							suggestion: 'The WebSocket query execution failed. Please check your data connection and try again.'
+						});
+						return;
+					}
+		
+					console.log(`Received data for project ${projectId}:`, ws_data.data);
+					data = ws_data.data.data;
+				}
+	
+	
+				const recordCount = Array.isArray(data) ? data.length :
+					data && typeof data === 'object' ? Object.keys(data).length : 0;
+				sseController.sendMessage('status', '✅ Received data', { recordCount });
+			} else {
+				// No active agent - work with existing data from currentSchema or empty data
+				const prev_queries = this.getQueryFromDSL(currentSchema);
+				if(prev_queries.length > 0){
+					exec_query = prev_queries[0];
+				}
+				data = currentSchema.data || {};
 			}
-
-
-			const recordCount = Array.isArray(data) ? data.length :
-				data && typeof data === 'object' ? Object.keys(data).length : 0;
-			sseController.sendMessage('status', '✅ Received data', { recordCount });
 
 			// Step 4: Generate UI schema from data
 			sseController.sendMessage('status', '🎨 Generating UI...');
 
+			// Update currentSchema with the fetched data
+			const updatedCurrentSchema = {
+				...currentSchema,
+				data: data
+			};
+
 			const schema_res = await this.llmService.generateUIFromData2(
-				data,
 				prompt,
-				exec_query.graphql,
-				exec_query.vars,
-				projectId,
-				currentSchema
+				updatedCurrentSchema,
+				projectId
 			);
 
 			if(!schema_res.success || !schema_res.data){
@@ -179,27 +204,20 @@ export class UiGenerationSSEService {
 
 			// Step 5: Prepare final response
 			const ui = schema;
+			// Update the query in the UIComponent schema format
 			ui.query = {
-				id: nanoid(6),
+				key: nanoid(6),
 				graphql: exec_query.graphql,
-				vars: exec_query.vars
+				variables: exec_query.vars
 			};
 
-			const response: any = {
-				ui: ui,
-				data: {}
-			};
-
-			if (ui.query?.id) {
-				response.data[ui.query.id] = data;
-			}
 
 			// Step 6: Send final response
 			sseController.sendMessage('status', '📤 Response ready');
 
 			const finalResponse: GenerateUISSEResponse = {
 				success: true,
-				data: response,
+				data: ui,
 				metadata: {
 					projectId,
 					originalPrompt: prompt,
@@ -234,31 +252,54 @@ export class UiGenerationSSEService {
 		}
 	}
 
-	getQueryFromDSL(dsl: T_UI_Component) {
+	getQueryFromDSL(dsl: UIComponent) {
 		const queries: any[] = [];
 
-		const recurse = (component: T_UI_Component) => {
-			if (component.query && component.query?.graphql) {
-				queries.push(component.query);
+		// Check component-level query first
+		if (dsl.query && (dsl.query.graphql || dsl.query.sql)) {
+			queries.push(dsl.query);
+		}
 
-				// get only one query
-				// return;
+		// Recursively search through the render tree
+		const recurseUIElement = (element: UIElement | UIComponent | string | any) => {
+			// Handle string children
+			if (typeof element === 'string') {
+				return;
 			}
 
-			if (!component.children) return;
+			// Handle UIComponent children (nested components)
+			if (element.render) {
+				// This is a UIComponent
+				if (element.query && (element.query.graphql || element.query.sql)) {
+					queries.push(element.query);
+				}
+				recurseUIElement(element.render);
+				return;
+			}
 
-			for (let c of component.children) {
-				if (typeof c === 'string') { }
-				else {
-					recurse(c);
+			// Handle UIElement
+			if (element.query && (element.query.graphql || element.query.sql)) {
+				queries.push(element.query);
+			}
+
+			// Recursively check children
+			if (element.children) {
+				if (Array.isArray(element.children)) {
+					for (const child of element.children) {
+						recurseUIElement(child);
+					}
+				} else {
+					recurseUIElement(element.children);
 				}
 			}
 		}
 
-		recurse(dsl);
+		// Start recursion from the render tree
+		if (dsl.render) {
+			recurseUIElement(dsl.render);
+		}
 
 		return queries;
-
 	}
 
 
