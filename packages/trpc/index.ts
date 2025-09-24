@@ -17,6 +17,7 @@ import  { UiListService }  from "../../apps/backend/src/ui_list/ui_list.service"
 import { DocsService } from "../../apps/backend/src/docs/docs.service";
 import { ProjectKeysService } from "../../apps/backend/src/project_keys/project_keys.service";
 import { DesignSystemService } from "../../apps/backend/src/design_system/design_system.service";
+import { WsLogsService } from "../../apps/backend/src/ws-logs/ws-logs.service";
 
 // packages/trpc/index.ts
 export type User = {
@@ -642,7 +643,88 @@ export const appRouter = t.router({
         userForService
       );
     }),
-  
+
+  // WebSocket Logs - Create
+  createWsLog: t.procedure
+    .input(
+      z.object({
+        projectId: z.number(),
+        message: z.string().optional(),
+        timestamp: z.union([z.string(), z.number(), z.date()]),
+        log: z.any(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      const wsLogsService = ctx.nestApp.get(WsLogsService);
+
+      return wsLogsService.create({
+        projectId: input.projectId,
+        message: input.message,
+        timestamp: input.timestamp,
+        log: input.log,
+      });
+    }),
+
+  // WebSocket Logs - Get paginated logs for project
+  getWsLogsPaginated: t.procedure
+    .input(
+      z.object({
+        projectId: z.number(),
+        page: z.number().min(1).default(1),
+        limit: z.number().min(1).max(50).default(8),
+      })
+    )
+    .query(async ({ input, ctx }) => {
+      const wsLogsService = ctx.nestApp.get(WsLogsService);
+
+      return wsLogsService.findAllPaginated({
+        projectId: input.projectId,
+        page: input.page,
+        limit: input.limit,
+      });
+    }),
+
+  // WebSocket Logs - Get latest logs for project
+  getLatestWsLogs: t.procedure
+    .input(
+      z.object({
+        projectId: z.number(),
+        limit: z.number().min(1).max(50).default(8),
+      })
+    )
+    .query(async ({ input, ctx }) => {
+      const wsLogsService = ctx.nestApp.get(WsLogsService);
+
+      return wsLogsService.findLatest(input.projectId, input.limit);
+    }),
+
+  // WebSocket Logs - Delete all logs for project
+  deleteWsLogsByProject: t.procedure
+    .input(
+      z.object({
+        projectId: z.number(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      const wsLogsService = ctx.nestApp.get(WsLogsService);
+
+      return wsLogsService.deleteByProject(input.projectId);
+    }),
+
+  // WebSocket Logs - Delete old logs
+  deleteOldWsLogs: t.procedure
+    .input(
+      z.object({
+        projectId: z.number(),
+        daysToKeep: z.number().min(1).default(7),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      const wsLogsService = ctx.nestApp.get(WsLogsService);
+
+      return wsLogsService.deleteOldLogs(input.projectId, input.daysToKeep);
+    }),
+
 });
 
 export type AppRouter = typeof appRouter;

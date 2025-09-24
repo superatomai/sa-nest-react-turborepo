@@ -1,6 +1,6 @@
 
 
-export type ClientType = 'runtime' | 'agent';
+export type ClientType = 'runtime' | 'agent' | 'admin';
 
 export interface Connection {
     id: string;
@@ -117,6 +117,16 @@ export interface AgentStatusResponse extends BaseMessage {
     error?: string;
 }
 
+export interface RealtimeLogMessage extends BaseMessage {
+    type: 'realtime_log';
+    projectId: string;
+    messageType: string;
+    direction: 'incoming' | 'outgoing';
+    data: any;
+    clientId?: string;
+    clientType?: ClientType;
+}
+
 export type WebSocketMessage =
     | ConnectedMessage
     | GraphQLQueryMessage
@@ -130,7 +140,8 @@ export type WebSocketMessage =
     | GetProdUIMessage
     | ProdUIResponseMessage
     | CheckAgentsMessage
-    | AgentStatusResponse;
+    | AgentStatusResponse
+    | RealtimeLogMessage;
 
 
 export interface UserConnections {

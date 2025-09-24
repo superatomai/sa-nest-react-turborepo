@@ -10,7 +10,7 @@ import NodeEditor from './components/NodeEditor'
 import { findNodeById, updateNodeById } from './utils/node-operations'
 import { COMPLEX_DSL } from '@/test/complex-dsl'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000'
 const default_ui_schema: UIComponent = createDefaultDSL()
 		
 const EditorSSE = () => {

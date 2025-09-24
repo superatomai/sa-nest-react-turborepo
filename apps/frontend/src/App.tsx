@@ -22,7 +22,7 @@ import { Toaster } from "react-hot-toast";
 import ProjApiKeys from "./pages/Project/ProjApiKeys";
 import ProjDoc from "./pages/Project/ProjDoc";
 import ProjDesignSys from "./pages/Project/ProjDesignSys";
-import ProjLogs from "./pages/Project/ProjLogs";
+import ProjLogsV2 from "./pages/Project/ProjLogsV2";
 
 export function App() {
   const { organization, isLoaded: orgLoaded } = useOrganization();
@@ -137,11 +137,12 @@ export function App() {
             }
           />
 
+          {/* Project Logs with 24h Persistence */}
           <Route
             path="projects/:projectId/project-logs"
             element={
               <ProtectedRoute>
-                <ProjLogs/>
+                <ProjLogsV2/>
               </ProtectedRoute>
             }
           />

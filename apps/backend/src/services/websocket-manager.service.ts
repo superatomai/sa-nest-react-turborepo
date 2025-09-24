@@ -1,5 +1,5 @@
 import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
-import { DocsMessage, GetDocsMessage, GetProdUIMessage, GraphQLQueryMessage, PendingRequest, ProdUIResponseMessage, QueryResponseMessage, WebSocketMessage, CheckAgentsMessage, AgentStatusResponse } from 'src/types/websocket';
+import { DocsMessage, GetDocsMessage, GetProdUIMessage, GraphQLQueryMessage, PendingRequest, ProdUIResponseMessage, QueryResponseMessage, WebSocketMessage, CheckAgentsMessage, AgentStatusResponse, RealtimeLogMessage } from 'src/types/websocket';
 import WebSocket from 'ws';
 import { UiUtilsService } from './ui-utils.service';
 import { Z_UI_Component } from 'src/types/ui-schema';
@@ -20,7 +20,7 @@ class WebSocketRuntimeClient {
 		private websocketUrl: string,
 		private projectId: string,
 		private uiUtilsService: UiUtilsService, // 👈 inject her
-	) { }
+		) { }
 
 	private async checkExistingRuntime(): Promise<boolean> {
 		try {
@@ -126,6 +126,7 @@ class WebSocketRuntimeClient {
 	private handleMessage(data: string): void {
 		try {
 			const message: WebSocketMessage = JSON.parse(data);
+
 
 			switch (message.type) {
 				case 'connected':
@@ -452,6 +453,7 @@ class WebSocketRuntimeClient {
 				timestamp: Date.now()
 			};
 
+
 			this.ws!.send(JSON.stringify(message));
 		});
 	}
@@ -682,7 +684,7 @@ export class WebSocketManagerService implements OnModuleInit, OnModuleDestroy {
 			const client = new WebSocketRuntimeClient(
 				WEBSOCKET_URL,
 				projectId,
-				this.uiUtilsService
+				this.uiUtilsService,
 			);
 
 			this.clients.set(projectId, client);
@@ -903,6 +905,7 @@ export class WebSocketManagerService implements OnModuleInit, OnModuleDestroy {
 
 		return isHealthy;
 	}
+
 
 	// NestJS lifecycle hook
 	onModuleDestroy() {
