@@ -153,3 +153,5 @@ export type DSLRendererProps = z.infer<typeof DSLRendererPropsSchema>;
 export const validateDSL = (dsl: unknown): UIElement => {
     return UIElementSchema.parse(dsl);
 };
+
+export type T_LLM_PROVIDER = 'openrouter' | 'gemini';

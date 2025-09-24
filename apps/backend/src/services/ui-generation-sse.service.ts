@@ -4,7 +4,9 @@ import { WebSocketManagerService } from './websocket-manager.service';
 import { ProjectSchemaCacheService } from './project-schema-cache.service';
 import { SSEService, SSEController } from './sse.service';
 import { nanoid } from 'nanoid';
-import { UIComponent, UIElement } from 'src/types/dsl';
+import { T_LLM_PROVIDER, UIComponent, UIElement } from 'src/types/dsl';
+import { AnyARecord } from 'dns';
+import { LLM_PROVIDER } from 'src/env';
 
 export interface GenerateUISSERequest {
 	prompt: string;
@@ -39,6 +41,8 @@ export class UiGenerationSSEService {
 		sseController: SSEController
 	): Promise<void> {
 		const startTime = Date.now();
+
+		const provider = LLM_PROVIDER as T_LLM_PROVIDER; // or 'openai', could be parameterized later
 
 		try {
 			const { prompt, currentSchema, projectId } = request;
@@ -185,9 +189,10 @@ export class UiGenerationSSEService {
 				data: data
 			};
 
-			const schema_res = await this.llmService.generateUIFromData2(
+			const schema_res:any = await this.llmService.generateUIFromData2WithProvider(
 				prompt,
 				updatedCurrentSchema,
+				provider,
 				projectId
 			);
 

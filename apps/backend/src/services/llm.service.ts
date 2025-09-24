@@ -1,30 +1,47 @@
 import { Injectable } from '@nestjs/common';
 import OpenAI from 'openai';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import { T_UI_Component, Z_UI_Component } from '../types/ui-schema';
 import { ProjectSchemaCacheService } from './project-schema-cache.service';
-import { OPENROUTER_API_KEY } from '../env';
+import { OPENROUTER_API_KEY, GEMINI_API_KEY, LLM_PROVIDER } from '../env';
 import { t_llm_query_response, t_uis_list_response, z_llm_query_response, z_uis_list_response } from 'src/types/llm';
 import { UI_PROMPT } from './ui-gen-prompts';
 import { QUERY_PROMPT } from './query-gen-prompts';
 import { UI_LIST_PROMPT } from 'src/prompts/uilist-gen';
-import { UIComponent, UIComponentSchema } from 'src/types/dsl';
+import { T_LLM_PROVIDER, UIComponent, UIComponentSchema } from 'src/types/dsl';
 
 
 @Injectable()
 export class LlmService {
     private openai: OpenAI | null = null;
+    private gemini: GoogleGenerativeAI | null = null;
+    private currentProvider: T_LLM_PROVIDER ;
+
   constructor(
     private readonly projectSchemaCache: ProjectSchemaCacheService,
   ) {
+    this.currentProvider = LLM_PROVIDER as T_LLM_PROVIDER;
+
+    // Initialize OpenRouter
     if (OPENROUTER_API_KEY) {
-      this.openai = new OpenAI({ 
+      this.openai = new OpenAI({
         apiKey: OPENROUTER_API_KEY,
         baseURL: 'https://openrouter.ai/api/v1'
       });
-    //   console.log('✅ OpenRouter client initialized');
+      console.log('✅ OpenRouter client initialized');
     } else {
       console.warn('⚠️ OPENROUTER_API_KEY not found, OpenRouter client not initialized');
     }
+
+    // Initialize Gemini
+    if (GEMINI_API_KEY) {
+      this.gemini = new GoogleGenerativeAI(GEMINI_API_KEY);
+      console.log('✅ Gemini client initialized');
+    } else {
+      console.warn('⚠️ GEMINI_API_KEY not found, Gemini client not initialized');
+    }
+
+    console.log(`🤖 Using LLM provider: ${this.currentProvider}`);
   }
     async generateGraphQLFromPromptForProject(
         prompt: string,
@@ -943,6 +960,162 @@ IMPORTANT RULES:
                 };
                 return { success: true, data: fallback_ui2 };
             }
+        }
+    }
+
+    // Gemini-specific UI generation method
+    async generateUIFromData2WithGemini(
+        prompt: string,
+        currentUI: UIComponent,
+        projectId?: string,
+    ) {
+        console.log('🎨 Generating UI for prompt using Gemini', prompt);
+        const data = currentUI.data || {};
+
+        try {
+            if (!this.gemini) {
+                return { success: false, error: 'Gemini API key not configured. Please set GEMINI_API_KEY environment variable.' };
+            }
+
+            const model = this.gemini.getGenerativeModel({
+                model: "gemini-2.0-flash-exp",
+                generationConfig: {
+                    temperature: 0.4,
+                    maxOutputTokens: 8192,
+                }
+            });
+
+            const userMessage = `CURRENT UI COMPONENT TO WORK WITH:
+${JSON.stringify(currentUI, null, 2)}
+
+USER REQUEST: "${prompt}"
+
+Data structure available:
+${JSON.stringify(data, null, 2)}
+
+Available data fields: ${data ? Object.keys(data).join(', ') : 'none'}
+${data && Object.keys(data)[0] ? `Sample item fields: ${Object.keys(data[Object.keys(data)[0]]?.[0] || {}).join(', ')}` : ''}
+
+INSTRUCTIONS:
+Based on the user request above, analyze what needs to be done and decide the best approach:
+
+1. **MODIFY EXISTING**: If the request is to change existing elements (styling, text, structure)
+2. **ADD NEW**: If the request is to add new components or elements to the existing UI
+3. **RESTRUCTURE**: If the request requires reorganizing or changing the layout
+4. **ENHANCE**: If the request is to improve or extend existing functionality
+
+IMPORTANT RULES:
+- Always return a complete UIComponent with the same id as the current one
+- The render property should contain the updated UIElement tree
+- Children can be: strings, objects, arrays, UIElements, or nested UIComponents
+- Preserve existing data bindings unless specifically asked to change them
+- Maintain existing styling patterns unless specifically asked to change them
+- If adding new elements, integrate them naturally into the existing structure
+- Keep the same component-level properties (states, methods, effects) unless asked to modify them
+- Update the data property if new data structure is needed`;
+
+            const fullPrompt = `${UI_PROMPT}
+
+${userMessage}`;
+
+            const result = await model.generateContent(fullPrompt);
+            const resultText = result.response.text().trim();
+
+            if (!resultText) {
+                return { success: false, error: 'No response from Gemini' };
+            }
+
+            // Clean up any potential markdown formatting
+            let cleanResult = resultText;
+            if (cleanResult.includes('```json')) {
+                cleanResult = cleanResult.replace(/```json\n?/g, '').replace(/```\n?$/g, '');
+            } else if (cleanResult.includes('```')) {
+                cleanResult = cleanResult.replace(/```\n?/g, '').replace(/```\n?$/g, '');
+            }
+
+            let parsed: UIComponent;
+            try {
+                parsed = JSON.parse(cleanResult);
+
+                // Validate against UIComponent schema
+                const validatedResult = UIComponentSchema.safeParse(parsed);
+                if (validatedResult.success) {
+                    console.log('✅ Gemini Schema validation passed');
+                    return { success: true, data: validatedResult.data };
+                } else {
+                    console.warn('⚠️ Gemini Schema validation failed:');
+                    console.warn('Validation errors:', validatedResult.error.issues.slice(0, 5));
+
+                    // Check specifically for missing IDs
+                    const missingIdErrors = validatedResult.error.issues.filter(issue =>
+                        issue.path.includes('id') || issue.message.includes('id')
+                    );
+
+                    if (missingIdErrors.length > 0) {
+                        console.error('❌ Critical ID validation errors found:', missingIdErrors);
+                        return { success: false, error: 'Missing required ID fields in generated UI. Gemini must provide IDs for all elements.' };
+                    }
+
+                    console.warn('Non-critical validation issues found, using generated UI anyway');
+                    return { success: true, data: parsed };
+                }
+
+            } catch (parseErr: any) {
+                console.error("Failed to parse Gemini response:", parseErr);
+                return { success: false, error: 'Failed to parse Gemini response: ' + parseErr.message };
+            }
+
+        } catch (error: any) {
+            console.error("Error generating UI with Gemini:", error);
+            return { success: false, error: 'Error generating UI with Gemini: ' + (error?.message || error) };
+        }
+    }
+
+    // Smart method that uses the configured LLM provider
+    async generateUIFromData2Smart(
+        prompt: string,
+        currentUI: UIComponent,
+        projectId?: string,
+    ) {
+        console.log(`🤖 Using ${this.currentProvider} provider for UI generation`);
+
+        if (this.currentProvider === 'gemini') {
+            if (!this.gemini) {
+                console.warn('🔄 Gemini not available, falling back to OpenRouter');
+                return this.generateUIFromData2(prompt, currentUI, projectId);
+            }
+            return this.generateUIFromData2WithGemini(prompt, currentUI, projectId);
+        } else {
+            if (!this.openai) {
+                console.warn('🔄 OpenRouter not available, falling back to Gemini');
+                if (this.gemini) {
+                    return this.generateUIFromData2WithGemini(prompt, currentUI, projectId);
+                }
+                return { success: false, error: 'No LLM provider available. Please configure OPENROUTER_API_KEY or GEMINI_API_KEY.' };
+            }
+            return this.generateUIFromData2(prompt, currentUI, projectId);
+        }
+    }
+
+    // Method to temporarily switch provider for a single request
+    async generateUIFromData2WithProvider(
+        prompt: string,
+        currentUI: UIComponent,
+        provider: T_LLM_PROVIDER,
+        projectId?: string,
+    ) {
+        console.log(`🔄 Temporarily switching to ${provider} provider`);
+
+        if (provider === 'gemini') {
+            if (!this.gemini) {
+                return { success: false, error: 'Gemini not configured. Please set GEMINI_API_KEY environment variable.' };
+            }
+            return this.generateUIFromData2WithGemini(prompt, currentUI, projectId);
+        } else {
+            if (!this.openai) {
+                return { success: false, error: 'OpenRouter not configured. Please set OPENROUTER_API_KEY environment variable.' };
+            }
+            return this.generateUIFromData2(prompt, currentUI, projectId);
         }
     }
 

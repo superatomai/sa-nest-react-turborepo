@@ -290,6 +290,8 @@ const EditorSSE = () => {
 										role: 'assistant',
 										content: 'UI generated successfully with SSE!'
 									}]);
+
+									setInput('')
 								}
 							}
 						} catch (e) {
