@@ -1,5 +1,5 @@
-import { useEffect, useState, useMemo, useCallback } from 'react'
-import { UIComponent } from '../types/dsl'
+import { useEffect, useState, useMemo, useCallback, useRef } from 'react'
+import { UIComponent, UIComponentSchema } from '../types/dsl'
 import { trpc } from '../utils/trpc'
 import { observer } from 'mobx-react-lite'
 import { useParams } from 'react-router-dom'
@@ -9,6 +9,7 @@ import { createDefaultDSL } from '../lib/utils/default-dsl'
 import NodeEditor from './components/NodeEditor'
 import { findNodeById, updateNodeById } from './utils/node-operations'
 import { COMPLEX_DSL } from '@/test/complex-dsl'
+import { editorModeStore } from '../stores/mobx_editor_mode_store'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000'
 const default_ui_schema: UIComponent = createDefaultDSL()
@@ -25,48 +26,45 @@ const EditorSSE = () => {
 	// SSE specific states
 	const [isGenerating, setIsGenerating] = useState<boolean>(false);
 	const [sseEvents, setSSEEvents] = useState<Array<{ type: string, message: string, data?: any, timestamp: Date }>>([]);
-	
+	const [llmStream, setLlmStream] = useState<string>('');
+	const [isLlmStreaming, setIsLlmStreaming] = useState<boolean>(false);
+	const [isLlmAccordionOpen, setIsLlmAccordionOpen] = useState<boolean>(true);
+	const llmStreamRef = useRef<HTMLDivElement>(null);
+	const messagesContainerRef = useRef<HTMLDivElement>(null);
+	const abortControllerRef = useRef<AbortController | null>(null);
+
+	// Auto-scroll to bottom of messages
+	const scrollToBottom = () => {
+		setTimeout(() => {
+			if (messagesContainerRef.current) {
+				messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+			}
+		}, 0);
+	};
+
+	// Cancel generation function
+	const cancelGeneration = () => {
+		if (abortControllerRef.current) {
+			abortControllerRef.current.abort();
+			abortControllerRef.current = null;
+		}
+		setIsGenerating(false);
+		setIsLlmStreaming(false);
+		setLlmStream('');
+		setSSEEvents([]);
+		setMessages(prev => [...prev, {
+			role: 'assistant',
+			content: 'Generation cancelled by user.'
+		}]);
+		scrollToBottom();
+	};
+
 	const { uiId } = useParams<{ uiId: string }>();
 
 	const { data: uidata} = trpc.uisGetById.useQuery(
 		{ id: uiId! },   // non-null assertion
 		{ enabled: !!uiId } // only run query if uiId exists
 	);
-
-
-	// New state for storing UI suggestions and project docs
-	const [uiSuggestions, setUiSuggestions] = useState<any[]>([]);
-	const [projectDocs, setProjectDocs] = useState<any>(null);
-
-	// tRPC mutation for creating UI list
-
-	const createUiListMutation = trpc.createUiList.useMutation({
-		onSuccess: (response) => {
-			console.log('✅ UI suggestions stored in database:', response);
-			setSSEEvents(prev => [...prev, {
-				type: 'success',
-				message: 'UI suggestions saved to database',
-				timestamp: new Date()
-			}]);
-		},
-		onError: (error) => {
-			console.error('❌ Failed to store UI suggestions:', error);
-			setSSEEvents(prev => [...prev, {
-				type: 'warning',
-				message: 'Generated UI suggestions but failed to save to database',
-				timestamp: new Date()
-			}]);
-		}
-	});
-
-	const createDocsMutation = trpc.createDocs.useMutation({
-		onSuccess: (response) => {
-			console.log('✅ Docs created successfully:', response);
-		},
-		onError: (error) => {
-			console.error('❌ Failed to store docs:', error);
-		}
-	});	
 
 	useEffect(() => {
 		if (uiId && uidata) {
@@ -162,6 +160,10 @@ const EditorSSE = () => {
 		loadExistingUI();
 	}, [projectId, uiId]); // Run when projectId or uiId changes
 
+	// Auto-scroll when messages or SSE events change
+	useEffect(() => {
+		scrollToBottom();
+	}, [messages, sseEvents, isGenerating, isLlmStreaming, llmStream, isLlmAccordionOpen]);
 
 	// Prompt history state
 	const [promptHistory, setPromptHistory] = useState<string[]>([])
@@ -245,9 +247,15 @@ const EditorSSE = () => {
 
 	// SSE UI Generation Function
 	const generateUIWithSSE = async (prompt: string, projectId: string, currentSchema: UIComponent) => {
+		// Create new AbortController for this request
+		abortControllerRef.current = new AbortController();
+
 		setIsGenerating(true);
 		setSSEEvents([]);
-		
+		setLlmStream('');
+		setIsLlmStreaming(false);
+		setIsLlmAccordionOpen(true); // Default to open for new generations
+
 		try {
 			// Use the SSE endpoint from app controller
 			const response = await fetch(`${API_URL}/generate-ui-sse`, {
@@ -259,7 +267,8 @@ const EditorSSE = () => {
 					prompt,
 					projectId,
 					currentSchema
-				})
+				}),
+				signal: abortControllerRef.current.signal
 			});
 
 			if (!response.ok) {
@@ -292,28 +301,54 @@ const EditorSSE = () => {
 								timestamp: new Date()
 							};
 
-							setSSEEvents(prev => [...prev, sseEvent]);
+							// Only add non-LLM streaming events to SSE events display
+							if (eventData.type !== 'llm_stream' && eventData.type !== 'llm_complete') {
+								setSSEEvents(prev => [...prev, sseEvent]);
+							}
+
+							// Handle LLM streaming events
+							if (eventData.type === 'llm_stream') {
+								setIsLlmStreaming(true);
+								const llmContent = eventData.message.replace(/^🤖 /, ''); // Remove emoji prefix
+								setLlmStream(prev => {
+									const newStream = prev + llmContent;
+									// Auto-scroll to bottom after state update
+									setTimeout(() => {
+										if (llmStreamRef.current) {
+											llmStreamRef.current.scrollTop = llmStreamRef.current.scrollHeight;
+										}
+									}, 0);
+									return newStream;
+								});
+							}
+
+							// Handle LLM completion event
+							if (eventData.type === 'llm_complete') {
+								setIsLlmStreaming(false);
+							}
 
 							// Handle completion event
 							if (eventData.type === 'complete' && eventData.data) {
 								const response = eventData.data;
 								if (response.success && response.data) {
-									const ui_schema = response.data.ui;
-									const ui_data = response.data.data;
+									console.log('SSE UI generated:', response.data);
+									const GenUI = response.data
 
-									// Merge data into UIComponent structure
-									const uiComponent: UIComponent = {
-										...ui_schema,
-										data: ui_data || {}
-									};
 
-									console.log('SSE UI generated:', uiComponent);
-									setCurrentSchema(uiComponent);
+									const p = UIComponentSchema.safeParse(GenUI);
+									if (!p.success) {
+										console.error('Failed to parse generated UI:', p.error);
+										return;
+									}
+
+									const updated_ui = p.data;
+
+									setCurrentSchema(updated_ui);
 
 									// Create version using new database utilities
 									createVersionAndUpdateUI({
 										uiId: uiId!,
-										uiComponent: uiComponent,
+										uiComponent: updated_ui,
 										prompt: prompt,
 										operation: 'SSE Generation'
 									}, uidata);
@@ -322,6 +357,13 @@ const EditorSSE = () => {
 										role: 'assistant',
 										content: 'UI generated successfully with SSE!'
 									}]);
+
+									// Clear loading states immediately on completion
+									setIsGenerating(false);
+									setIsLlmStreaming(false);
+
+									scrollToBottom();
+									setInput('')
 								}
 							}
 						} catch (e) {
@@ -331,6 +373,13 @@ const EditorSSE = () => {
 				}
 			}
 		} catch (error) {
+			// Handle abort error differently from other errors
+			if (error instanceof Error && error.name === 'AbortError') {
+				console.log('Generation was cancelled');
+				// Don't add error messages for cancelled requests
+				return;
+			}
+
 			console.error('SSE Error:', error);
 			setSSEEvents(prev => [...prev, {
 				type: 'error',
@@ -341,8 +390,18 @@ const EditorSSE = () => {
 				role: 'assistant',
 				content: 'Failed to generate UI. Please try again.'
 			}]);
+			scrollToBottom();
 		} finally {
+			// Clean up abort controller
+			abortControllerRef.current = null;
+
+			// Always set generating to false and clear LLM states
 			setIsGenerating(false);
+			// Clear LLM stream after a delay to allow user to see the completion
+			setTimeout(() => {
+				setLlmStream('');
+				setIsLlmStreaming(false);
+			}, 3000);
 		}
 	};
 	
@@ -488,12 +547,12 @@ const EditorSSE = () => {
 			<SelectableUIRenderer
 				uiComponent={currentSchema}
 				handlers={handlers}
-				enableSelection={true} // Set to false to disable selection
+				enableSelection={editorModeStore.isDev} // Only enable selection in dev mode
 				onSchemaUpdate={handleSchemaUpdate}
 				onNodeSelect={handleNodeSelection}
 			/>
 		)
-	}, [currentSchema, handlers, handleSchemaUpdate, handleNodeSelection])
+	}, [currentSchema, handlers, handleSchemaUpdate, handleNodeSelection, editorModeStore.isDev, editorModeStore.isPreview])
 
 	const handleSend = async () => {
 		if (!input.trim()) return
@@ -513,7 +572,8 @@ const EditorSSE = () => {
 		savePromptToHistory(currentInput)
 		
 		setMessages([...messages, { role: 'user', content: input }])
-		
+		scrollToBottom(); // Scroll after adding user message
+
 		// Use SSE UI generation
 		await generateUIWithSSE(currentInput, projectId, currentSchema || default_ui_schema);
 	}
@@ -522,7 +582,17 @@ const EditorSSE = () => {
 	return (
 		<div className="flex h-screen bg-white overflow-hidden">
 			{/* Left Side - Generated React Component */}
-			<div className="flex-1 bg-white bg-opacity-90 border-r border-gray-300 shadow-xl overflow-hidden">
+			<div className={`${editorModeStore.isPreview ? 'w-full' : 'flex-1'} bg-white bg-opacity-90 ${editorModeStore.isDev ? 'border-r border-gray-300' : ''} shadow-xl overflow-hidden relative`}>
+				{/* Floating toggle button in preview mode */}
+				{editorModeStore.isPreview && (
+					<button
+						onClick={() => editorModeStore.toggleMode()}
+						className="absolute top-4 right-4 px-3 bg-white py-1.5 text-xs font-medium text-teal-700 hover:text-white hover:bg-teal-600 rounded-md transition-all duration-200 shadow-lg hover:shadow-xl z-20"
+					>
+						{editorModeStore.currentMode.toUpperCase()}
+					</button>
+				)}
+
 				<div className="h-full flex flex-col">
 					{/* Preview Content */}
 					<div className="flex-1 relative overflow-y-auto">
@@ -568,32 +638,31 @@ const EditorSSE = () => {
 					</div>
 				</div>
 			</div>
+			{/* bg-gradient-to-r from-teal-100 to-cyan-100 */}
 
-			{/* Right Side - Chat Interface with SSE Logs */}
-			<div className="w-96 bg-slate-200 flex flex-col shadow-2xl overflow-hidden">
-				{/* Chat Header */}
-				<div className="px-6 py-4 bg-purple-500 text-white">
-					<div className="flex items-center space-x-3">
-						<button>Preview</button>
+			{/* Right Side - Chat Interface with SSE Logs (Dev mode only) */}
+			{editorModeStore.isDev && (
+				<div className="w-96 bg-gradient-to-b from-teal-50 to-cyan-50 flex flex-col shadow-2xl overflow-hidden">
+					{/* Header with Mode Toggle */}
+					<div className="px-4 py-3 bg-cyan-50 border-b border-teal-200">
+						<div className="flex items-center justify-end">
+							<button
+								onClick={() => editorModeStore.toggleMode()}
+								className="px-3 bg-white py-1.5 text-xs font-medium text-teal-700 hover:text-white hover:bg-teal-600 rounded-md transition-all duration-200 shadow-sm hover:shadow-md"
+							>
+								{editorModeStore.currentMode.toUpperCase()}
+							</button>
+						</div>
 					</div>
-				</div>
 
-				{/* Node Editor - Below header */}
-				<NodeEditor
-					selectedNodeId={selectedNodeId}
-					onUpdate={(text: string, className: string) => {
+					{/* Node Editor - Below header */}
+					<NodeEditor
+						selectedNodeId={selectedNodeId}
+						onUpdate={(text: string, className: string) => {
 							// Update the schema with new text and className
 							if (currentSchema && window.SAEDITOR && window.SAEDITOR.nodeId) {
-								// Log DSL before and after node edit
-								// console.log('✏️ NODE EDIT - NodeId:', window.SAEDITOR.nodeId)
-								// console.log('🔴 ORIGINAL DSL:', currentSchema)
-
 								const updatedSchema = updateNodeById(currentSchema, window.SAEDITOR.nodeId, text, className)
-
 								if (updatedSchema) {
-									// console.log('🟢 UPDATED DSL:', updatedSchema)
-									// console.log('-----------------------------------')
-
 									setCurrentSchema(updatedSchema as UIComponent)
 									// Save to database in background without toasts
 									handleSchemaUpdateSilent(updatedSchema as UIComponent, 'node-edit')
@@ -602,133 +671,170 @@ const EditorSSE = () => {
 						}}
 					/>
 
-				{/* Messages and SSE Logs */}
-				<div className="flex-1 overflow-y-auto p-6 space-y-4 bg-gradient-to-b from-slate-50/50 to-white/50">
-					{messages.length === 0 && (
-						<div className="text-center py-8">
-							<div className="w-16 h-16 mx-auto bg-gradient-to-br from-violet-100 to-purple-100 rounded-2xl flex items-center justify-center mb-4">
-								<svg className="w-8 h-8 text-violet-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-									<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-								</svg>
-							</div>
-							<p className="text-slate-500 text-sm">Start a conversation to generate your UI with live logs</p>
-						</div>
-					)}
-					
-					{messages.map((msg, i) => (
-						<div key={i} className={`${msg.role === 'user' ? 'text-right' : 'text-left'}`}>
-							<div className={`inline-block p-2.5 rounded-2xl max-w-[85%] shadow-sm ${msg.role === 'user'
-								? 'bg-blue-500 text-white'
-								: 'bg-white border border-gray-200 text-gray-800 shadow-md'
-								}`}>
-								<p className="text-sm leading-relaxed">{msg.content}</p>
-							</div>
-						</div>
-					))}
-					
-					{/* SSE Live Logs */}
-					{isGenerating && (
-						<div className="text-left">
-							<div className="bg-gray-900 rounded-2xl p-4 shadow-lg">
-								<div className="flex items-center space-x-2 mb-3">
-									<div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-									<span className="text-green-400 text-xs font-medium">LIVE LOGS</span>
+					{/* Messages and SSE Logs */}
+					<div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-4 space-y-3">
+						{messages.length === 0 && (
+							<div className="text-center py-12">
+								<div className="w-12 h-12 mx-auto bg-gradient-to-br from-teal-100 to-cyan-100 rounded-lg flex items-center justify-center mb-3 shadow-sm">
+									<svg className="w-6 h-6 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+									</svg>
 								</div>
-								<div className="space-y-1 max-h-32 overflow-y-auto">
-									{sseEvents.map((event, index) => (
-										<div key={index} className="text-xs font-mono">
-											<span className="text-gray-400">
-												{event.timestamp.toLocaleTimeString()}
-											</span>
-											<span className={`ml-2 ${
-												event.type === 'error' ? 'text-red-400' :
-												event.type === 'complete' ? 'text-green-400' :
-												'text-blue-400'
-											}`}>
-												{event.message}
-											</span>
-										</div>
-									))}
-								</div>
+								<p className="text-teal-600 text-sm">Describe your UI to get started</p>
 							</div>
-						</div>
-					)}
-					
-					{isGenerating && (
-						<div className="text-left">
-							<div className="inline-block p-4 rounded-2xl bg-white border border-slate-200 shadow-md">
-								<div className="flex items-center space-x-3">
-									<div className="flex space-x-1">
-										<div className="w-2 h-2 bg-violet-500 rounded-full animate-bounce" />
-										<div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }} />
-										<div className="w-2 h-2 bg-indigo-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
-									</div>
-									<span className="text-sm text-slate-600">Generating your UI with SSE...</span>
-								</div>
-							</div>
-						</div>
-					)}
-				</div>
+						)}
 
-				{/* Input Area */}
-				<div className="border-t border-slate-200/60 bg-white/80 backdrop-blur-sm p-2.5">
-					<div className="space-y-3">
-						<textarea
-							value={input}
-							onChange={(e) => {
-								setInput(e.target.value)
-								// Reset history index when user types
-								if (historyIndex !== -1) {
-									setHistoryIndex(-1)
-								}
-							}}
-							onKeyDown={(e) => {
-								if (e.key === 'Enter' && !e.shiftKey) {
-									e.preventDefault()
-									handleSend()
-								} else if (e.key === 'ArrowUp') {
-									e.preventDefault()
-									navigateHistory('up')
-								} else if (e.key === 'ArrowDown') {
-									e.preventDefault()
-									navigateHistory('down')
-								}
-							}}
-							className="w-full p-4 border border-slate-200 rounded-xl resize-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 bg-white/70 backdrop-blur-sm placeholder-slate-400"
-							placeholder="Describe your UI... (e.g., 'Show me list of users in a table')"
-							rows={3}
-							disabled={isGenerating}
-						/>
-						<div className="flex justify-between items-center">
-							<p className="text-xs text-slate-500">
-								Enter to send • Shift+Enter for new line • ↑/↓ for history
-							</p>
+						{messages.map((msg, i) => (
+							<div key={i} className={`${msg.role === 'user' ? 'text-right' : 'text-left'}`}>
+								<div className={`inline-block px-3 py-2 rounded-lg max-w-[85%] text-sm shadow-sm ${msg.role === 'user'
+									? 'bg-gradient-to-r from-teal-600 to-teal-700 text-white'
+									: 'bg-white border border-teal-200 text-teal-800'
+									}`}>
+									{msg.content}
+								</div>
+							</div>
+						))}
+
+						{/* SSE Live Logs with embedded LLM Streaming */}
+						{isGenerating && (
+							<div className="text-left">
+								<div className="bg-gradient-to-r from-teal-50 to-cyan-50 border border-teal-200 rounded-lg p-3 shadow-sm">
+									<div className="flex items-center justify-between mb-2">
+										<div className="flex items-center space-x-2">
+											<div className="w-2 h-2 bg-teal-600 rounded-full animate-pulse"></div>
+											<span className="text-teal-700 text-xs font-medium">GENERATING</span>
+										</div>
+										<button
+											onClick={cancelGeneration}
+											className="p-1 text-red-500 hover:text-red-700 hover:bg-red-100 rounded-full transition-colors duration-200"
+											title="Cancel generation"
+										>
+											<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+												<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+											</svg>
+										</button>
+									</div>
+									<div className="space-y-1">
+										{sseEvents.map((event, index) => {
+											// Check if this is the "Generating UI" event to add accordion
+											const isGeneratingUI = event.message.includes('🎨 Generating UI');
+
+											return (
+												<div key={index}>
+													<div className="text-xs font-mono text-teal-700">
+														<span className="text-teal-500">
+															{event.timestamp.toLocaleTimeString()}
+														</span>
+														<span className={`ml-2 ${
+															event.type === 'error' ? 'text-red-600' :
+															event.type === 'complete' ? 'text-teal-600' :
+															'text-blue-600'
+														}`}>
+															{event.message}
+														</span>
+														{isGeneratingUI && (isLlmStreaming || llmStream) && (
+															<button
+																onClick={() => setIsLlmAccordionOpen(!isLlmAccordionOpen)}
+																className="ml-2 text-blue-500 hover:text-blue-700 transition-colors"
+															>
+																{isLlmAccordionOpen ? '▼' : '▶'}
+															</button>
+														)}
+													</div>
+
+													{/* LLM Streaming Accordion - appears right after "Generating UI" */}
+													{isGeneratingUI && (isLlmStreaming || llmStream) && isLlmAccordionOpen && (
+														<div className="mt-2 ml-4 border-l-2 border-teal-300 pl-3">
+															<div className="bg-black rounded-md p-3 shadow-inner">
+																<div className="flex items-center space-x-2 mb-2">
+																	<div className={`w-1.5 h-1.5 ${isLlmStreaming ? 'bg-green-400 animate-pulse' : 'bg-gray-400'} rounded-full`}></div>
+																	<span className="text-green-400 text-xs font-medium">
+																		{isLlmStreaming ? 'AI_GENERATING' : 'AI_COMPLETE'}
+																	</span>
+																</div>
+																<div
+																	ref={llmStreamRef}
+																	className="h-48 overflow-y-auto bg-gray-900 rounded border border-gray-700 p-2"
+																>
+																	<pre className="text-xs font-mono text-green-400 whitespace-pre-wrap break-words">
+																		{llmStream}
+																		{isLlmStreaming && <span className="inline-block w-1 h-3 bg-green-400 animate-pulse ml-1">|</span>}
+																	</pre>
+																</div>
+															</div>
+														</div>
+													)}
+												</div>
+											);
+										})}
+									</div>
+								</div>
+							</div>
+						)}
+					</div>
+
+					{/* Input Area */}
+					<div className="border-t border-teal-200 bg-gradient-to-r from-teal-50 to-cyan-50 p-3">
+						<div className="relative">
+							<textarea
+								ref={(textarea) => {
+									if (textarea) {
+										// Auto-resize functionality
+										textarea.style.height = 'auto'
+										const scrollHeight = textarea.scrollHeight
+										const maxHeight = 120 // max height in px (about 4-5 lines)
+										textarea.style.height = Math.min(scrollHeight, maxHeight) + 'px'
+										textarea.style.overflowY = scrollHeight > maxHeight ? 'auto' : 'hidden'
+									}
+								}}
+								value={input}
+								onChange={(e) => {
+									setInput(e.target.value)
+									// Reset history index when user types
+									if (historyIndex !== -1) {
+										setHistoryIndex(-1)
+									}
+								}}
+								onKeyDown={(e) => {
+									if (e.key === 'Enter' && !e.shiftKey) {
+										e.preventDefault()
+										handleSend()
+									} else if (e.key === 'ArrowUp') {
+										e.preventDefault()
+										navigateHistory('up')
+									} else if (e.key === 'ArrowDown') {
+										e.preventDefault()
+										navigateHistory('down')
+									}
+								}}
+								className="w-full pr-12 pl-3 py-3 bg-white border border-teal-300 text-teal-900 rounded-lg resize-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-all duration-200 text-sm placeholder-teal-400 shadow-sm"
+								placeholder="Describe your UI..."
+								style={{ minHeight: '44px' }}
+								disabled={isGenerating}
+							/>
 							<button
 								onClick={handleSend}
 								disabled={isGenerating || !input.trim()}
-								className="px-6 py-3 bg-purple-500 text-white rounded-xl hover:bg-purple-600 disabled:bg-gray-400 disabled:cursor-not-allowed transition-all duration-200 font-medium shadow-lg hover:shadow-xl transform hover:scale-105 disabled:transform-none"
+								className="absolute right-2 bottom-2 p-2 text-teal-500 hover:text-white hover:bg-gradient-to-r hover:from-teal-600 hover:to-teal-700 rounded-md disabled:text-teal-300 disabled:cursor-not-allowed transition-all duration-200 shadow-sm hover:shadow-md"
 							>
 								{isGenerating ? (
-									<div className="flex items-center space-x-2">
-										<svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
-											<circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" className="opacity-25"></circle>
-											<path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" className="opacity-75"></path>
-										</svg>
-										<span>Generating...</span>
-									</div>
+									<svg className="animate-spin w-5 h-5 text-teal-600" fill="none" viewBox="0 0 24 24">
+										<circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" className="opacity-25"></circle>
+										<path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" className="opacity-75"></path>
+									</svg>
 								) : (
-									<div className="flex items-center space-x-2">
-										<span>Generate SSE</span>
-										<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-											<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-										</svg>
-									</div>
+									<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+									</svg>
 								)}
 							</button>
 						</div>
+						<div className="mt-2 text-xs text-teal-600">
+							Enter to send • Shift+Enter for new line • ↑/↓ for history
+						</div>
 					</div>
 				</div>
-			</div>
+			)}
 		</div>
 	)
 }

@@ -23,15 +23,22 @@ export const SelectionOutline: React.FC<SelectionOutlineProps> = ({
 	className = '',
 	style = {}
 }) => {
+	// Prevent outline flickering by adding smooth transitions
+	const prevShouldShowOutline = React.useRef(shouldShowOutline)
+	React.useEffect(() => {
+		prevShouldShowOutline.current = shouldShowOutline
+	}, [shouldShowOutline])
+
 	const selectionStyles: React.CSSProperties = {
 		...style,
-		position: 'relative'
-	}
-
-	if (shouldShowOutline) {
-		selectionStyles.outline = outlineStyle
-		selectionStyles.outlineOffset = '0px'
-		// No background colors - just outlines for clean visual feedback
+		position: 'relative',
+		// Always set outline properties to prevent flickering
+		outline: shouldShowOutline ? outlineStyle : 'none',
+		outlineOffset: '0px',
+		// Use will-change to optimize for frequent outline changes
+		willChange: shouldShowOutline || prevShouldShowOutline.current ? 'outline' : 'auto',
+		// Smooth transition for outline changes
+		transition: 'outline 150ms ease-out'
 	}
 
 	// Add selection-related CSS classes
@@ -62,29 +69,35 @@ export const SelectionOutline: React.FC<SelectionOutlineProps> = ({
  * Hook to get outline styles for inline application
  */
 export const useOutlineStyles = (isSelected: boolean, isHovered: boolean, isParent?: boolean) => {
+	const baseStyles = {
+		outlineOffset: '0px',
+		willChange: (isSelected || isHovered || isParent) ? 'outline' : 'auto',
+		transition: 'outline 150ms ease-out'
+	}
+
 	if (isSelected) {
 		return {
-			outline: '2px solid #3b82f6',
-			outlineOffset: '0px'
-			// No background color - just thicker outline for selection
+			...baseStyles,
+			outline: '2px solid #3b82f6'
 		}
 	}
 
 	if (isHovered) {
 		return {
-			outline: '1px solid #93c5fd',
-			outlineOffset: '0px'
-			// No background color on hover - just outline
+			...baseStyles,
+			outline: '1px solid #93c5fd'
 		}
 	}
 
 	if (isParent) {
 		return {
-			outline: '1px dotted #9ca3af',
-			outlineOffset: '0px'
-			// Dotted outline for parent elements
+			...baseStyles,
+			outline: '1px dotted #9ca3af'
 		}
 	}
 
-	return {}
+	return {
+		...baseStyles,
+		outline: 'none'
+	}
 }

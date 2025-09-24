@@ -6,6 +6,9 @@ import { useOutlineStyles } from './SelectionOutline';
 import { withConditionalErrorBoundary } from './DSLErrorBoundary';
 import { DynamicComponent } from './ComponentRegistry';
 import { SchemaUtils } from '../../utils/schema-utilities';
+import { observer } from 'mobx-react-lite';
+import { editorModeStore } from '../../stores/mobx_editor_mode_store';
+import { motion } from 'framer-motion';
 
 interface UpdatedDSLRendererProps {
     uiComponent: UIComponent;
@@ -280,6 +283,82 @@ const extractRenderData = (component: UIComponent) => {
 
 
 /**
+ * Animation configurations for smooth element movement
+ */
+const getAnimationConfig = (elementKey: string | number) => ({
+    layout: true,
+    layoutId: `element-${elementKey}`, // Maintain consistent identity during animations
+    transition: {
+        type: "spring" as const,
+        damping: 25,        // Higher damping to reduce oscillation
+        stiffness: 400,     // Higher stiffness for quicker settling
+        duration: 0.3,      // Shorter duration to minimize flicker window
+        bounce: 0.1,        // Minimal bounce to reduce layout disruption
+        // Ensure outline transitions smoothly with faster timing
+        layout: {
+            type: "spring" as const,
+            damping: 30,
+            stiffness: 500,
+            duration: 0.2
+        }
+    },
+    // Remove hover/tap effects that might interfere with selection
+    style: {
+        // Ensure the element maintains its selection during animation
+        willChange: 'transform', // Optimize for animations
+    }
+});
+
+/**
+ * Determine which elements should have animations applied
+ * Only animate elements that can be moved/rearranged by users
+ */
+const shouldApplyAnimation = (elementType: string): boolean => {
+    const animatableElements = [
+        'view', 'div', 'span', 'text', 'button', 'input', 'select', 'option',
+        'h1', 'h2', 'h3', 'p', 'ul', 'li', 'img', 'a', 'form',
+        'table', 'tbody', 'tr', 'td', 'section', 'header', 'footer'
+    ];
+
+    return animatableElements.includes(elementType.toLowerCase()) ||
+        elementType.charAt(0) === elementType.charAt(0).toUpperCase(); // Custom components
+};
+
+/**
+ * Higher-order component for conditional animation wrapping
+ * Similar to withConditionalErrorBoundary but for animations
+ */
+const withConditionalAnimation = (
+    component: React.ReactNode,
+    elementType: string,
+    elementKey?: string | number
+): React.ReactNode => {
+    // return component;
+
+    // Only apply animations in dev mode
+    if (!editorModeStore.isDev) {
+        return component;
+    }
+
+    // Only animate specific elements for performance
+    if (!shouldApplyAnimation(elementType)) {
+        return component;
+    }
+
+    // Wrap with motion.div for smooth layout animations
+    const animConfig = getAnimationConfig(elementKey || 'default');
+    return (
+        <motion.div
+            key={elementKey}
+            {...animConfig}
+            style={{ display: 'contents' }} // Invisible wrapper that doesn't affect layout
+        >
+            {component}
+        </motion.div>
+    );
+};
+
+/**
  * Updated DSL Renderer
  *
  * Combines the best features from both renderers:
@@ -288,8 +367,9 @@ const extractRenderData = (component: UIComponent) => {
  * - Error boundaries and schema validation
  * - Visual selection capabilities
  * - Full UIComponent schema support
+ * - Smooth animations in dev mode for element movement
  */
-export const UpdatedDSLRenderer: React.FC<UpdatedDSLRendererProps> = React.memo(({
+export const UpdatedDSLRenderer: React.FC<UpdatedDSLRendererProps> = observer(({
     uiComponent,
     handlers = {},
     onNavigate,
@@ -657,78 +737,174 @@ export const UpdatedDSLRenderer: React.FC<UpdatedDSLRendererProps> = React.memo(
         switch (actualElement.type.toLowerCase()) {
             case 'view':
             case 'div':
-                return <div key={resolvedKey} {...resolvedProps}>{renderChildren()}</div>;
+                return withConditionalAnimation(
+                    <div key={resolvedKey} {...resolvedProps}>{renderChildren()}</div>,
+                    actualElement.type,
+                    resolvedKey
+                );
 
             case 'text':
             case 'span':
-                return <span key={resolvedKey} {...resolvedProps}>{renderChildren()}</span>;
+                return withConditionalAnimation(
+                    <span key={resolvedKey} {...resolvedProps}>{renderChildren()}</span>,
+                    actualElement.type,
+                    resolvedKey
+                );
 
             case 'button':
-                return <button key={resolvedKey} {...resolvedProps}>{renderChildren()}</button>;
+                return withConditionalAnimation(
+                    <button key={resolvedKey} {...resolvedProps}>{renderChildren()}</button>,
+                    actualElement.type,
+                    resolvedKey
+                );
 
             case 'input':
-                return <input key={resolvedKey} {...resolvedProps} />;
+                return withConditionalAnimation(
+                    <input key={resolvedKey} {...resolvedProps} />,
+                    actualElement.type,
+                    resolvedKey
+                );
 
             case 'select':
-                return <select key={resolvedKey} {...resolvedProps}>{renderChildren()}</select>;
+                return withConditionalAnimation(
+                    <select key={resolvedKey} {...resolvedProps}>{renderChildren()}</select>,
+                    actualElement.type,
+                    resolvedKey
+                );
 
             case 'option':
-                return <option key={resolvedKey} {...resolvedProps}>{renderChildren()}</option>;
+                return withConditionalAnimation(
+                    <option key={resolvedKey} {...resolvedProps}>{renderChildren()}</option>,
+                    actualElement.type,
+                    resolvedKey
+                );
 
             case 'h1':
-                return <h1 key={resolvedKey} {...resolvedProps}>{renderChildren()}</h1>;
+                return withConditionalAnimation(
+                    <h1 key={resolvedKey} {...resolvedProps}>{renderChildren()}</h1>,
+                    actualElement.type,
+                    resolvedKey
+                );
 
             case 'h2':
-                return <h2 key={resolvedKey} {...resolvedProps}>{renderChildren()}</h2>;
+                return withConditionalAnimation(
+                    <h2 key={resolvedKey} {...resolvedProps}>{renderChildren()}</h2>,
+                    actualElement.type,
+                    resolvedKey
+                );
 
             case 'h3':
-                return <h3 key={resolvedKey} {...resolvedProps}>{renderChildren()}</h3>;
+                return withConditionalAnimation(
+                    <h3 key={resolvedKey} {...resolvedProps}>{renderChildren()}</h3>,
+                    actualElement.type,
+                    resolvedKey
+                );
 
             case 'p':
-                return <p key={resolvedKey} {...resolvedProps}>{renderChildren()}</p>;
+                return withConditionalAnimation(
+                    <p key={resolvedKey} {...resolvedProps}>{renderChildren()}</p>,
+                    actualElement.type,
+                    resolvedKey
+                );
 
             case 'ul':
-                return <ul key={resolvedKey} {...resolvedProps}>{renderChildren()}</ul>;
+                return withConditionalAnimation(
+                    <ul key={resolvedKey} {...resolvedProps}>{renderChildren()}</ul>,
+                    actualElement.type,
+                    resolvedKey
+                );
 
             case 'li':
-                return <li key={resolvedKey} {...resolvedProps}>{renderChildren()}</li>;
+                return withConditionalAnimation(
+                    <li key={resolvedKey} {...resolvedProps}>{renderChildren()}</li>,
+                    actualElement.type,
+                    resolvedKey
+                );
 
             case 'img':
-                return <img key={resolvedKey} {...resolvedProps} alt={resolvedProps.alt || ''} />;
+                return withConditionalAnimation(
+                    <img key={resolvedKey} {...resolvedProps} alt={resolvedProps.alt || ''} />,
+                    actualElement.type,
+                    resolvedKey
+                );
 
             case 'a':
-                return <a key={resolvedKey} {...resolvedProps}>{renderChildren()}</a>;
+                return withConditionalAnimation(
+                    <a key={resolvedKey} {...resolvedProps}>{renderChildren()}</a>,
+                    actualElement.type,
+                    resolvedKey
+                );
 
             case 'header':
-                return <header key={resolvedKey} {...resolvedProps}>{renderChildren()}</header>;
+                return withConditionalAnimation(
+                    <header key={resolvedKey} {...resolvedProps}>{renderChildren()}</header>,
+                    actualElement.type,
+                    resolvedKey
+                );
 
             case 'section':
-                return <section key={resolvedKey} {...resolvedProps}>{renderChildren()}</section>;
+                return withConditionalAnimation(
+                    <section key={resolvedKey} {...resolvedProps}>{renderChildren()}</section>,
+                    actualElement.type,
+                    resolvedKey
+                );
 
             case 'footer':
-                return <footer key={resolvedKey} {...resolvedProps}>{renderChildren()}</footer>;
+                return withConditionalAnimation(
+                    <footer key={resolvedKey} {...resolvedProps}>{renderChildren()}</footer>,
+                    actualElement.type,
+                    resolvedKey
+                );
 
             case 'table':
-                return <table key={resolvedKey} {...resolvedProps}>{renderChildren()}</table>;
+                return withConditionalAnimation(
+                    <table key={resolvedKey} {...resolvedProps}>{renderChildren()}</table>,
+                    actualElement.type,
+                    resolvedKey
+                );
 
             case 'thead':
-                return <thead key={resolvedKey} {...resolvedProps}>{renderChildren()}</thead>;
+                return withConditionalAnimation(
+                    <thead key={resolvedKey} {...resolvedProps}>{renderChildren()}</thead>,
+                    actualElement.type,
+                    resolvedKey
+                );
 
             case 'tbody':
-                return <tbody key={resolvedKey} {...resolvedProps}>{renderChildren()}</tbody>;
+                return withConditionalAnimation(
+                    <tbody key={resolvedKey} {...resolvedProps}>{renderChildren()}</tbody>,
+                    actualElement.type,
+                    resolvedKey
+                );
 
             case 'tr':
-                return <tr key={resolvedKey} {...resolvedProps}>{renderChildren()}</tr>;
+                return withConditionalAnimation(
+                    <tr key={resolvedKey} {...resolvedProps}>{renderChildren()}</tr>,
+                    actualElement.type,
+                    resolvedKey
+                );
 
             case 'th':
-                return <th key={resolvedKey} {...resolvedProps}>{renderChildren()}</th>;
+                return withConditionalAnimation(
+                    <th key={resolvedKey} {...resolvedProps}>{renderChildren()}</th>,
+                    actualElement.type,
+                    resolvedKey
+                );
 
             case 'td':
-                return <td key={resolvedKey} {...resolvedProps}>{renderChildren()}</td>;
+                return withConditionalAnimation(
+                    <td key={resolvedKey} {...resolvedProps}>{renderChildren()}</td>,
+                    actualElement.type,
+                    resolvedKey
+                );
 
             default:
                 // console.warn(`Unknown element type: ${actualElement.type}`);
-                return <div key={resolvedKey} {...resolvedProps}>{renderChildren()}</div>;
+                return withConditionalAnimation(
+                    <div key={resolvedKey} {...resolvedProps}>{renderChildren()}</div>,
+                    actualElement.type,
+                    resolvedKey
+                );
         }
     };
 
@@ -753,10 +929,13 @@ export const UpdatedDSLRenderer: React.FC<UpdatedDSLRendererProps> = React.memo(
         <div
             className="updated-dsl-renderer"
             style={{
-                userSelect: 'none',
-                WebkitUserSelect: 'none',
-                WebkitTouchCallout: 'none',
-                msUserSelect: 'none'
+                // Only apply user-select: none in dev mode (allow text selection in preview mode)
+                ...(editorModeStore.isPreview ? {} : {
+                    userSelect: 'none',
+                    WebkitUserSelect: 'none',
+                    WebkitTouchCallout: 'none',
+                    msUserSelect: 'none'
+                })
             }}
         >
             {withConditionalErrorBoundary(
