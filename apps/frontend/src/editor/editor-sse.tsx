@@ -342,7 +342,7 @@ const EditorSSE = () => {
 									}
 
 									const updated_ui = p.data;
-									
+
 									setCurrentSchema(updated_ui);
 
 									// Create version using new database utilities
@@ -357,6 +357,10 @@ const EditorSSE = () => {
 										role: 'assistant',
 										content: 'UI generated successfully with SSE!'
 									}]);
+
+									// Clear loading states immediately on completion
+									setIsGenerating(false);
+									setIsLlmStreaming(false);
 
 									scrollToBottom();
 									setInput('')
@@ -391,15 +395,13 @@ const EditorSSE = () => {
 			// Clean up abort controller
 			abortControllerRef.current = null;
 
-			// Only set generating to false if it wasn't cancelled (already handled in cancelGeneration)
-			if (isGenerating) {
-				setIsGenerating(false);
-				// Clear LLM stream after a delay to allow user to see the completion
-				setTimeout(() => {
-					setLlmStream('');
-					setIsLlmStreaming(false);
-				}, 3000);
-			}
+			// Always set generating to false and clear LLM states
+			setIsGenerating(false);
+			// Clear LLM stream after a delay to allow user to see the completion
+			setTimeout(() => {
+				setLlmStream('');
+				setIsLlmStreaming(false);
+			}, 3000);
 		}
 	};
 	
@@ -580,7 +582,17 @@ const EditorSSE = () => {
 	return (
 		<div className="flex h-screen bg-white overflow-hidden">
 			{/* Left Side - Generated React Component */}
-			<div className="flex-1 bg-white bg-opacity-90 border-r border-gray-300 shadow-xl overflow-hidden">
+			<div className={`${editorModeStore.isPreview ? 'w-full' : 'flex-1'} bg-white bg-opacity-90 ${editorModeStore.isDev ? 'border-r border-gray-300' : ''} shadow-xl overflow-hidden relative`}>
+				{/* Floating toggle button in preview mode */}
+				{editorModeStore.isPreview && (
+					<button
+						onClick={() => editorModeStore.toggleMode()}
+						className="absolute top-4 right-4 px-3 bg-white py-1.5 text-xs font-medium text-teal-700 hover:text-white hover:bg-teal-600 rounded-md transition-all duration-200 shadow-lg hover:shadow-xl z-20"
+					>
+						{editorModeStore.currentMode.toUpperCase()}
+					</button>
+				)}
+
 				<div className="h-full flex flex-col">
 					{/* Preview Content */}
 					<div className="flex-1 relative overflow-y-auto">
@@ -628,220 +640,201 @@ const EditorSSE = () => {
 			</div>
 			{/* bg-gradient-to-r from-teal-100 to-cyan-100 */}
 
-			{/* Right Side - Chat Interface with SSE Logs */}
-			<div className="w-96 bg-gradient-to-b from-teal-50 to-cyan-50 flex flex-col shadow-2xl overflow-hidden">
-				{/* Chat Header */}
-				<div className="px-4 py-3 bg-cyan-50  border-b border-teal-200">
-					<div className="flex items-center justify-end">
-						<button
-							onClick={() => editorModeStore.toggleMode()}
-							className="px-3 bg-white py-1.5 text-xs font-medium text-teal-700 hover:text-white hover:bg-teal-600 rounded-md transition-all duration-200 shadow-sm hover:shadow-md"
-						>
-							{editorModeStore.currentMode.toUpperCase()}
-						</button>
+			{/* Right Side - Chat Interface with SSE Logs (Dev mode only) */}
+			{editorModeStore.isDev && (
+				<div className="w-96 bg-gradient-to-b from-teal-50 to-cyan-50 flex flex-col shadow-2xl overflow-hidden">
+					{/* Header with Mode Toggle */}
+					<div className="px-4 py-3 bg-cyan-50 border-b border-teal-200">
+						<div className="flex items-center justify-end">
+							<button
+								onClick={() => editorModeStore.toggleMode()}
+								className="px-3 bg-white py-1.5 text-xs font-medium text-teal-700 hover:text-white hover:bg-teal-600 rounded-md transition-all duration-200 shadow-sm hover:shadow-md"
+							>
+								{editorModeStore.currentMode.toUpperCase()}
+							</button>
+						</div>
 					</div>
-				</div>
 
-				{/* Node Editor - Below header */}
-
-				{editorModeStore.isDev && (
+					{/* Node Editor - Below header */}
 					<NodeEditor
 						selectedNodeId={selectedNodeId}
 						onUpdate={(text: string, className: string) => {
-								// Update the schema with new text and className
-								if (currentSchema && window.SAEDITOR && window.SAEDITOR.nodeId) {
-	
-									const updatedSchema = updateNodeById(currentSchema, window.SAEDITOR.nodeId, text, className)
-	
-									if (updatedSchema) {
-										setCurrentSchema(updatedSchema as UIComponent)
-										// Save to database in background without toasts
-										handleSchemaUpdateSilent(updatedSchema as UIComponent, 'node-edit')
-									}
+							// Update the schema with new text and className
+							if (currentSchema && window.SAEDITOR && window.SAEDITOR.nodeId) {
+								const updatedSchema = updateNodeById(currentSchema, window.SAEDITOR.nodeId, text, className)
+								if (updatedSchema) {
+									setCurrentSchema(updatedSchema as UIComponent)
+									// Save to database in background without toasts
+									handleSchemaUpdateSilent(updatedSchema as UIComponent, 'node-edit')
 								}
-							}}
-						/>
-				)}
+							}
+						}}
+					/>
 
-
-				{/* Messages and SSE Logs */}
-				<div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-4 space-y-3">
-					{messages.length === 0 && (
-						<div className="text-center py-12">
-							<div className="w-12 h-12 mx-auto bg-gradient-to-br from-teal-100 to-cyan-100 rounded-lg flex items-center justify-center mb-3 shadow-sm">
-								<svg className="w-6 h-6 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-									<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-								</svg>
-							</div>
-							<p className="text-teal-600 text-sm">Describe your UI to get started</p>
-						</div>
-					)}
-
-					{messages.map((msg, i) => (
-						<div key={i} className={`${msg.role === 'user' ? 'text-right' : 'text-left'}`}>
-							<div className={`inline-block px-3 py-2 rounded-lg max-w-[85%] text-sm shadow-sm ${msg.role === 'user'
-								? 'bg-gradient-to-r from-teal-600 to-teal-700 text-white'
-								: 'bg-white border border-teal-200 text-teal-800'
-								}`}>
-								{msg.content}
-							</div>
-						</div>
-					))}
-
-					{/* SSE Live Logs with embedded LLM Streaming */}
-					{isGenerating && (
-						<div className="text-left">
-							<div className="bg-gradient-to-r from-teal-50 to-cyan-50 border border-teal-200 rounded-lg p-3 shadow-sm">
-								<div className="flex items-center justify-between mb-2">
-									<div className="flex items-center space-x-2">
-										<div className="w-2 h-2 bg-teal-600 rounded-full animate-pulse"></div>
-										<span className="text-teal-700 text-xs font-medium">GENERATING</span>
-									</div>
-									<button
-										onClick={cancelGeneration}
-										className="p-1 text-red-500 hover:text-red-700 hover:bg-red-100 rounded-full transition-colors duration-200"
-										title="Cancel generation"
-									>
-										<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-											<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-										</svg>
-									</button>
+					{/* Messages and SSE Logs */}
+					<div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-4 space-y-3">
+						{messages.length === 0 && (
+							<div className="text-center py-12">
+								<div className="w-12 h-12 mx-auto bg-gradient-to-br from-teal-100 to-cyan-100 rounded-lg flex items-center justify-center mb-3 shadow-sm">
+									<svg className="w-6 h-6 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+									</svg>
 								</div>
-								<div className="space-y-1">
-									{sseEvents.map((event, index) => {
-										// Check if this is the "Generating UI" event to add accordion
-										const isGeneratingUI = event.message.includes('🎨 Generating UI');
+								<p className="text-teal-600 text-sm">Describe your UI to get started</p>
+							</div>
+						)}
 
-										return (
-											<div key={index}>
-												<div className="text-xs font-mono text-teal-700">
-													<span className="text-teal-500">
-														{event.timestamp.toLocaleTimeString()}
-													</span>
-													<span className={`ml-2 ${
-														event.type === 'error' ? 'text-red-600' :
-														event.type === 'complete' ? 'text-teal-600' :
-														'text-blue-600'
-													}`}>
-														{event.message}
-													</span>
-													{isGeneratingUI && (isLlmStreaming || llmStream) && (
-														<button
-															onClick={() => setIsLlmAccordionOpen(!isLlmAccordionOpen)}
-															className="ml-2 text-blue-500 hover:text-blue-700 transition-colors"
-														>
-															{isLlmAccordionOpen ? '▼' : '▶'}
-														</button>
-													)}
-												</div>
+						{messages.map((msg, i) => (
+							<div key={i} className={`${msg.role === 'user' ? 'text-right' : 'text-left'}`}>
+								<div className={`inline-block px-3 py-2 rounded-lg max-w-[85%] text-sm shadow-sm ${msg.role === 'user'
+									? 'bg-gradient-to-r from-teal-600 to-teal-700 text-white'
+									: 'bg-white border border-teal-200 text-teal-800'
+									}`}>
+									{msg.content}
+								</div>
+							</div>
+						))}
 
-												{/* LLM Streaming Accordion - appears right after "Generating UI" */}
-												{isGeneratingUI && (isLlmStreaming || llmStream) && isLlmAccordionOpen && (
-													<div className="mt-2 ml-4 border-l-2 border-teal-300 pl-3">
-														<div className="bg-black rounded-md p-3 shadow-inner">
-															<div className="flex items-center space-x-2 mb-2">
-																<div className={`w-1.5 h-1.5 ${isLlmStreaming ? 'bg-green-400 animate-pulse' : 'bg-gray-400'} rounded-full`}></div>
-																<span className="text-green-400 text-xs font-medium">
-																	{isLlmStreaming ? 'AI_GENERATING' : 'AI_COMPLETE'}
-																</span>
-															</div>
-															<div
-																ref={llmStreamRef}
-																className="h-48 overflow-y-auto bg-gray-900 rounded border border-gray-700 p-2"
+						{/* SSE Live Logs with embedded LLM Streaming */}
+						{isGenerating && (
+							<div className="text-left">
+								<div className="bg-gradient-to-r from-teal-50 to-cyan-50 border border-teal-200 rounded-lg p-3 shadow-sm">
+									<div className="flex items-center justify-between mb-2">
+										<div className="flex items-center space-x-2">
+											<div className="w-2 h-2 bg-teal-600 rounded-full animate-pulse"></div>
+											<span className="text-teal-700 text-xs font-medium">GENERATING</span>
+										</div>
+										<button
+											onClick={cancelGeneration}
+											className="p-1 text-red-500 hover:text-red-700 hover:bg-red-100 rounded-full transition-colors duration-200"
+											title="Cancel generation"
+										>
+											<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+												<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+											</svg>
+										</button>
+									</div>
+									<div className="space-y-1">
+										{sseEvents.map((event, index) => {
+											// Check if this is the "Generating UI" event to add accordion
+											const isGeneratingUI = event.message.includes('🎨 Generating UI');
+
+											return (
+												<div key={index}>
+													<div className="text-xs font-mono text-teal-700">
+														<span className="text-teal-500">
+															{event.timestamp.toLocaleTimeString()}
+														</span>
+														<span className={`ml-2 ${
+															event.type === 'error' ? 'text-red-600' :
+															event.type === 'complete' ? 'text-teal-600' :
+															'text-blue-600'
+														}`}>
+															{event.message}
+														</span>
+														{isGeneratingUI && (isLlmStreaming || llmStream) && (
+															<button
+																onClick={() => setIsLlmAccordionOpen(!isLlmAccordionOpen)}
+																className="ml-2 text-blue-500 hover:text-blue-700 transition-colors"
 															>
-																<pre className="text-xs font-mono text-green-400 whitespace-pre-wrap break-words">
-																	{llmStream}
-																	{isLlmStreaming && <span className="inline-block w-1 h-3 bg-green-400 animate-pulse ml-1">|</span>}
-																</pre>
+																{isLlmAccordionOpen ? '▼' : '▶'}
+															</button>
+														)}
+													</div>
+
+													{/* LLM Streaming Accordion - appears right after "Generating UI" */}
+													{isGeneratingUI && (isLlmStreaming || llmStream) && isLlmAccordionOpen && (
+														<div className="mt-2 ml-4 border-l-2 border-teal-300 pl-3">
+															<div className="bg-black rounded-md p-3 shadow-inner">
+																<div className="flex items-center space-x-2 mb-2">
+																	<div className={`w-1.5 h-1.5 ${isLlmStreaming ? 'bg-green-400 animate-pulse' : 'bg-gray-400'} rounded-full`}></div>
+																	<span className="text-green-400 text-xs font-medium">
+																		{isLlmStreaming ? 'AI_GENERATING' : 'AI_COMPLETE'}
+																	</span>
+																</div>
+																<div
+																	ref={llmStreamRef}
+																	className="h-48 overflow-y-auto bg-gray-900 rounded border border-gray-700 p-2"
+																>
+																	<pre className="text-xs font-mono text-green-400 whitespace-pre-wrap break-words">
+																		{llmStream}
+																		{isLlmStreaming && <span className="inline-block w-1 h-3 bg-green-400 animate-pulse ml-1">|</span>}
+																	</pre>
+																</div>
 															</div>
 														</div>
-													</div>
-												)}
-											</div>
-										);
-									})}
-								</div>
-							</div>
-						</div>
-					)}
-
-					{isGenerating && (
-						<div className="text-left">
-							<div className="inline-block px-3 py-2 rounded-lg bg-white border border-teal-200 shadow-sm">
-								<div className="flex items-center space-x-2">
-									<div className="flex space-x-1">
-										<div className="w-1.5 h-1.5 bg-teal-600 rounded-full animate-bounce" />
-										<div className="w-1.5 h-1.5 bg-teal-600 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }} />
-										<div className="w-1.5 h-1.5 bg-teal-600 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
+													)}
+												</div>
+											);
+										})}
 									</div>
-									<span className="text-xs text-teal-600">Processing...</span>
 								</div>
 							</div>
-						</div>
-					)}
-				</div>
+						)}
+					</div>
 
-				{/* Input Area */}
-				<div className="border-t border-teal-200 bg-gradient-to-r from-teal-50 to-cyan-50 p-3">
-					<div className="relative">
-						<textarea
-							ref={(textarea) => {
-								if (textarea) {
-									// Auto-resize functionality
-									textarea.style.height = 'auto'
-									const scrollHeight = textarea.scrollHeight
-									const maxHeight = 120 // max height in px (about 4-5 lines)
-									textarea.style.height = Math.min(scrollHeight, maxHeight) + 'px'
-									textarea.style.overflowY = scrollHeight > maxHeight ? 'auto' : 'hidden'
-								}
-							}}
-							value={input}
-							onChange={(e) => {
-								setInput(e.target.value)
-								// Reset history index when user types
-								if (historyIndex !== -1) {
-									setHistoryIndex(-1)
-								}
-							}}
-							onKeyDown={(e) => {
-								if (e.key === 'Enter' && !e.shiftKey) {
-									e.preventDefault()
-									handleSend()
-								} else if (e.key === 'ArrowUp') {
-									e.preventDefault()
-									navigateHistory('up')
-								} else if (e.key === 'ArrowDown') {
-									e.preventDefault()
-									navigateHistory('down')
-								}
-							}}
-							className="w-full pr-12 pl-3 py-3 bg-white border border-teal-300 text-teal-900 rounded-lg resize-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-all duration-200 text-sm placeholder-teal-400 shadow-sm"
-							placeholder="Describe your UI..."
-							style={{ minHeight: '44px' }}
-							disabled={isGenerating}
-						/>
-						<button
-							onClick={handleSend}
-							disabled={isGenerating || !input.trim()}
-							className="absolute right-2 bottom-2 p-2 text-teal-500 hover:text-white hover:bg-gradient-to-r hover:from-teal-600 hover:to-teal-700 rounded-md disabled:text-teal-300 disabled:cursor-not-allowed transition-all duration-200 shadow-sm hover:shadow-md"
-						>
-							{isGenerating ? (
-								<svg className="animate-spin w-5 h-5 text-teal-600" fill="none" viewBox="0 0 24 24">
-									<circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" className="opacity-25"></circle>
-									<path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" className="opacity-75"></path>
-								</svg>
-							) : (
-								<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-									<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-								</svg>
-							)}
-						</button>
-					</div>
-					<div className="mt-2 text-xs text-teal-600">
-						Enter to send • Shift+Enter for new line • ↑/↓ for history
+					{/* Input Area */}
+					<div className="border-t border-teal-200 bg-gradient-to-r from-teal-50 to-cyan-50 p-3">
+						<div className="relative">
+							<textarea
+								ref={(textarea) => {
+									if (textarea) {
+										// Auto-resize functionality
+										textarea.style.height = 'auto'
+										const scrollHeight = textarea.scrollHeight
+										const maxHeight = 120 // max height in px (about 4-5 lines)
+										textarea.style.height = Math.min(scrollHeight, maxHeight) + 'px'
+										textarea.style.overflowY = scrollHeight > maxHeight ? 'auto' : 'hidden'
+									}
+								}}
+								value={input}
+								onChange={(e) => {
+									setInput(e.target.value)
+									// Reset history index when user types
+									if (historyIndex !== -1) {
+										setHistoryIndex(-1)
+									}
+								}}
+								onKeyDown={(e) => {
+									if (e.key === 'Enter' && !e.shiftKey) {
+										e.preventDefault()
+										handleSend()
+									} else if (e.key === 'ArrowUp') {
+										e.preventDefault()
+										navigateHistory('up')
+									} else if (e.key === 'ArrowDown') {
+										e.preventDefault()
+										navigateHistory('down')
+									}
+								}}
+								className="w-full pr-12 pl-3 py-3 bg-white border border-teal-300 text-teal-900 rounded-lg resize-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-all duration-200 text-sm placeholder-teal-400 shadow-sm"
+								placeholder="Describe your UI..."
+								style={{ minHeight: '44px' }}
+								disabled={isGenerating}
+							/>
+							<button
+								onClick={handleSend}
+								disabled={isGenerating || !input.trim()}
+								className="absolute right-2 bottom-2 p-2 text-teal-500 hover:text-white hover:bg-gradient-to-r hover:from-teal-600 hover:to-teal-700 rounded-md disabled:text-teal-300 disabled:cursor-not-allowed transition-all duration-200 shadow-sm hover:shadow-md"
+							>
+								{isGenerating ? (
+									<svg className="animate-spin w-5 h-5 text-teal-600" fill="none" viewBox="0 0 24 24">
+										<circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" className="opacity-25"></circle>
+										<path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" className="opacity-75"></path>
+									</svg>
+								) : (
+									<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+									</svg>
+								)}
+							</button>
+						</div>
+						<div className="mt-2 text-xs text-teal-600">
+							Enter to send • Shift+Enter for new line • ↑/↓ for history
+						</div>
 					</div>
 				</div>
-			</div>
+			)}
 		</div>
 	)
 }
