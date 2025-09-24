@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from 'react'
+import { useEffect, useCallback, startTransition } from 'react'
 import { useNodeSelection } from './useNodeSelection'
 import { SchemaUtils } from '../../utils/schema-utilities'
 import { UIComponent, UIElement } from '../../types/dsl'
@@ -48,11 +48,14 @@ export const useKeyboardInteractions = (
 			siblings.length
 		)
 
-		// Update the schema first (this will trigger re-render)
-		onSchemaUpdate(updatedSchema, 'move')
+		// Batch both updates in a single transition to prevent outline flickering
+		startTransition(() => {
+			// Update the schema first (this will trigger re-render)
+			onSchemaUpdate(updatedSchema, 'move')
 
-		// Update selection to follow the moved element
-		selectNode(selectedNode.componentId, newPath)
+			// Update selection to follow the moved element in the same render cycle
+			selectNode(selectedNode.componentId, newPath)
+		})
 	}, [selectedNode, selectNode, rootSchema, onSchemaUpdate])
 
 	// Drill into selected element's first child

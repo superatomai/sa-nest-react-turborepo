@@ -9,6 +9,7 @@ import { createDefaultDSL } from '../lib/utils/default-dsl'
 import NodeEditor from './components/NodeEditor'
 import { findNodeById, updateNodeById } from './utils/node-operations'
 import { COMPLEX_DSL } from '@/test/complex-dsl'
+import { editorModeStore } from '../stores/mobx_editor_mode_store'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
 const default_ui_schema: UIComponent = createDefaultDSL()
@@ -17,7 +18,7 @@ const EditorSSE = () => {
 	const [messages, setMessages] = useState<Array<{ role: string, content: string }>>([])
 	const [input, setInput] = useState('')
 
-	const [currentSchema, setCurrentSchema] = useState<UIComponent | null>(null)
+	const [currentSchema, setCurrentSchema] = useState<UIComponent | null>(COMPLEX_DSL)
 	const [projectId, setProjectId] = useState<string>("");
 	const [isDSLLoading, setIsDSLLoading] = useState<boolean>(false);
 	const [selectedNodeId, setSelectedNodeId] = useState<string>('');
@@ -33,41 +34,6 @@ const EditorSSE = () => {
 		{ enabled: !!uiId } // only run query if uiId exists
 	);
 
-
-	// New state for storing UI suggestions and project docs
-	const [uiSuggestions, setUiSuggestions] = useState<any[]>([]);
-	const [projectDocs, setProjectDocs] = useState<any>(null);
-
-	// tRPC mutation for creating UI list
-
-	const createUiListMutation = trpc.createUiList.useMutation({
-		onSuccess: (response) => {
-			console.log('✅ UI suggestions stored in database:', response);
-			setSSEEvents(prev => [...prev, {
-				type: 'success',
-				message: 'UI suggestions saved to database',
-				timestamp: new Date()
-			}]);
-		},
-		onError: (error) => {
-			console.error('❌ Failed to store UI suggestions:', error);
-			setSSEEvents(prev => [...prev, {
-				type: 'warning',
-				message: 'Generated UI suggestions but failed to save to database',
-				timestamp: new Date()
-			}]);
-		}
-	});
-
-	const createDocsMutation = trpc.createDocs.useMutation({
-		onSuccess: (response) => {
-			console.log('✅ Docs created successfully:', response);
-		},
-		onError: (error) => {
-			console.error('❌ Failed to store docs:', error);
-		}
-	});	
-
 	useEffect(() => {
 		if (uiId && uidata) {
 			const ui = uidata.ui;
@@ -78,89 +44,89 @@ const EditorSSE = () => {
 	}, [uiId, uidata]);
 
 	// Load existing UI DSL on component mount - run after projectId is set
-	useEffect(() => {
-		const loadExistingUI = async () => {
-			if (!projectId || !uiId || projectId === "") return;
+	// useEffect(() => {
+	// 	const loadExistingUI = async () => {
+	// 		if (!projectId || !uiId || projectId === "") return;
 			
-			setIsDSLLoading(true);
-			try {
-				console.log('Loading existing UI for projectId:', projectId, 'uiId:', uiId);
+	// 		setIsDSLLoading(true);
+	// 		try {
+	// 			console.log('Loading existing UI for projectId:', projectId, 'uiId:', uiId);
 			
-				if (uidata && uidata.ui) {
-					const ui_version = uidata.ui.uiVersion;
+	// 			if (uidata && uidata.ui) {
+	// 				const ui_version = uidata.ui.uiVersion;
 
-					let dslToUse = null;
+	// 				let dslToUse = null;
 
-					try {
-						const versionResult = await getVersionQuery.refetch();
-						if (versionResult.data && versionResult.data.versions) {
-							const versions = versionResult.data.versions;
+	// 				try {
+	// 					const versionResult = await getVersionQuery.refetch();
+	// 					if (versionResult.data && versionResult.data.versions) {
+	// 						const versions = versionResult.data.versions;
 							
-							// Load conversations from all versions
-							const conversations: Array<{ role: string, content: string }> = [];
+	// 						// Load conversations from all versions
+	// 						const conversations: Array<{ role: string, content: string }> = [];
 							
-							if (Array.isArray(versions)) {
-								// Sort versions by creation date (assuming id is chronological or there's a createdAt field)
-								const sortedVersions = [...versions].sort((a, b) => a.id - b.id);
+	// 						if (Array.isArray(versions)) {
+	// 							// Sort versions by creation date (assuming id is chronological or there's a createdAt field)
+	// 							const sortedVersions = [...versions].sort((a, b) => a.id - b.id);
 								
-								sortedVersions.forEach(version => {
-									if (version.prompt && version.prompt.trim()) {
-										// Add user message (the prompt)
-										conversations.push({
-											role: 'user',
-											content: version.prompt
-										});
-										// Add assistant response
-										conversations.push({
-											role: 'assistant',
-											content: 'UI generated successfully!'
-										});
-									}
-								});
-							}
+	// 							sortedVersions.forEach(version => {
+	// 								if (version.prompt && version.prompt.trim()) {
+	// 									// Add user message (the prompt)
+	// 									conversations.push({
+	// 										role: 'user',
+	// 										content: version.prompt
+	// 									});
+	// 									// Add assistant response
+	// 									conversations.push({
+	// 										role: 'assistant',
+	// 										content: 'UI generated successfully!'
+	// 									});
+	// 								}
+	// 							});
+	// 						}
 							
-							// Set conversations in messages state
-							if (conversations.length > 0) {
-								setMessages(conversations);
-							}
+	// 						// Set conversations in messages state
+	// 						if (conversations.length > 0) {
+	// 							setMessages(conversations);
+	// 						}
 							
-							// Find the current version's DSL
-							const versionData = Array.isArray(versions) ? 
-								versions.find(v => v.id === ui_version) : null;
-							if (versionData && versionData.dsl) {
-								dslToUse = versionData.dsl;
-							}
-						}
-					} catch (versionError) {
-						console.error('Failed to fetch version data:', versionError);
-					}
+	// 						// Find the current version's DSL
+	// 						const versionData = Array.isArray(versions) ? 
+	// 							versions.find(v => v.id === ui_version) : null;
+	// 						if (versionData && versionData.dsl) {
+	// 							dslToUse = versionData.dsl;
+	// 						}
+	// 					}
+	// 				} catch (versionError) {
+	// 					console.error('Failed to fetch version data:', versionError);
+	// 				}
 
-					// console.log('dsl to use', dslToUse);
-						// Parse and set the DSL if we found it using new utilities
-					if (dslToUse) {
-						try {
-							const uiComponent = parseDSLFromVersion(dslToUse);
+	// 				// console.log('dsl to use', dslToUse);
+	// 					// Parse and set the DSL if we found it using new utilities
+	// 				if (dslToUse) {
+	// 					try {
+	// 						const uiComponent = parseDSLFromVersion(dslToUse);
 
-							if (uiComponent) {
-								console.log('Setting current schema from DSL:', uiComponent);
-								setCurrentSchema(uiComponent);
-							}
+	// 						if (uiComponent) {
+	// 							console.log('Setting current schema from DSL:', uiComponent);
+	// 							setCurrentSchema(uiComponent);
+	// 						}
 
-						} catch (parseError) {
-							console.error('Failed to parse DSL:', parseError);
-						}
-					} else {
-						console.error('No DSL found for this UI');
-					}
-				}
-			} catch (error) {
-				console.error('Failed to load existing UI:', error);
-			} finally {
-				setIsDSLLoading(false);
-			}
-		};
-		loadExistingUI();
-	}, [projectId, uiId]); // Run when projectId or uiId changes
+	// 					} catch (parseError) {
+	// 						console.error('Failed to parse DSL:', parseError);
+	// 					}
+	// 				} else {
+	// 					console.error('No DSL found for this UI');
+	// 				}
+	// 			}
+	// 		} catch (error) {
+	// 			console.error('Failed to load existing UI:', error);
+	// 		} finally {
+	// 			setIsDSLLoading(false);
+	// 		}
+	// 	};
+	// 	loadExistingUI();
+	// }, [projectId, uiId]); // Run when projectId or uiId changes
 
 
 	// Prompt history state
@@ -362,27 +328,27 @@ const EditorSSE = () => {
 		console.log('🔄 Schema updated via:', operation || 'unknown operation', newSchema.id)
 
 		// Save to database using new database utilities
-		if (uiId) {
-			try {
-				createVersionAndUpdateUI({
-					uiId: uiId,
-					uiComponent: newSchema,
-					prompt: `Schema updated via ${operation || 'copy/paste/cut/delete'}`,
-					operation: operation || 'Schema Update'
-				}, uidata, {
-					onComplete: () => {
-						console.log('✅ Schema update saved successfully')
-					},
-					onError: (error, step) => {
-						console.error(`❌ Failed to save schema update at ${step}:`, error)
-					}
-				});
-			} catch (error) {
-				console.error('Failed to save schema update to database:', error)
-			}
-		} else {
-			console.warn('Cannot save to database: missing uiId')
-		}
+		// if (uiId) {
+		// 	try {
+		// 		createVersionAndUpdateUI({
+		// 			uiId: uiId,
+		// 			uiComponent: newSchema,
+		// 			prompt: `Schema updated via ${operation || 'copy/paste/cut/delete'}`,
+		// 			operation: operation || 'Schema Update'
+		// 		}, uidata, {
+		// 			onComplete: () => {
+		// 				console.log('✅ Schema update saved successfully')
+		// 			},
+		// 			onError: (error, step) => {
+		// 				console.error(`❌ Failed to save schema update at ${step}:`, error)
+		// 			}
+		// 		});
+		// 	} catch (error) {
+		// 		console.error('Failed to save schema update to database:', error)
+		// 	}
+		// } else {
+		// 	console.warn('Cannot save to database: missing uiId')
+		// }
 	}, [uiId, uidata, createVersionAndUpdateUI, currentSchema])
 
 	// Handle schema updates silently in background (no toasts for node editor)
@@ -488,12 +454,12 @@ const EditorSSE = () => {
 			<SelectableUIRenderer
 				uiComponent={currentSchema}
 				handlers={handlers}
-				enableSelection={true} // Set to false to disable selection
+				enableSelection={editorModeStore.isDev} // Only enable selection in dev mode
 				onSchemaUpdate={handleSchemaUpdate}
 				onNodeSelect={handleNodeSelection}
 			/>
 		)
-	}, [currentSchema, handlers, handleSchemaUpdate, handleNodeSelection])
+	}, [currentSchema, handlers, handleSchemaUpdate, handleNodeSelection, editorModeStore.isDev, editorModeStore.isPreview])
 
 	const handleSend = async () => {
 		if (!input.trim()) return
@@ -572,35 +538,44 @@ const EditorSSE = () => {
 			{/* Right Side - Chat Interface with SSE Logs */}
 			<div className="w-96 bg-slate-200 flex flex-col shadow-2xl overflow-hidden">
 				{/* Chat Header */}
-				<div className="px-6 py-4 bg-purple-500 text-white">
-					<div className="flex items-center space-x-3">
-						<button>Preview</button>
+				<div className="py-1">
+					<div className="flex items-center">
+						<button
+							onClick={() => editorModeStore.toggleMode()}
+							className=" p-1.5 flex justify-center items-center hover:bg-slate-400 outline rounded-lg font-medium transition-all duration-200"
+						>
+							<span className="w-2 h-2 rounded-full"></span>
+							<span>{editorModeStore.currentMode.toUpperCase()}</span>
+						</button>
 					</div>
 				</div>
 
 				{/* Node Editor - Below header */}
-				<NodeEditor
-					selectedNodeId={selectedNodeId}
-					onUpdate={(text: string, className: string) => {
-							// Update the schema with new text and className
-							if (currentSchema && window.SAEDITOR && window.SAEDITOR.nodeId) {
-								// Log DSL before and after node edit
-								console.log('✏️ NODE EDIT - NodeId:', window.SAEDITOR.nodeId)
-								console.log('🔴 ORIGINAL DSL:', currentSchema)
 
-								const updatedSchema = updateNodeById(currentSchema, window.SAEDITOR.nodeId, text, className)
-
-								if (updatedSchema) {
-									console.log('🟢 UPDATED DSL:', updatedSchema)
-									console.log('-----------------------------------')
-
-									setCurrentSchema(updatedSchema as UIComponent)
-									// Save to database in background without toasts
-									handleSchemaUpdateSilent(updatedSchema as UIComponent, 'node-edit')
+				{editorModeStore.isDev && (
+					<NodeEditor
+						selectedNodeId={selectedNodeId}
+						onUpdate={(text: string, className: string) => {
+								// Update the schema with new text and className
+								if (currentSchema && window.SAEDITOR && window.SAEDITOR.nodeId) {
+									// Log DSL before and after node edit
+									console.log('✏️ NODE EDIT - NodeId:', window.SAEDITOR.nodeId)
+									console.log('🔴 ORIGINAL DSL:', currentSchema)
+	
+									const updatedSchema = updateNodeById(currentSchema, window.SAEDITOR.nodeId, text, className)
+	
+									if (updatedSchema) {
+										console.log('🟢 UPDATED DSL:', updatedSchema)
+										console.log('-----------------------------------')
+	
+										setCurrentSchema(updatedSchema as UIComponent)
+										// Save to database in background without toasts
+										handleSchemaUpdateSilent(updatedSchema as UIComponent, 'node-edit')
+									}
 								}
-							}
-						}}
-					/>
+							}}
+						/>
+				)}
 
 				{/* Messages and SSE Logs */}
 				<div className="flex-1 overflow-y-auto p-6 space-y-4 bg-gradient-to-b from-slate-50/50 to-white/50">
