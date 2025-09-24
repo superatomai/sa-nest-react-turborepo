@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useCallback } from 'react'
+import { useEffect, useState, useMemo, useCallback, useRef } from 'react'
 import { UIComponent, UIComponentSchema } from '../types/dsl'
 import { trpc } from '../utils/trpc'
 import { observer } from 'mobx-react-lite'
@@ -26,7 +26,39 @@ const EditorSSE = () => {
 	// SSE specific states
 	const [isGenerating, setIsGenerating] = useState<boolean>(false);
 	const [sseEvents, setSSEEvents] = useState<Array<{ type: string, message: string, data?: any, timestamp: Date }>>([]);
-	
+	const [llmStream, setLlmStream] = useState<string>('');
+	const [isLlmStreaming, setIsLlmStreaming] = useState<boolean>(false);
+	const [isLlmAccordionOpen, setIsLlmAccordionOpen] = useState<boolean>(true);
+	const llmStreamRef = useRef<HTMLDivElement>(null);
+	const messagesContainerRef = useRef<HTMLDivElement>(null);
+	const abortControllerRef = useRef<AbortController | null>(null);
+
+	// Auto-scroll to bottom of messages
+	const scrollToBottom = () => {
+		setTimeout(() => {
+			if (messagesContainerRef.current) {
+				messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+			}
+		}, 0);
+	};
+
+	// Cancel generation function
+	const cancelGeneration = () => {
+		if (abortControllerRef.current) {
+			abortControllerRef.current.abort();
+			abortControllerRef.current = null;
+		}
+		setIsGenerating(false);
+		setIsLlmStreaming(false);
+		setLlmStream('');
+		setSSEEvents([]);
+		setMessages(prev => [...prev, {
+			role: 'assistant',
+			content: 'Generation cancelled by user.'
+		}]);
+		scrollToBottom();
+	};
+
 	const { uiId } = useParams<{ uiId: string }>();
 
 	const { data: uidata} = trpc.uisGetById.useQuery(
@@ -128,6 +160,10 @@ const EditorSSE = () => {
 		loadExistingUI();
 	}, [projectId, uiId]); // Run when projectId or uiId changes
 
+	// Auto-scroll when messages or SSE events change
+	useEffect(() => {
+		scrollToBottom();
+	}, [messages, sseEvents, isGenerating, isLlmStreaming, llmStream, isLlmAccordionOpen]);
 
 	// Prompt history state
 	const [promptHistory, setPromptHistory] = useState<string[]>([])
@@ -211,9 +247,15 @@ const EditorSSE = () => {
 
 	// SSE UI Generation Function
 	const generateUIWithSSE = async (prompt: string, projectId: string, currentSchema: UIComponent) => {
+		// Create new AbortController for this request
+		abortControllerRef.current = new AbortController();
+
 		setIsGenerating(true);
 		setSSEEvents([]);
-		
+		setLlmStream('');
+		setIsLlmStreaming(false);
+		setIsLlmAccordionOpen(true); // Default to open for new generations
+
 		try {
 			// Use the SSE endpoint from app controller
 			const response = await fetch(`${API_URL}/generate-ui-sse`, {
@@ -225,7 +267,8 @@ const EditorSSE = () => {
 					prompt,
 					projectId,
 					currentSchema
-				})
+				}),
+				signal: abortControllerRef.current.signal
 			});
 
 			if (!response.ok) {
@@ -258,7 +301,31 @@ const EditorSSE = () => {
 								timestamp: new Date()
 							};
 
-							setSSEEvents(prev => [...prev, sseEvent]);
+							// Only add non-LLM streaming events to SSE events display
+							if (eventData.type !== 'llm_stream' && eventData.type !== 'llm_complete') {
+								setSSEEvents(prev => [...prev, sseEvent]);
+							}
+
+							// Handle LLM streaming events
+							if (eventData.type === 'llm_stream') {
+								setIsLlmStreaming(true);
+								const llmContent = eventData.message.replace(/^🤖 /, ''); // Remove emoji prefix
+								setLlmStream(prev => {
+									const newStream = prev + llmContent;
+									// Auto-scroll to bottom after state update
+									setTimeout(() => {
+										if (llmStreamRef.current) {
+											llmStreamRef.current.scrollTop = llmStreamRef.current.scrollHeight;
+										}
+									}, 0);
+									return newStream;
+								});
+							}
+
+							// Handle LLM completion event
+							if (eventData.type === 'llm_complete') {
+								setIsLlmStreaming(false);
+							}
 
 							// Handle completion event
 							if (eventData.type === 'complete' && eventData.data) {
@@ -291,6 +358,7 @@ const EditorSSE = () => {
 										content: 'UI generated successfully with SSE!'
 									}]);
 
+									scrollToBottom();
 									setInput('')
 								}
 							}
@@ -301,6 +369,13 @@ const EditorSSE = () => {
 				}
 			}
 		} catch (error) {
+			// Handle abort error differently from other errors
+			if (error instanceof Error && error.name === 'AbortError') {
+				console.log('Generation was cancelled');
+				// Don't add error messages for cancelled requests
+				return;
+			}
+
 			console.error('SSE Error:', error);
 			setSSEEvents(prev => [...prev, {
 				type: 'error',
@@ -311,8 +386,20 @@ const EditorSSE = () => {
 				role: 'assistant',
 				content: 'Failed to generate UI. Please try again.'
 			}]);
+			scrollToBottom();
 		} finally {
-			setIsGenerating(false);
+			// Clean up abort controller
+			abortControllerRef.current = null;
+
+			// Only set generating to false if it wasn't cancelled (already handled in cancelGeneration)
+			if (isGenerating) {
+				setIsGenerating(false);
+				// Clear LLM stream after a delay to allow user to see the completion
+				setTimeout(() => {
+					setLlmStream('');
+					setIsLlmStreaming(false);
+				}, 3000);
+			}
 		}
 	};
 	
@@ -483,7 +570,8 @@ const EditorSSE = () => {
 		savePromptToHistory(currentInput)
 		
 		setMessages([...messages, { role: 'user', content: input }])
-		
+		scrollToBottom(); // Scroll after adding user message
+
 		// Use SSE UI generation
 		await generateUIWithSSE(currentInput, projectId, currentSchema || default_ui_schema);
 	}
@@ -575,8 +663,9 @@ const EditorSSE = () => {
 						/>
 				)}
 
+
 				{/* Messages and SSE Logs */}
-				<div className="flex-1 overflow-y-auto p-4 space-y-3">
+				<div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-4 space-y-3">
 					{messages.length === 0 && (
 						<div className="text-center py-12">
 							<div className="w-12 h-12 mx-auto bg-gradient-to-br from-teal-100 to-cyan-100 rounded-lg flex items-center justify-center mb-3 shadow-sm">
@@ -599,29 +688,78 @@ const EditorSSE = () => {
 						</div>
 					))}
 
-					{/* SSE Live Logs */}
+					{/* SSE Live Logs with embedded LLM Streaming */}
 					{isGenerating && (
 						<div className="text-left">
 							<div className="bg-gradient-to-r from-teal-50 to-cyan-50 border border-teal-200 rounded-lg p-3 shadow-sm">
-								<div className="flex items-center space-x-2 mb-2">
-									<div className="w-2 h-2 bg-teal-600 rounded-full animate-pulse"></div>
-									<span className="text-teal-700 text-xs font-medium">GENERATING</span>
+								<div className="flex items-center justify-between mb-2">
+									<div className="flex items-center space-x-2">
+										<div className="w-2 h-2 bg-teal-600 rounded-full animate-pulse"></div>
+										<span className="text-teal-700 text-xs font-medium">GENERATING</span>
+									</div>
+									<button
+										onClick={cancelGeneration}
+										className="p-1 text-red-500 hover:text-red-700 hover:bg-red-100 rounded-full transition-colors duration-200"
+										title="Cancel generation"
+									>
+										<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+										</svg>
+									</button>
 								</div>
-								<div className="space-y-1 max-h-24 overflow-y-auto">
-									{sseEvents.map((event, index) => (
-										<div key={index} className="text-xs font-mono text-teal-700">
-											<span className="text-teal-500">
-												{event.timestamp.toLocaleTimeString()}
-											</span>
-											<span className={`ml-2 ${
-												event.type === 'error' ? 'text-red-600' :
-												event.type === 'complete' ? 'text-teal-600' :
-												'text-blue-600'
-											}`}>
-												{event.message}
-											</span>
-										</div>
-									))}
+								<div className="space-y-1">
+									{sseEvents.map((event, index) => {
+										// Check if this is the "Generating UI" event to add accordion
+										const isGeneratingUI = event.message.includes('🎨 Generating UI');
+
+										return (
+											<div key={index}>
+												<div className="text-xs font-mono text-teal-700">
+													<span className="text-teal-500">
+														{event.timestamp.toLocaleTimeString()}
+													</span>
+													<span className={`ml-2 ${
+														event.type === 'error' ? 'text-red-600' :
+														event.type === 'complete' ? 'text-teal-600' :
+														'text-blue-600'
+													}`}>
+														{event.message}
+													</span>
+													{isGeneratingUI && (isLlmStreaming || llmStream) && (
+														<button
+															onClick={() => setIsLlmAccordionOpen(!isLlmAccordionOpen)}
+															className="ml-2 text-blue-500 hover:text-blue-700 transition-colors"
+														>
+															{isLlmAccordionOpen ? '▼' : '▶'}
+														</button>
+													)}
+												</div>
+
+												{/* LLM Streaming Accordion - appears right after "Generating UI" */}
+												{isGeneratingUI && (isLlmStreaming || llmStream) && isLlmAccordionOpen && (
+													<div className="mt-2 ml-4 border-l-2 border-teal-300 pl-3">
+														<div className="bg-black rounded-md p-3 shadow-inner">
+															<div className="flex items-center space-x-2 mb-2">
+																<div className={`w-1.5 h-1.5 ${isLlmStreaming ? 'bg-green-400 animate-pulse' : 'bg-gray-400'} rounded-full`}></div>
+																<span className="text-green-400 text-xs font-medium">
+																	{isLlmStreaming ? 'AI_GENERATING' : 'AI_COMPLETE'}
+																</span>
+															</div>
+															<div
+																ref={llmStreamRef}
+																className="h-48 overflow-y-auto bg-gray-900 rounded border border-gray-700 p-2"
+															>
+																<pre className="text-xs font-mono text-green-400 whitespace-pre-wrap break-words">
+																	{llmStream}
+																	{isLlmStreaming && <span className="inline-block w-1 h-3 bg-green-400 animate-pulse ml-1">|</span>}
+																</pre>
+															</div>
+														</div>
+													</div>
+												)}
+											</div>
+										);
+									})}
 								</div>
 							</div>
 						</div>

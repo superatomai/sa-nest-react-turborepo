@@ -1071,6 +1071,245 @@ ${userMessage}`;
         }
     }
 
+    // Streaming version for OpenRouter
+    async generateUIFromData2WithStreaming(
+        prompt: string,
+        currentUI: UIComponent,
+        projectId?: string,
+        streamCallback?: (chunk: string) => void
+    ) {
+        console.log('🎨 Generating UI for prompt with streaming', prompt);
+        const data = currentUI.data || {};
+
+        try {
+            if (!this.openai) {
+                return { success: false, error: 'OpenAI API key not configured. Please set OPENROUTER_API_KEY environment variable.' };
+            }
+
+            const userMessage = `CURRENT UI COMPONENT TO WORK WITH:
+${JSON.stringify(currentUI, null, 2)}
+
+USER REQUEST: "${prompt}"
+
+Data structure available:
+${JSON.stringify(data, null, 2)}
+
+Available data fields: ${data ? Object.keys(data).join(', ') : 'none'}
+${data && Object.keys(data)[0] ? `Sample item fields: ${Object.keys(data[Object.keys(data)[0]]?.[0] || {}).join(', ')}` : ''}
+
+INSTRUCTIONS:
+Based on the user request above, analyze what needs to be done and decide the best approach:
+
+1. **MODIFY EXISTING**: If the request is to change existing elements (styling, text, structure)
+2. **ADD NEW**: If the request is to add new components or elements to the existing UI
+3. **RESTRUCTURE**: If the request requires reorganizing or changing the layout
+4. **ENHANCE**: If the request is to improve or extend existing functionality
+
+IMPORTANT RULES:
+- Always return a complete UIComponent with the same id as the current one
+- The render property should contain the updated UIElement tree
+- Children can be: strings, objects, arrays, UIElements, or nested UIComponents
+- Preserve existing data bindings unless specifically asked to change them
+- Maintain existing styling patterns unless specifically asked to change them
+- If adding new elements, integrate them naturally into the existing structure
+- Keep the same component-level properties (states, methods, effects) unless asked to modify them
+- Update the data property if new data structure is needed`;
+
+            const stream = await this.openai.chat.completions.create({
+                model: "openai/gpt-5-mini",
+                messages: [
+                    {
+                        role: "system",
+                        content: UI_PROMPT
+                    },
+                    {
+                        role: "user",
+                        content: userMessage
+                    }
+                ],
+                response_format: { type: "json_object" },
+                temperature: 0.4,
+                stream: true
+            });
+
+            let fullResponse = '';
+
+            // Stream the response
+            for await (const chunk of stream) {
+                const content = chunk.choices[0]?.delta?.content || '';
+                if (content) {
+                    fullResponse += content;
+                    // Send streaming updates via callback
+                    if (streamCallback) {
+                        streamCallback(content);
+                    }
+                }
+            }
+
+            if (!fullResponse) {
+                return { success: false, error: 'No response from OpenAI' };
+            }
+
+            let parsed: UIComponent;
+            try {
+                parsed = JSON.parse(fullResponse);
+
+                // Validate against UIComponent schema
+                const validatedResult = UIComponentSchema.safeParse(parsed);
+                if (validatedResult.success) {
+                    console.log('✅ Schema validation passed');
+                    return { success: true, data: validatedResult.data };
+                } else {
+                    console.warn('⚠️  Schema validation failed:');
+                    console.warn('Validation errors:', validatedResult.error.issues.slice(0, 5));
+
+                    // Check specifically for missing IDs
+                    const missingIdErrors = validatedResult.error.issues.filter(issue =>
+                        issue.path.includes('id') || issue.message.includes('id')
+                    );
+
+                    if (missingIdErrors.length > 0) {
+                        console.error('❌ Critical ID validation errors found:', missingIdErrors);
+                        return { success: false, error: 'Missing required ID fields in generated UI. LLM must provide IDs for all elements.' };
+                    }
+
+                    console.warn('Non-critical validation issues found, using generated UI anyway');
+                    return { success: true, data: parsed };
+                }
+
+            } catch (parseErr: any) {
+                console.error("Failed to parse OpenAI response:", parseErr);
+                return { success: false, error: 'Failed to parse OpenAI response: ' + parseErr.message };
+            }
+
+        } catch (error: any) {
+            console.error("Error generating UI with streaming:", error);
+            return { success: false, error: 'Error generating UI with streaming: ' + (error?.message || error) };
+        }
+    }
+
+    // Streaming version for Gemini
+    async generateUIFromData2WithGeminiStreaming(
+        prompt: string,
+        currentUI: UIComponent,
+        projectId?: string,
+        streamCallback?: (chunk: string) => void
+    ) {
+        console.log('🎨 Generating UI for prompt using Gemini with streaming', prompt);
+        const data = currentUI.data || {};
+
+        try {
+            if (!this.gemini) {
+                return { success: false, error: 'Gemini API key not configured. Please set GEMINI_API_KEY environment variable.' };
+            }
+
+            const model = this.gemini.getGenerativeModel({
+                model: "gemini-2.0-flash-exp",
+                generationConfig: {
+                    temperature: 0.4,
+                    maxOutputTokens: 8192,
+                }
+            });
+
+            const userMessage = `CURRENT UI COMPONENT TO WORK WITH:
+${JSON.stringify(currentUI, null, 2)}
+
+USER REQUEST: "${prompt}"
+
+Data structure available:
+${JSON.stringify(data, null, 2)}
+
+Available data fields: ${data ? Object.keys(data).join(', ') : 'none'}
+${data && Object.keys(data)[0] ? `Sample item fields: ${Object.keys(data[Object.keys(data)[0]]?.[0] || {}).join(', ')}` : ''}
+
+INSTRUCTIONS:
+Based on the user request above, analyze what needs to be done and decide the best approach:
+
+1. **MODIFY EXISTING**: If the request is to change existing elements (styling, text, structure)
+2. **ADD NEW**: If the request is to add new components or elements to the existing UI
+3. **RESTRUCTURE**: If the request requires reorganizing or changing the layout
+4. **ENHANCE**: If the request is to improve or extend existing functionality
+
+IMPORTANT RULES:
+- Always return a complete UIComponent with the same id as the current one
+- The render property should contain the updated UIElement tree
+- Children can be: strings, objects, arrays, UIElements, or nested UIComponents
+- Preserve existing data bindings unless specifically asked to change them
+- Maintain existing styling patterns unless specifically asked to change them
+- If adding new elements, integrate them naturally into the existing structure
+- Keep the same component-level properties (states, methods, effects) unless asked to modify them
+- Update the data property if new data structure is needed`;
+
+            const fullPrompt = `${UI_PROMPT}
+
+${userMessage}`;
+
+            // Generate streaming content
+            const result = await model.generateContentStream(fullPrompt);
+            let fullResponse = '';
+
+            // Stream the response
+            for await (const chunk of result.stream) {
+                const chunkText = chunk.text();
+                if (chunkText) {
+                    fullResponse += chunkText;
+                    // Send streaming updates via callback
+                    if (streamCallback) {
+                        streamCallback(chunkText);
+                    }
+                }
+            }
+
+            if (!fullResponse) {
+                return { success: false, error: 'No response from Gemini' };
+            }
+
+            // Clean up any potential markdown formatting
+            let cleanResult = fullResponse;
+            if (cleanResult.includes('```json')) {
+                cleanResult = cleanResult.replace(/```json\n?/g, '').replace(/```\n?$/g, '');
+            } else if (cleanResult.includes('```')) {
+                cleanResult = cleanResult.replace(/```\n?/g, '').replace(/```\n?$/g, '');
+            }
+
+            let parsed: UIComponent;
+            try {
+                parsed = JSON.parse(cleanResult);
+
+                // Validate against UIComponent schema
+                const validatedResult = UIComponentSchema.safeParse(parsed);
+                if (validatedResult.success) {
+                    console.log('✅ Gemini Schema validation passed');
+                    return { success: true, data: validatedResult.data };
+                } else {
+                    console.warn('⚠️ Gemini Schema validation failed:');
+                    console.warn('Validation errors:', validatedResult.error.issues.slice(0, 5));
+
+                    // Check specifically for missing IDs
+                    const missingIdErrors = validatedResult.error.issues.filter(issue =>
+                        issue.path.includes('id') || issue.message.includes('id')
+                    );
+
+                    if (missingIdErrors.length > 0) {
+                        console.error('❌ Critical ID validation errors found:', missingIdErrors);
+                        return { success: false, error: 'Missing required ID fields in generated UI. Gemini must provide IDs for all elements.' };
+                    }
+
+                    console.warn('Non-critical validation issues found, using generated UI anyway');
+                    return { success: true, data: parsed };
+                }
+
+            } catch (parseErr: any) {
+                console.error("Failed to parse Gemini response:", parseErr);
+                return { success: false, error: 'Failed to parse Gemini response: ' + parseErr.message };
+            }
+
+        } catch (error: any) {
+            console.error("Error generating UI with Gemini streaming:", error);
+            return { success: false, error: 'Error generating UI with Gemini streaming: ' + (error?.message || error) };
+        }
+    }
+
     // Smart method that uses the configured LLM provider
     async generateUIFromData2Smart(
         prompt: string,
@@ -1097,12 +1336,13 @@ ${userMessage}`;
         }
     }
 
-    // Method to temporarily switch provider for a single request
+    // Method to temporarily switch provider for a single request with streaming
     async generateUIFromData2WithProvider(
         prompt: string,
         currentUI: UIComponent,
         provider: T_LLM_PROVIDER,
         projectId?: string,
+        streamCallback?: (chunk: string) => void
     ) {
         console.log(`🔄 Temporarily switching to ${provider} provider`);
 
@@ -1110,12 +1350,12 @@ ${userMessage}`;
             if (!this.gemini) {
                 return { success: false, error: 'Gemini not configured. Please set GEMINI_API_KEY environment variable.' };
             }
-            return this.generateUIFromData2WithGemini(prompt, currentUI, projectId);
+            return this.generateUIFromData2WithGeminiStreaming(prompt, currentUI, projectId, streamCallback);
         } else {
             if (!this.openai) {
                 return { success: false, error: 'OpenRouter not configured. Please set OPENROUTER_API_KEY environment variable.' };
             }
-            return this.generateUIFromData2(prompt, currentUI, projectId);
+            return this.generateUIFromData2WithStreaming(prompt, currentUI, projectId, streamCallback);
         }
     }
 

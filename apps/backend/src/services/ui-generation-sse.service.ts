@@ -180,7 +180,7 @@ export class UiGenerationSSEService {
 				data = currentSchema.data || {};
 			}
 
-			// Step 4: Generate UI schema from data
+			// Step 4: Generate UI schema from data with streaming
 			sseController.sendMessage('status', '🎨 Generating UI...');
 
 			// Update currentSchema with the fetched data
@@ -189,12 +189,34 @@ export class UiGenerationSSEService {
 				data: data
 			};
 
+			// Stream LLM generation to frontend
+			let llmBuffer = '';
+			let lastSentLength = 0;
+			const streamCallback = (chunk: string) => {
+				llmBuffer += chunk;
+
+				// Send incremental updates to avoid overwhelming the frontend
+				if (llmBuffer.length - lastSentLength > 50) { // Send every ~50 characters
+					sseController.sendMessage('llm_stream', `🤖 ${llmBuffer.slice(lastSentLength)}`);
+					lastSentLength = llmBuffer.length;
+				}
+			};
+
 			const schema_res:any = await this.llmService.generateUIFromData2WithProvider(
 				prompt,
 				updatedCurrentSchema,
 				provider,
-				projectId
+				projectId,
+				streamCallback
 			);
+
+			// Send any remaining buffer content
+			if (llmBuffer.length > lastSentLength) {
+				sseController.sendMessage('llm_stream', `🤖 ${llmBuffer.slice(lastSentLength)}`);
+			}
+
+			// Send completion signal for LLM streaming
+			sseController.sendMessage('llm_complete', '✅ LLM generation complete');
 
 			if(!schema_res.success || !schema_res.data){
 				sseController.sendError('Failed to generate UI', {
