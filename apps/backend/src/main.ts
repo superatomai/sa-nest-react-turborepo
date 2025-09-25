@@ -27,7 +27,7 @@ async function bootstrap() {
   app.use(clerkMiddleware());
   app.use('/trpc', trpcMiddleware);
 
-  const port: number = parseInt( '3000', 10);
+  const port: number = parseInt(process.env.PORT ?? '3000', 10);
   
   await app.listen(port);
   
