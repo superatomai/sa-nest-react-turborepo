@@ -1,6 +1,5 @@
 import React from 'react'
 import { Icon } from '@iconify/react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import EndpointBadge from './EndpointBadge'
@@ -34,27 +33,27 @@ interface EndpointDetailsProps {
 const EndpointDetails: React.FC<EndpointDetailsProps> = ({ endpoint }) => {
   if (!endpoint) {
     return (
-      <Card className="lg:col-span-2">
-        <CardContent className="flex flex-col items-center justify-center py-12">
-          <Icon icon="solar:code-square-linear" className="h-16 w-16 text-muted-foreground mb-4" />
-          <p className="text-muted-foreground">Select an endpoint to view details</p>
-        </CardContent>
-      </Card>
+      <div className="h-96 flex items-center justify-center bg-white">
+        <div className="text-center">
+          <Icon icon="solar:code-square-linear" className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+          <p className="text-gray-500 text-sm">Select an endpoint to view details</p>
+        </div>
+      </div>
     )
   }
 
   return (
-    <Card className="lg:col-span-2">
-      <CardHeader>
+    <div className="bg-white">
+      <div className="px-6 py-4 border-b bg-gray-50/50">
         <div className="flex items-start gap-3">
           <EndpointBadge method={endpoint.method} />
           <div className="flex-1">
-            <CardTitle className="font-mono text-lg">
+            <h3 className="font-mono text-base font-semibold">
               {endpoint.path}
-            </CardTitle>
-            <CardDescription className="mt-2">
+            </h3>
+            <p className="text-sm text-gray-600 mt-1">
               {endpoint.summary}
-            </CardDescription>
+            </p>
             {endpoint.description && (
               <p className="text-sm text-muted-foreground mt-2">
                 {endpoint.description}
@@ -71,8 +70,8 @@ const EndpointDetails: React.FC<EndpointDetailsProps> = ({ endpoint }) => {
             </Badge>
           )}
         </div>
-      </CardHeader>
-      <CardContent>
+      </div>
+      <div className="px-6 py-4">
         <Tabs defaultValue="request" className="w-full">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="request">Request</TabsTrigger>
@@ -184,8 +183,8 @@ const EndpointDetails: React.FC<EndpointDetailsProps> = ({ endpoint }) => {
             )}
           </TabsContent>
         </Tabs>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   )
 }
 

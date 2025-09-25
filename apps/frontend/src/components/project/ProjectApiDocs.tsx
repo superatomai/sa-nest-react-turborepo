@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react'
+import { ScrollArea } from '@/components/ui/scroll-area'
 import { trpc } from '@/utils'
 import LoadingState from './project-documentation/LoadingState'
 import ErrorState from './project-documentation/ErrorState'
@@ -70,7 +71,10 @@ const ProjectApiDocs: React.FC<ProjectApiDocsProps> = ({ projectId }) => {
     return groups
   }, [apiDocs])
 
-  // Initialize all sections as expanded when groupedEndpoints change
+  // Calculate total endpoints
+  const totalEndpoints = apiDocs?.apis ? Object.keys(apiDocs.apis).length : 0
+
+  // Initialize all sections as expanded and auto-select first endpoint when groupedEndpoints change
   useEffect(() => {
     if (Object.keys(groupedEndpoints).length > 0) {
       const initialExpanded: Record<string, boolean> = {}
@@ -78,8 +82,16 @@ const ProjectApiDocs: React.FC<ProjectApiDocsProps> = ({ projectId }) => {
         initialExpanded[group] = true
       })
       setExpandedSections(initialExpanded)
+
+      // Auto-select the first endpoint if none is selected
+      if (!selectedEndpoint && apiDocs?.apis) {
+        const firstEndpointKey = Object.keys(apiDocs.apis)[0]
+        if (firstEndpointKey) {
+          setSelectedEndpoint(firstEndpointKey)
+        }
+      }
     }
-  }, [groupedEndpoints])
+  }, [groupedEndpoints, selectedEndpoint, apiDocs])
 
 
   // Toggle section expansion
@@ -108,22 +120,37 @@ const ProjectApiDocs: React.FC<ProjectApiDocsProps> = ({ projectId }) => {
   const selectedEndpointData = selectedEndpoint ? apiDocs.apis[selectedEndpoint] : null
 
   return (
-    <div className="flex flex-col space-y-6 p-5 h-full">
-      <ApiDocsHeader
-        version={apiDocs.version}
-        baseUrl={apiDocs.baseUrl}
-      />
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full">
-        <EndpointsList
-          groupedEndpoints={groupedEndpoints}
-          expandedSections={expandedSections}
-          selectedEndpoint={selectedEndpoint}
-          onToggleSection={toggleSection}
-          onEndpointSelect={setSelectedEndpoint}
+    <div className="flex flex-col h-full">
+      <div className="flex-shrink-0 px-6 py-4 bg-gradient-to-r from-gray-50 to-white rounded-t-xl border-b">
+        <ApiDocsHeader
+          version={apiDocs.version}
+          baseUrl={apiDocs.baseUrl}
+          totalEndpoints={totalEndpoints}
         />
+      </div>
 
-        <EndpointDetails endpoint={selectedEndpointData} />
+      <div className="flex-1 grid grid-cols-1 lg:grid-cols-4 gap-0 min-h-0">
+        <div className="border-r flex flex-col min-h-0">
+          <ScrollArea className="h-full">
+            <div className="p-0">
+              <EndpointsList
+                groupedEndpoints={groupedEndpoints}
+                expandedSections={expandedSections}
+                selectedEndpoint={selectedEndpoint}
+                onToggleSection={toggleSection}
+                onEndpointSelect={setSelectedEndpoint}
+              />
+            </div>
+          </ScrollArea>
+        </div>
+
+        <div className="lg:col-span-3 flex flex-col min-h-0">
+          <ScrollArea className="h-full">
+            <div className="p-0">
+              <EndpointDetails endpoint={selectedEndpointData} />
+            </div>
+          </ScrollArea>
+        </div>
       </div>
     </div>
   )
