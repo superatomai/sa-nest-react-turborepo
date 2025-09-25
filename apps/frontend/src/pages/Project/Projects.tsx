@@ -41,6 +41,11 @@ const Projects = () => {
 	const isLoadingMore = projectsQuery.isFetching && page > 0;
 	const hasNoProjects = projectStore.projects.length === 0 && projectStore.hasInitialized && !projectsQuery.isLoading;
 
+	// Clear selected project when navigating to /projects page
+	useEffect(() => {
+		projectStore.selectProject(undefined);
+	}, []);
+
 	useEffect(() => {
 		if (projectsQuery.data?.projects) {
 			if (page === 0) {
@@ -107,13 +112,16 @@ const Projects = () => {
 
 					<div className="flex items-center justify-between mb-5">
 						<div className="flex gap-5">
-							<div className="flex items-center relative">
-								<h1 className="text-2xl font-semibold text-gray-900">
+							<div className="flex items-center gap-3">
+								<h1 className="text-2xl font-semibold text-gray-900 leading-none">
 									Your Projects
 								</h1>
-								<span className="bg-gray-100 text-blue-700 px-2 rounded-md text-sm font-medium absolute -right-7 -top-1">
-									{projectStore.totalProjects}
-								</span>
+								<div className="flex items-center gap-2">
+									<span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
+									<span className="text-sm font-medium text-gray-500">
+										{projectStore.totalProjects} {projectStore.totalProjects === 1 ? 'project' : 'projects'}
+									</span>
+								</div>
 							</div>
 							<ToggleListGrid />
 						</div>
@@ -145,7 +153,7 @@ const Projects = () => {
 
 			{/* Conditional Content: No Projects Found vs Projects Grid */}
 			{hasNoProjects ? (
-				<div className="mx-4">
+				<div className="mx-4 flex-1 flex flex-col" style={{ height: 'calc(100vh - 240px)' }}>
 					<NoProjectsFound orgId={orgId} />
 				</div>
 			) : (

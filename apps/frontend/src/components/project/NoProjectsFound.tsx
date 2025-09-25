@@ -6,8 +6,8 @@ type Props = {
 
 const NoProjectsFound = ({ orgId }: Props) => {
     return (
-        <div className="flex flex-1 items-center justify-center h-full">
-            <div className="flex flex-col items-center text-center justify-center h-full gap-12">
+        <div className="flex flex-1 items-center justify-center h-full min-h-full">
+            <div className="flex flex-col items-center text-center justify-center gap-12">
                 {/* Text */}
                 <div>
                     <h2 className="text-xl font-semibold text-gray-800">No projects found</h2>

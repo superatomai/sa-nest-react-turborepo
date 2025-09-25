@@ -1,4 +1,4 @@
-import { Routes, Route, useLocation, Navigate, useParams } from "react-router-dom";
+import { Routes, Route, useLocation, Navigate, useParams, useNavigate } from "react-router-dom";
 import {
   OrganizationProfile,
   useAuth,
@@ -14,9 +14,11 @@ import  AppSidebar  from "./components/Sidebar";
 import { SidebarProvider } from "./components/ui/sidebar";
 import { ProtectedRoute } from "./ProtectedRoute";
 import CreateOrganizationWrapper from "./components/CreateOrganization";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useOrganization } from "@clerk/clerk-react";
 import orgStore from "./stores/mobx_org_store";
+import { projectStore } from "./stores/mobx_project_store";
+import { motion, AnimatePresence } from "framer-motion";
 import SignUpPage from "./pages/SignUp";
 import { Toaster } from "react-hot-toast";
 import ProjApiKeys from "./pages/Project/ProjApiKeys";
@@ -29,17 +31,31 @@ export function App() {
   const { isSignedIn, isLoaded: authLoaded } = useAuth();
   const location = useLocation();
   const params = useParams();
+  const navigate = useNavigate();
+  const prevOrgIdRef = useRef<string | null>(null);
 
   useEffect(() => {
-  if (orgLoaded) {
-    if (organization?.id) {
-      orgStore.setOrgId(organization.id);
+    if (orgLoaded) {
+      const currentOrgId = organization?.id || null;
+      const previousOrgId = prevOrgIdRef.current;
+
+      // Update the org store
+      if (organization?.id) {
+        orgStore.setOrgId(organization.id);
+      } else if (!organization) {
+        orgStore.setOrgId(null);
+      }
+
+      // If organization changed (not initial load) and user is signed in, reset project store and navigate to /projects
+      if (previousOrgId !== null && previousOrgId !== currentOrgId && isSignedIn) {
+        projectStore.resetPagination();
+        navigate('/projects');
+      }
+
+      // Update the ref to track the current org ID
+      prevOrgIdRef.current = currentOrgId;
     }
-    else if (!organization) {
-      orgStore.setOrgId(null);
-    }
-  }
-}, [orgLoaded, organization?.id, params]);
+  }, [orgLoaded, organization?.id, navigate, isSignedIn]);
 
   const hideSidebar = location.pathname.startsWith("/editor");
   const isPublicRoute = [
@@ -77,7 +93,14 @@ export function App() {
     <SidebarProvider className="overflow-hidden">
       <div className="">{!hideSidebar && <AppSidebar />}</div>
       {/* {!hideNavbar && <Navbar />} */}
-      <div className="h-screen overflow-auto w-full flex-1">
+      <motion.div
+        key={location.pathname}
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -10 }}
+        transition={{ duration: 0.15, ease: "easeOut" }}
+        className="h-screen overflow-auto w-full flex-1"
+      >
         <Routes>
           <Route path="/login" element={<Navigate to="/projects" replace />} />
           <Route path="/sign-up" element={<Navigate to="/projects" replace />} />
@@ -176,7 +199,7 @@ export function App() {
             }
           />
         </Routes>
-      </div>
+      </motion.div>
       <Toaster
         position="top-center"
         reverseOrder={false}

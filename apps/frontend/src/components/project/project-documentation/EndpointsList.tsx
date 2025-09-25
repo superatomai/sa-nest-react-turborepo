@@ -31,7 +31,7 @@ const EndpointsList: React.FC<EndpointsListProps> = ({
   )
 
   return (
-    <div className="bg-gray-50/50 px-4 py-3 space-y-2">
+    <div className="bg-gray-50/50 pr-4 py-3 space-y-2">
       {Object.entries(groupedEndpoints).map(([group, endpoints]) => (
         <EndpointGroup
           key={group}

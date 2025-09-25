@@ -39,15 +39,13 @@ function AllProjectKeys({ projectId, selectedProject }: Props) {
       </div>
 
       {/* Content Area - Conditional based on state */}
-      <div className="mt-5">
+      <div className="mt-6">
         {isLoading ? (
-          <div className="flex items-center justify-center py-8 h-[250px]">
+          <div className="flex items-center justify-center min-h-[250px]">
             <div className="text-center">
-              <div className="text-lg text-gray-600 mb-2 flex flex-col">
+              <div className="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-4"></div>
+              <div className="text-base text-gray-600 mb-2">
                 Loading API Keys...
-                <span>
-                  <Icon icon="eos-icons:loading" />
-                </span>
               </div>
               <div className="text-sm text-gray-500">
                 Fetching API keys for {selectedProject.name}
