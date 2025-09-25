@@ -299,48 +299,6 @@ const mockRouter = t.router({
       apiDocs: z.any(),
     }))
     .mutation(() => null),
-
-  // WebSocket Logs - Create
-  createWsLog: t.procedure
-    .input(z.object({
-      projectId: z.number(),
-      message: z.string().optional(),
-      timestamp: z.union([z.string(), z.number(), z.date()]),
-      log: z.any(),
-    }))
-    .mutation(() => null),
-
-  // WebSocket Logs - Get paginated logs for project
-  getWsLogsPaginated: t.procedure
-    .input(z.object({
-      projectId: z.number(),
-      page: z.number().min(1).default(1),
-      limit: z.number().min(1).max(50).default(8),
-    }))
-    .query(() => null),
-
-  // WebSocket Logs - Get latest logs for project
-  getLatestWsLogs: t.procedure
-    .input(z.object({
-      projectId: z.number(),
-      limit: z.number().min(1).max(50).default(8),
-    }))
-    .query(() => null),
-
-  // WebSocket Logs - Delete all logs for project
-  deleteWsLogsByProject: t.procedure
-    .input(z.object({
-      projectId: z.number(),
-    }))
-    .mutation(() => null),
-
-  // WebSocket Logs - Delete old logs
-  deleteOldWsLogs: t.procedure
-    .input(z.object({
-      projectId: z.number(),
-      daysToKeep: z.number().min(1).default(7),
-    }))
-    .mutation(() => null),
 });
 
 export type AppRouter = typeof mockRouter;

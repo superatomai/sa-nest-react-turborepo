@@ -26,10 +26,12 @@ async function bootstrap() {
   
   app.use(clerkMiddleware());
   app.use('/trpc', trpcMiddleware);
+
+  const port: number = parseInt( '3000', 10);
   
-  await app.listen(3000);
+  await app.listen(port);
   
-  console.log('🎉 Server is running on http://localhost:3000');
+  console.log('🎉 Server is running on http://localhost:'+port);
 }
 bootstrap().catch(err => {
   console.error('❌ Failed to start server:', err);

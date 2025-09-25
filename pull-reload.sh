@@ -2,9 +2,13 @@
 
 set -e
 
-echo "Pulling latest code from origin main..."
-if ! git pull origin main; then
-    echo "Error: Failed to pull from origin main"
+# Get current branch name
+CURRENT_BRANCH=$(git branch --show-current)
+echo "Current branch: $CURRENT_BRANCH"
+
+echo "Pulling latest code from origin..."
+if ! git pull; then
+    echo "Error: Failed to pull from current branch ($CURRENT_BRANCH)"
     exit 1
 fi
 

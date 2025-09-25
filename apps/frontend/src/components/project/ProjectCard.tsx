@@ -85,18 +85,21 @@ const ProjectCard = observer(({ ProjectDetails, selected, onSelect }: ProjectCar
           </div>
         </CardHeader>
 
-        <CardContent className="pb-0 pt-1 px-0 m-0 flex-1 flex flex-col justify-between">
+        <CardContent className="pb-0 pt-2 px-0 m-0 flex-1 flex flex-col justify-between">
           <div className="flex justify-between">
             <Badge
               variant="secondary"
-              className={`text-xs font-medium px-2 py-1 flex items-center gap-1 ${
+              className={`text-xs font-medium px-2 py-1 flex leading-none  rounded-md outline  gap-1 ${
                 selected
                   ? "bg-blue-100 text-blue-800 border-blue-200"
                   : "bg-gray-100 text-gray-700 group-hover:bg-blue-100 group-hover:text-blue-700"
               }`}
             >
-              <Icon icon={"fluent:card-ui-24-regular"} className="w-3 h-3" />
-              {ProjectDetails.uis_count || 0} {Number(ProjectDetails.uis_count || 0) === 1 ? 'UI' : 'UIs'}
+              
+                <Icon icon={"fluent:card-ui-24-regular"} className="w-3 h-3" />
+                {ProjectDetails.uis_count || 0} {Number(ProjectDetails.uis_count || 0) === 1 ? 'UI' : 'UIs'}
+         
+                
             </Badge>
 
             {/* <Badge

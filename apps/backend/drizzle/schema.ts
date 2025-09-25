@@ -103,23 +103,6 @@ export const projectKeys = pgTable("project_keys", {
 		}).onUpdate("cascade").onDelete("restrict"),
 ]);
 
-export const wsLogs = pgTable("ws_logs", {
-	id: serial().primaryKey().notNull(),
-	projectId: integer("project_id").notNull(),
-	createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).default(sql`CURRENT_TIMESTAMP`),
-	message: text(),
-	timestamp: timestamp("timestamp", { withTimezone: true, mode: "string" }).notNull(),
-	log: jsonb("log").$type<any> (),
-}, (table) => [
-	foreignKey({
-			columns: [table.projectId],
-			foreignColumns: [projects.id],
-			name: "ws_logs_project_id_fkey"
-		}).onUpdate("cascade").onDelete("restrict"),
-]
-
-)
-
 
 export const designSystem = pgTable("design_system", {
     id: serial('id').primaryKey().notNull(),

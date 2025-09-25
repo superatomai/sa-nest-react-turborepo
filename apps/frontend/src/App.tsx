@@ -1,4 +1,4 @@
-import { Routes, Route, useLocation, Navigate, useParams, useNavigate } from "react-router-dom";
+import { Routes, Route, useLocation, Navigate, useParams, useNavigate, matchPath, useMatch } from "react-router-dom";
 import {
   OrganizationProfile,
   useAuth,
@@ -57,7 +57,13 @@ export function App() {
     }
   }, [orgLoaded, organization?.id, navigate, isSignedIn]);
 
-  const hideSidebar = location.pathname.startsWith("/editor");
+  const match = useMatch("/projects/:projectId/:maybeUiId");
+  const hideSidebar =
+    match &&
+    !["api-keys", "documentation", "design-system", "project-logs"].includes(
+      match.params.maybeUiId || ""
+    );
+
   const isPublicRoute = [
     "/login",
     "/sign-up",
@@ -171,7 +177,7 @@ export function App() {
           />
 
           <Route
-            path="/editor/:uiId"
+            path="/projects/:projectId/:uiId"
             element={
               <ProtectedRoute>
                 <Editor />

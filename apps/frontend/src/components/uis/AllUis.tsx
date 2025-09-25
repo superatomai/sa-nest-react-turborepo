@@ -30,7 +30,7 @@ function AllUis({ projectId, selectedProject }: Props) {
   return (
     <div className="flex flex-col px-4 pb-5">
       {/* Project Header - Always Visible */}
-      <div className="mt-4 p-4 border border-gray-200 rounded-lg bg-white shadow-sm">
+      <div className="mt-16 p-4 border border-gray-200 rounded-lg bg-white shadow-sm">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-gradient-to-r from-[#044ACC] to-[#57C785] rounded-lg flex items-center justify-center">

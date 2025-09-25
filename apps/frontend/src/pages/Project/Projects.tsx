@@ -114,14 +114,8 @@ const Projects = () => {
 						<div className="flex gap-5">
 							<div className="flex items-center gap-3">
 								<h1 className="text-2xl font-semibold text-gray-900 leading-none">
-									Your Projects
+									<span className="text-blue-600 font-bold">{projectStore.totalProjects}</span> {projectStore.totalProjects === 1 ? 'Project' : 'Projects'}
 								</h1>
-								<div className="flex items-center gap-2">
-									<span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
-									<span className="text-sm font-medium text-gray-500">
-										{projectStore.totalProjects} {projectStore.totalProjects === 1 ? 'project' : 'projects'}
-									</span>
-								</div>
 							</div>
 							<ToggleListGrid />
 						</div>
