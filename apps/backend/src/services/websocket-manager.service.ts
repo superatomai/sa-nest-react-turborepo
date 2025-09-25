@@ -78,7 +78,7 @@ class WebSocketRuntimeClient {
 					this.reconnectAttempts = 0;
 					
 					// Start periodic ping to keep connection alive
-					this.startPingInterval();
+					// this.startPingInterval();
 					
 					resolve();
 				});
