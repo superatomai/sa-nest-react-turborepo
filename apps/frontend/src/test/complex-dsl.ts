@@ -1,304 +1,6 @@
 export const complex_layout_dsl = {
   id: 'dashboard-app',
   name: 'Dashboard with Sidebar and Forms',
-  data: {
-    currentUser: { name: 'John Doe', role: 'Admin' },
-    dashboardStats: { users: 1250, projects: 42, revenue: 98500 },
-    formData: {
-      profile: { firstName: '', lastName: '', email: '', phone: '' },
-      settings: { theme: 'light', notifications: true, language: 'en' }
-    },
-    // AG Grid data
-    gridData: {
-      columnDefs: [
-        { headerName: 'ID', field: 'id', width: 70, sortable: true },
-        { headerName: 'Name', field: 'name', width: 150, sortable: true, filter: true },
-        { headerName: 'Email', field: 'email', width: 200, sortable: true, filter: true },
-        { headerName: 'Department', field: 'department', width: 120, sortable: true, filter: true },
-        { headerName: 'Salary', field: 'salary', width: 100, sortable: true, filter: 'agNumberColumnFilter', valueFormatter: 'params.value.toLocaleString()' },
-        { headerName: 'Start Date', field: 'startDate', width: 120, sortable: true, filter: 'agDateColumnFilter' }
-      ],
-      rowData: [
-        { id: 1, name: 'John Smith', email: 'john.smith@company.com', department: 'Engineering', salary: 75000, startDate: '2022-01-15' },
-        { id: 2, name: 'Sarah Johnson', email: 'sarah.johnson@company.com', department: 'Marketing', salary: 65000, startDate: '2021-08-20' },
-        { id: 3, name: 'Mike Davis', email: 'mike.davis@company.com', department: 'Sales', salary: 70000, startDate: '2022-03-10' },
-        { id: 4, name: 'Emily Chen', email: 'emily.chen@company.com', department: 'HR', salary: 68000, startDate: '2021-11-05' },
-        { id: 5, name: 'David Wilson', email: 'david.wilson@company.com', department: 'Engineering', salary: 80000, startDate: '2022-02-28' },
-        { id: 6, name: 'Lisa Anderson', email: 'lisa.anderson@company.com', department: 'Finance', salary: 72000, startDate: '2021-09-12' }
-      ],
-      defaultColDef: {
-        resizable: true,
-        sortable: true,
-        filter: true
-      },
-      pagination: true,
-      paginationPageSize: 10
-    },
-    // ECharts data
-    chartData: {
-      salesChart: {
-        title: { text: 'Monthly Sales Report', left: 'center' },
-        tooltip: { trigger: 'axis' },
-        legend: { data: ['Revenue', 'Profit'], bottom: 0 },
-        xAxis: {
-          type: 'category',
-          data: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-        },
-        yAxis: { type: 'value', name: 'Amount ($)' },
-        series: [
-          {
-            name: 'Revenue',
-            type: 'bar',
-            data: [65000, 70000, 68000, 72000, 75000, 78000, 82000, 85000, 88000, 90000, 92000, 95000],
-            itemStyle: { color: '#3b82f6' }
-          },
-          {
-            name: 'Profit',
-            type: 'line',
-            data: [12000, 15000, 13000, 16000, 18000, 20000, 22000, 24000, 26000, 28000, 30000, 32000],
-            itemStyle: { color: '#10b981' }
-          }
-        ]
-      },
-      pieChart: {
-        title: { text: 'Department Distribution', left: 'center' },
-        tooltip: { trigger: 'item' },
-        series: [{
-          name: 'Employees',
-          type: 'pie',
-          radius: '60%',
-          center: ['50%', '60%'],
-          data: [
-            { value: 35, name: 'Engineering' },
-            { value: 25, name: 'Sales' },
-            { value: 20, name: 'Marketing' },
-            { value: 15, name: 'HR' },
-            { value: 10, name: 'Finance' }
-          ],
-          emphasis: {
-            itemStyle: {
-              shadowBlur: 10,
-              shadowOffsetX: 0,
-              shadowColor: 'rgba(0, 0, 0, 0.5)'
-            }
-          }
-        }]
-      }
-    },
-    // Leaflet Map data
-    mapData: {
-      center: [40.7128, -74.0060], // New York City
-      zoom: 10,
-      markers: [
-        {
-          position: [40.7589, -73.9851],
-          popup: 'Times Square Office',
-          tooltip: 'Main Office - 500 employees'
-        },
-        {
-          position: [40.7505, -73.9934],
-          popup: 'Manhattan Branch',
-          tooltip: 'Branch Office - 150 employees'
-        },
-        {
-          position: [40.6892, -74.0445],
-          popup: 'Brooklyn Office',
-          tooltip: 'Development Center - 200 employees'
-        },
-        {
-          position: [40.7831, -73.9712],
-          popup: 'Central Park Cafe',
-          tooltip: 'Meeting Point - Casual meetings'
-        }
-      ],
-      tileLayer: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-    },
-    // Markdown data
-    markdownData: {
-      content: `# Company Documentation
-
-## About Our Organization
-
-Welcome to **SuperAtom Technologies**, a cutting-edge software development company specializing in innovative solutions for modern businesses.
-
-### Our Mission
-> To democratize technology and make powerful tools accessible to everyone through intuitive user interfaces and robust backend systems.
-
-### Key Features
-
-#### 🚀 **Performance**
-- Lightning-fast response times
-- Scalable architecture
-- Optimized for high-traffic applications
-
-#### 🛡️ **Security**
-- End-to-end encryption
-- Multi-factor authentication
-- Regular security audits
-
-#### 🎨 **User Experience**
-- Intuitive design principles
-- Responsive across all devices
-- Accessibility-first approach
-
-### Technical Specifications
-
-| Component | Technology | Version |
-|-----------|------------|---------|
-| Frontend | React + TypeScript | 18.x |
-| Backend | Node.js + Express | 20.x |
-| Database | PostgreSQL | 15.x |
-| Deployment | Docker + Kubernetes | Latest |
-
-### Code Example
-
-Here's how you can integrate our API:
-
-\`\`\`javascript
-// Initialize the SuperAtom SDK
-import { SuperAtom } from '@superatom/sdk';
-
-const client = new SuperAtom({
-  apiKey: 'your-api-key',
-  environment: 'production'
-});
-
-// Create a new user interface
-const ui = await client.ui.create({
-  name: 'Dashboard',
-  type: 'dashboard',
-  components: ['chart', 'table', 'map']
-});
-
-console.log('UI created:', ui.id);
-\`\`\`
-
-### Mathematical Formulas
-
-Our performance optimization uses advanced algorithms:
-
-$$E = mc^2$$
-
-$$f(x) = \\int_{-\\infty}^{\\infty} \\hat f(\\xi)\\,e^{2 \\pi i \\xi x} \\,d\\xi$$
-
-### Contact Information
-
-- 📧 **Email**: [info@superatom.tech](mailto:info@superatom.tech)
-- 🌐 **Website**: [https://superatom.tech](https://superatom.tech)
-- 📱 **Phone**: +1 (555) 123-4567
-- 📍 **Address**: 123 Tech Street, Innovation City, IC 12345
-
----
-
-*Last updated: ${new Date().toLocaleDateString()}*
-`
-    },
-    // Three.js Scene data
-    threeSceneData: {
-      scene: {
-        background: '#1a1a2e',
-        fog: {
-          color: '#1a1a2e',
-          near: 10,
-          far: 100
-        }
-      },
-      camera: {
-        type: 'PerspectiveCamera',
-        fov: 75,
-        position: [0, 0, 5],
-        lookAt: [0, 0, 0]
-      },
-      lights: [
-        {
-          type: 'AmbientLight',
-          color: '#404040',
-          intensity: 0.4
-        },
-        {
-          type: 'DirectionalLight',
-          color: '#ffffff',
-          intensity: 1,
-          position: [5, 5, 5],
-          castShadow: true
-        }
-      ],
-      objects: [
-        {
-          type: 'Mesh',
-          geometry: {
-            type: 'BoxGeometry',
-            args: [1, 1, 1]
-          },
-          material: {
-            type: 'MeshLambertMaterial',
-            color: '#00ff88',
-            transparent: true,
-            opacity: 0.8
-          },
-          position: [-2, 0, 0],
-          rotation: [0, 0, 0],
-          animation: {
-            type: 'rotation',
-            axis: 'y',
-            speed: 0.01
-          }
-        },
-        {
-          type: 'Mesh',
-          geometry: {
-            type: 'SphereGeometry',
-            args: [0.8, 32, 32]
-          },
-          material: {
-            type: 'MeshPhongMaterial',
-            color: '#ff4444',
-            shininess: 100
-          },
-          position: [0, 0, 0],
-          animation: {
-            type: 'position',
-            axis: 'y',
-            amplitude: 1,
-            speed: 0.02
-          }
-        },
-        {
-          type: 'Mesh',
-          geometry: {
-            type: 'ConeGeometry',
-            args: [0.6, 1.5, 8]
-          },
-          material: {
-            type: 'MeshStandardMaterial',
-            color: '#4444ff',
-            metalness: 0.5,
-            roughness: 0.1
-          },
-          position: [2, 0, 0],
-          rotation: [0, 0, Math.PI / 6],
-          animation: {
-            type: 'rotation',
-            axis: 'z',
-            speed: -0.015
-          }
-        }
-      ],
-      controls: {
-        type: 'OrbitControls',
-        enabled: true,
-        autoRotate: false,
-        enableDamping: true,
-        dampingFactor: 0.05
-      },
-      renderer: {
-        antialias: true,
-        shadowMap: true,
-        shadowMapType: 'PCFSoftShadowMap'
-      }
-    }
-  },
   render: {
     id: 'app-container',
     type: 'div',
@@ -1484,6 +1186,319 @@ $$f(x) = \\int_{-\\infty}^{\\infty} \\hat f(\\xi)\\,e^{2 \\pi i \\xi x} \\,d\\xi
                 ]
               },
 
+              // Additional Native Components Section
+              {
+                id: 'additional-native-section',
+                type: 'div',
+                props: {
+                  className: 'mt-8'
+                },
+                children: [
+                  {
+                    id: 'additional-native-header',
+                    type: 'div',
+                    props: {
+                      className: 'mb-6'
+                    },
+                    children: [
+                      {
+                        id: 'additional-native-title',
+                        type: 'h2',
+                        props: {
+                          className: 'text-2xl font-bold text-gray-900 mb-2'
+                        },
+                        children: 'Additional Native Components'
+                      },
+                      {
+                        id: 'additional-native-description',
+                        type: 'p',
+                        props: {
+                          className: 'text-gray-600'
+                        },
+                        children: 'Advanced spreadsheet, mapping, PDF viewing, and network visualization components'
+                      }
+                    ]
+                  },
+
+                  // Spreadsheet Components Row
+                  {
+                    id: 'spreadsheet-components-row',
+                    type: 'div',
+                    props: {
+                      className: 'grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8'
+                    },
+                    children: [
+                      // HandsOnTable Component
+                      {
+                        id: 'handson-table-container',
+                        type: 'div',
+                        props: {
+                          className: 'bg-white rounded-lg shadow-sm border border-gray-200'
+                        },
+                        children: [
+                          {
+                            id: 'handson-table-header',
+                            type: 'div',
+                            props: {
+                              className: 'px-6 py-4 border-b border-gray-200'
+                            },
+                            children: [
+                              {
+                                id: 'handson-table-title',
+                                type: 'h3',
+                                props: {
+                                  className: 'text-lg font-semibold text-gray-900'
+                                },
+                                children: 'HandsOnTable Spreadsheet'
+                              },
+                              {
+                                id: 'handson-table-subtitle',
+                                type: 'p',
+                                props: {
+                                  className: 'text-sm text-gray-600 mt-1'
+                                },
+                                children: 'Advanced spreadsheet with formulas and editing capabilities'
+                              }
+                            ]
+                          },
+                          {
+                            id: 'handson-table-component',
+                            type: 'COMP_HANDSONTABLE',
+                            props: {
+                              style: { height: '300px', width: '100%' },
+                              data: {
+                                $exp: 'handsOnTableData'
+                              },
+                              colHeaders: true,
+                              rowHeaders: true,
+                              contextMenu: true,
+                              formulas: true,
+                              autoColumnSize: true
+                            }
+                          }
+                        ]
+                      },
+                      // Luckysheet Component
+                      {
+                        id: 'luckysheet-container',
+                        type: 'div',
+                        props: {
+                          className: 'bg-white rounded-lg shadow-sm border border-gray-200'
+                        },
+                        children: [
+                          {
+                            id: 'luckysheet-header',
+                            type: 'div',
+                            props: {
+                              className: 'px-6 py-4 border-b border-gray-200'
+                            },
+                            children: [
+                              {
+                                id: 'luckysheet-title',
+                                type: 'h3',
+                                props: {
+                                  className: 'text-lg font-semibold text-gray-900'
+                                },
+                                children: 'Luckysheet Online Spreadsheet'
+                              },
+                              {
+                                id: 'luckysheet-subtitle',
+                                type: 'p',
+                                props: {
+                                  className: 'text-sm text-gray-600 mt-1'
+                                },
+                                children: 'Feature-rich online spreadsheet with collaborative editing'
+                              }
+                            ]
+                          },
+                          {
+                            id: 'luckysheet-component',
+                            type: 'COMP_LUCKYSHEET',
+                            props: {
+                              style: { height: '300px', width: '100%' },
+                              data: {
+                                $exp: 'luckysheetData'
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    ]
+                  },
+
+                  // Mapbox and PDF Row
+                  {
+                    id: 'mapbox-pdf-row',
+                    type: 'div',
+                    props: {
+                      className: 'grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8'
+                    },
+                    children: [
+                      // Mapbox Map Component
+                      {
+                        id: 'mapbox-container',
+                        type: 'div',
+                        props: {
+                          className: 'bg-white rounded-lg shadow-sm border border-gray-200'
+                        },
+                        children: [
+                          {
+                            id: 'mapbox-header',
+                            type: 'div',
+                            props: {
+                              className: 'px-6 py-4 border-b border-gray-200'
+                            },
+                            children: [
+                              {
+                                id: 'mapbox-title',
+                                type: 'h3',
+                                props: {
+                                  className: 'text-lg font-semibold text-gray-900'
+                                },
+                                children: 'Mapbox GL Map'
+                              },
+                              {
+                                id: 'mapbox-subtitle',
+                                type: 'p',
+                                props: {
+                                  className: 'text-sm text-gray-600 mt-1'
+                                },
+                                children: 'High-performance vector maps with custom styling'
+                              }
+                            ]
+                          },
+                          {
+                            id: 'mapbox-component',
+                            type: 'COMP_MAPBOX',
+                            props: {
+                              style: { height: '350px', width: '100%' },
+                              center: {
+                                $exp: 'mapboxData.center'
+                              },
+                              zoom: {
+                                $exp: 'mapboxData.zoom'
+                              },
+                              accessToken: {
+                                $exp: 'mapboxData.accessToken'
+                              },
+                              mapStyle: {
+                                $exp: 'mapboxData.mapStyle'
+                              },
+                              markers: {
+                                $exp: 'mapboxData.markers'
+                              }
+                            }
+                          }
+                        ]
+                      },
+                      // PDF Viewer Component
+                      {
+                        id: 'pdf-viewer-container',
+                        type: 'div',
+                        props: {
+                          className: 'bg-white rounded-lg shadow-sm border border-gray-200'
+                        },
+                        children: [
+                          {
+                            id: 'pdf-viewer-header',
+                            type: 'div',
+                            props: {
+                              className: 'px-6 py-4 border-b border-gray-200'
+                            },
+                            children: [
+                              {
+                                id: 'pdf-viewer-title',
+                                type: 'h3',
+                                props: {
+                                  className: 'text-lg font-semibold text-gray-900'
+                                },
+                                children: 'PDF Document Viewer'
+                              },
+                              {
+                                id: 'pdf-viewer-subtitle',
+                                type: 'p',
+                                props: {
+                                  className: 'text-sm text-gray-600 mt-1'
+                                },
+                                children: 'PDF.js powered document viewer with page navigation'
+                              }
+                            ]
+                          },
+                          {
+                            id: 'pdf-viewer-component',
+                            type: 'COMP_PDF_VIEWER',
+                            props: {
+                              style: { height: '350px', width: '100%' },
+                              url: {
+                                $exp: 'pdfViewerData.url'
+                              },
+                              pageNumber: {
+                                $exp: 'pdfViewerData.pageNumber'
+                              },
+                              scale: {
+                                $exp: 'pdfViewerData.scale'
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    ]
+                  },
+
+                  // Vis Network Component (full width)
+                  {
+                    id: 'vis-network-container',
+                    type: 'div',
+                    props: {
+                      className: 'bg-white rounded-lg shadow-sm border border-gray-200 mb-8'
+                    },
+                    children: [
+                      {
+                        id: 'vis-network-header',
+                        type: 'div',
+                        props: {
+                          className: 'px-6 py-4 border-b border-gray-200'
+                        },
+                        children: [
+                          {
+                            id: 'vis-network-title',
+                            type: 'h3',
+                            props: {
+                              className: 'text-lg font-semibold text-gray-900'
+                            },
+                            children: 'Organization Network Graph'
+                          },
+                          {
+                            id: 'vis-network-subtitle',
+                            type: 'p',
+                            props: {
+                              className: 'text-sm text-gray-600 mt-1'
+                            },
+                            children: 'Interactive network visualization showing organizational hierarchy'
+                          }
+                        ]
+                      },
+                      {
+                        id: 'vis-network-component',
+                        type: 'COMP_VIS_NETWORK',
+                        props: {
+                          style: { height: '400px', width: '100%' },
+                          nodes: {
+                            $exp: 'visNetworkData.nodes'
+                          },
+                          edges: {
+                            $exp: 'visNetworkData.edges'
+                          },
+                          options: {
+                            $exp: 'visNetworkData.options'
+                          }
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+
               // Additional Information Section
               {
                 id: 'info-section',
@@ -1643,6 +1658,386 @@ $$f(x) = \\int_{-\\infty}^{\\infty} \\hat f(\\xi)\\,e^{2 \\pi i \\xi x} \\,d\\xi
         ]
       }
     ]
+  },
+  data: {
+    currentUser: { name: 'John Doe', role: 'Admin' },
+    dashboardStats: { users: 1250, projects: 42, revenue: 98500 },
+    formData: {
+      profile: { firstName: '', lastName: '', email: '', phone: '' },
+      settings: { theme: 'light', notifications: true, language: 'en' }
+    },
+    // AG Grid data
+    gridData: {
+      columnDefs: [
+        { headerName: 'ID', field: 'id', width: 70, sortable: true },
+        { headerName: 'Name', field: 'name', width: 150, sortable: true, filter: true },
+        { headerName: 'Email', field: 'email', width: 200, sortable: true, filter: true },
+        { headerName: 'Department', field: 'department', width: 120, sortable: true, filter: true },
+        { headerName: 'Salary', field: 'salary', width: 100, sortable: true, filter: 'agNumberColumnFilter', valueFormatter: 'params.value.toLocaleString()' },
+        { headerName: 'Start Date', field: 'startDate', width: 120, sortable: true, filter: 'agDateColumnFilter' }
+      ],
+      rowData: [
+        { id: 1, name: 'John Smith', email: 'john.smith@company.com', department: 'Engineering', salary: 75000, startDate: '2022-01-15' },
+        { id: 2, name: 'Sarah Johnson', email: 'sarah.johnson@company.com', department: 'Marketing', salary: 65000, startDate: '2021-08-20' },
+        { id: 3, name: 'Mike Davis', email: 'mike.davis@company.com', department: 'Sales', salary: 70000, startDate: '2022-03-10' },
+        { id: 4, name: 'Emily Chen', email: 'emily.chen@company.com', department: 'HR', salary: 68000, startDate: '2021-11-05' },
+        { id: 5, name: 'David Wilson', email: 'david.wilson@company.com', department: 'Engineering', salary: 80000, startDate: '2022-02-28' },
+        { id: 6, name: 'Lisa Anderson', email: 'lisa.anderson@company.com', department: 'Finance', salary: 72000, startDate: '2021-09-12' }
+      ],
+      defaultColDef: {
+        resizable: true,
+        sortable: true,
+        filter: true
+      },
+      pagination: true,
+      paginationPageSize: 10
+    },
+    // ECharts data
+    chartData: {
+      salesChart: {
+        title: { text: 'Monthly Sales Report', left: 'center' },
+        tooltip: { trigger: 'axis' },
+        legend: { data: ['Revenue', 'Profit'], bottom: 0 },
+        xAxis: {
+          type: 'category',
+          data: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+        },
+        yAxis: { type: 'value', name: 'Amount ($)' },
+        series: [
+          {
+            name: 'Revenue',
+            type: 'bar',
+            data: [65000, 70000, 68000, 72000, 75000, 78000, 82000, 85000, 88000, 90000, 92000, 95000],
+            itemStyle: { color: '#3b82f6' }
+          },
+          {
+            name: 'Profit',
+            type: 'line',
+            data: [12000, 15000, 13000, 16000, 18000, 20000, 22000, 24000, 26000, 28000, 30000, 32000],
+            itemStyle: { color: '#10b981' }
+          }
+        ]
+      },
+      pieChart: {
+        title: { text: 'Department Distribution', left: 'center' },
+        tooltip: { trigger: 'item' },
+        series: [{
+          name: 'Employees',
+          type: 'pie',
+          radius: '60%',
+          center: ['50%', '60%'],
+          data: [
+            { value: 35, name: 'Engineering' },
+            { value: 25, name: 'Sales' },
+            { value: 20, name: 'Marketing' },
+            { value: 15, name: 'HR' },
+            { value: 10, name: 'Finance' }
+          ],
+          emphasis: {
+            itemStyle: {
+              shadowBlur: 10,
+              shadowOffsetX: 0,
+              shadowColor: 'rgba(0, 0, 0, 0.5)'
+            }
+          }
+        }]
+      }
+    },
+    // Leaflet Map data
+    mapData: {
+      center: [40.7128, -74.0060], // New York City
+      zoom: 10,
+      markers: [
+        {
+          position: [40.7589, -73.9851],
+          popup: 'Times Square Office',
+          tooltip: 'Main Office - 500 employees'
+        },
+        {
+          position: [40.7505, -73.9934],
+          popup: 'Manhattan Branch',
+          tooltip: 'Branch Office - 150 employees'
+        },
+        {
+          position: [40.6892, -74.0445],
+          popup: 'Brooklyn Office',
+          tooltip: 'Development Center - 200 employees'
+        },
+        {
+          position: [40.7831, -73.9712],
+          popup: 'Central Park Cafe',
+          tooltip: 'Meeting Point - Casual meetings'
+        }
+      ],
+      tileLayer: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    },
+    // Markdown data
+    markdownData: {
+      content: `# Company Documentation
+
+## About Our Organization
+
+Welcome to **SuperAtom Technologies**, a cutting-edge software development company specializing in innovative solutions for modern businesses.
+
+### Our Mission
+> To democratize technology and make powerful tools accessible to everyone through intuitive user interfaces and robust backend systems.
+
+### Key Features
+
+#### 🚀 **Performance**
+- Lightning-fast response times
+- Scalable architecture
+- Optimized for high-traffic applications
+
+#### 🛡️ **Security**
+- End-to-end encryption
+- Multi-factor authentication
+- Regular security audits
+
+#### 🎨 **User Experience**
+- Intuitive design principles
+- Responsive across all devices
+- Accessibility-first approach
+
+### Technical Specifications
+
+| Component | Technology | Version |
+|-----------|------------|---------|
+| Frontend | React + TypeScript | 18.x |
+| Backend | Node.js + Express | 20.x |
+| Database | PostgreSQL | 15.x |
+| Deployment | Docker + Kubernetes | Latest |
+
+### Code Example
+
+Here's how you can integrate our API:
+
+\`\`\`javascript
+// Initialize the SuperAtom SDK
+import { SuperAtom } from '@superatom/sdk';
+
+const client = new SuperAtom({
+  apiKey: 'your-api-key',
+  environment: 'production'
+});
+
+// Create a new user interface
+const ui = await client.ui.create({
+  name: 'Dashboard',
+  type: 'dashboard',
+  components: ['chart', 'table', 'map']
+});
+
+console.log('UI created:', ui.id);
+\`\`\`
+
+### Mathematical Formulas
+
+Our performance optimization uses advanced algorithms:
+
+$$E = mc^2$$
+
+$$f(x) = \\int_{-\\infty}^{\\infty} \\hat f(\\xi)\\,e^{2 \\pi i \\xi x} \\,d\\xi$$
+
+### Contact Information
+
+- 📧 **Email**: [info@superatom.tech](mailto:info@superatom.tech)
+- 🌐 **Website**: [https://superatom.tech](https://superatom.tech)
+- 📱 **Phone**: +1 (555) 123-4567
+- 📍 **Address**: 123 Tech Street, Innovation City, IC 12345
+
+---
+
+*Last updated: ${new Date().toLocaleDateString()}*
+`
+    },
+    // Three.js Scene data
+    threeSceneData: {
+      scene: {
+        background: '#1a1a2e',
+        fog: {
+          color: '#1a1a2e',
+          near: 10,
+          far: 100
+        }
+      },
+      camera: {
+        type: 'PerspectiveCamera',
+        fov: 75,
+        position: [0, 0, 5],
+        lookAt: [0, 0, 0]
+      },
+      lights: [
+        {
+          type: 'AmbientLight',
+          color: '#404040',
+          intensity: 0.4
+        },
+        {
+          type: 'DirectionalLight',
+          color: '#ffffff',
+          intensity: 1,
+          position: [5, 5, 5],
+          castShadow: true
+        }
+      ],
+      objects: [
+        {
+          type: 'Mesh',
+          geometry: {
+            type: 'BoxGeometry',
+            args: [1, 1, 1]
+          },
+          material: {
+            type: 'MeshLambertMaterial',
+            color: '#00ff88',
+            transparent: true,
+            opacity: 0.8
+          },
+          position: [-2, 0, 0],
+          rotation: [0, 0, 0],
+          animation: {
+            type: 'rotation',
+            axis: 'y',
+            speed: 0.01
+          }
+        },
+        {
+          type: 'Mesh',
+          geometry: {
+            type: 'SphereGeometry',
+            args: [0.8, 32, 32]
+          },
+          material: {
+            type: 'MeshPhongMaterial',
+            color: '#ff4444',
+            shininess: 100
+          },
+          position: [0, 0, 0],
+          animation: {
+            type: 'position',
+            axis: 'y',
+            amplitude: 1,
+            speed: 0.02
+          }
+        },
+        {
+          type: 'Mesh',
+          geometry: {
+            type: 'ConeGeometry',
+            args: [0.6, 1.5, 8]
+          },
+          material: {
+            type: 'MeshStandardMaterial',
+            color: '#4444ff',
+            metalness: 0.5,
+            roughness: 0.1
+          },
+          position: [2, 0, 0],
+          rotation: [0, 0, Math.PI / 6],
+          animation: {
+            type: 'rotation',
+            axis: 'z',
+            speed: -0.015
+          }
+        }
+      ],
+      controls: {
+        type: 'OrbitControls',
+        enabled: true,
+        autoRotate: false,
+        enableDamping: true,
+        dampingFactor: 0.05
+      },
+      renderer: {
+        antialias: true,
+        shadowMap: true,
+        shadowMapType: 'PCFSoftShadowMap'
+      }
+    },
+    // HandsOnTable data
+    handsOnTableData: [
+      ['Product', 'Q1 Sales', 'Q2 Sales', 'Q3 Sales', 'Q4 Sales', 'Total'],
+      ['Laptop Pro', 1200, 1350, 1100, 1400, '=B2+C2+D2+E2'],
+      ['Desktop Elite', 800, 750, 900, 850, '=B3+C3+D3+E3'],
+      ['Tablet Max', 600, 800, 750, 900, '=B4+C4+D4+E4'],
+      ['Monitor 4K', 450, 500, 480, 520, '=B5+C5+D5+E5'],
+      ['Keyboard Pro', 150, 180, 160, 200, '=B6+C6+D6+E6'],
+      ['Total', '=SUM(B2:B6)', '=SUM(C2:C6)', '=SUM(D2:D6)', '=SUM(E2:E6)', '=SUM(F2:F6)']
+    ],
+    // Luckysheet data
+    luckysheetData: [
+      ['Employee', 'Department', 'Salary', 'Bonus', 'Total Compensation'],
+      ['Alice Johnson', 'Engineering', 85000, 8500, '=C2+D2'],
+      ['Bob Smith', 'Marketing', 65000, 6500, '=C3+D3'],
+      ['Carol Davis', 'Sales', 72000, 9000, '=C4+D4'],
+      ['David Wilson', 'Engineering', 90000, 12000, '=C5+D5'],
+      ['Eva Brown', 'HR', 68000, 5000, '=C6+D6']
+    ],
+    // Mapbox data
+    mapboxData: {
+      center: [-73.9857, 40.7484], // NYC Times Square
+      zoom: 12,
+      accessToken: 'pk.eyJ1IjoiZ29waW5hZGhiMTIxNCIsImEiOiJjbWZ6Y2pmbWQwMHl4MmpzZzB5M21oYXU1In0.pCSA6lTrXlqkIo07zu-CFA', // Working demo token
+      mapStyle: 'mapbox://styles/mapbox/streets-v12',
+      markers: [
+        { lng: -73.9857, lat: 40.7484, popup: '<strong>Times Square</strong><br>The heart of NYC' },
+        { lng: -74.0059, lat: 40.7128, popup: '<strong>NYC Office</strong><br>Main headquarters' },
+        { lng: -73.9772, lat: 40.7831, popup: '<strong>Central Park</strong><br>Green oasis' },
+        { lng: -74.0445, lat: 40.6892, popup: '<strong>Brooklyn Office</strong><br>Development center' }
+      ]
+    },
+    // PDF Viewer data
+    pdfViewerData: {
+      url: 'https://mozilla.github.io/pdf.js/web/compressed.tracemonkey-pldi-09.pdf',
+      pageNumber: 1,
+      scale: 1.2
+    },
+    // Vis Network data
+    visNetworkData: {
+      nodes: [
+        { id: 1, label: 'CEO\nJohn Doe', color: '#e74c3c', font: { color: 'white' } },
+        { id: 2, label: 'CTO\nAlice Smith', color: '#3498db', font: { color: 'white' } },
+        { id: 3, label: 'CMO\nBob Johnson', color: '#2ecc71', font: { color: 'white' } },
+        { id: 4, label: 'CFO\nCarol Davis', color: '#f39c12', font: { color: 'white' } },
+        { id: 5, label: 'Dev Team\nLead', color: '#9b59b6', font: { color: 'white' } },
+        { id: 6, label: 'Marketing\nTeam', color: '#1abc9c', font: { color: 'white' } },
+        { id: 7, label: 'Finance\nTeam', color: '#e67e22', font: { color: 'white' } },
+        { id: 8, label: 'Engineering\nTeam', color: '#34495e', font: { color: 'white' } }
+      ],
+      edges: [
+        { from: 1, to: 2, label: 'Reports to' },
+        { from: 1, to: 3, label: 'Reports to' },
+        { from: 1, to: 4, label: 'Reports to' },
+        { from: 2, to: 5, label: 'Manages' },
+        { from: 2, to: 8, label: 'Oversees' },
+        { from: 3, to: 6, label: 'Manages' },
+        { from: 4, to: 7, label: 'Manages' },
+        { from: 5, to: 8, label: 'Leads' }
+      ],
+      options: {
+        nodes: {
+          shape: 'box',
+          margin: 10,
+          font: { size: 12, face: 'Arial' }
+        },
+        edges: {
+          arrows: { to: true },
+          font: { size: 10 }
+        },
+        physics: {
+          enabled: true,
+          stabilization: { iterations: 100 }
+        },
+        layout: {
+          hierarchical: {
+            direction: 'UD',
+            sortMethod: 'directed'
+          }
+        }
+      }
+    }
   }
 }
 

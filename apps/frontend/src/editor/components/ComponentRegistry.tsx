@@ -8,8 +8,9 @@ import { ThreeScene } from '../native/ThreeScene';
 import { PDFViewer } from '../native/PDFViewer';
 import { Luckysheet } from '../native/Luckysheet';
 import { Markdown } from '../native/Markdown';
-// import { DuckDBFileUploadComponent } from '../native/DuckDBFileUpload';
-// import { DuckDBQuery } from '../native/DuckDBQuery';
+import { DuckDBFileUploadComponent } from '../native/DuckDBFileUpload';
+import { DuckDBQuery } from '../native/DuckDBQuery';
+import { DuckDB } from '../native/DuckDB';
 import { EChart } from '../native/EChart';
 
 // Component registry type definitions
@@ -298,19 +299,26 @@ export const COMP_REGISTRY: ComponentRegistryType = {
     COMP: Markdown
   },
 
-//   COMP_DUCKDB_UPLOAD: {
-//     id: 'duckdb-upload',
-//     name: 'DuckDB File Upload',
-//     head: `<!-- No external dependencies required -->`,
-//     COMP: DuckDBFileUploadComponent
-//   },
+  COMP_DUCKDB_UPLOAD: {
+    id: 'duckdb-upload',
+    name: 'DuckDB File Upload',
+    head: `<!-- No external dependencies required -->`,
+    COMP: DuckDBFileUploadComponent
+  },
 
-//   COMP_DUCKDB: {
-//     id: 'duckdb',
-//     name: 'DuckDB Query',
-//     head: `<!-- No external dependencies required -->`,
-//     COMP: DuckDBQuery
-//   }
+  COMP_DUCKDB: {
+    id: 'duckdb',
+    name: 'DuckDB Query',
+    head: `<!-- No external dependencies required -->`,
+    COMP: DuckDBQuery
+  },
+
+  COMP_DUCKDB_INTERFACE: {
+    id: 'duckdb-interface',
+    name: 'DuckDB Interface',
+    head: `<!-- No external dependencies required -->`,
+    COMP: DuckDB
+  }
 };
 
 // Hook to load component dynamically
