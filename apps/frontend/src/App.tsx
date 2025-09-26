@@ -35,10 +35,6 @@ export function App() {
   const navigate = useNavigate();
   const prevOrgIdRef = useRef<string | null>(null);
 
-  useEffect(()=>{
-    console.log("API_URL:", API_URL);
-  })
-
   useEffect(() => {
     if (orgLoaded) {
       const currentOrgId = organization?.id || null;
