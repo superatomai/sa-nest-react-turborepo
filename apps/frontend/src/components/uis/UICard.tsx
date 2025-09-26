@@ -11,7 +11,7 @@ type Props = {
   UICardDetails: any;
   selectedProjId: number;
 };
-const UICard = ({ UICardDetails }: Props) => {
+const UICard = ({ UICardDetails, selectedProjId }: Props) => {
   const navigate = useNavigate();
   const [showNameTooltip, setShowNameTooltip] = useState(false);
   const [showDescTooltip, setShowDescTooltip] = useState(false);
@@ -116,7 +116,7 @@ const UICard = ({ UICardDetails }: Props) => {
             onClick={(e) => {
               e.stopPropagation();
               navigate(
-                `/editor/${UICardDetails.uiId}?version=${UICardDetails.version_id}`
+                `/projects/${selectedProjId}/${UICardDetails.uiId}?version=${UICardDetails.version_id}`
               );
             }}
           >

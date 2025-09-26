@@ -14,8 +14,9 @@ import { PERFORMANCE_OPTIMIZED_DSL } from '@/test/performance-optimized-dsl'
 import { COMPONENT_DSL } from '@/test/componet-dsl'
 import { duckdb_dashboard_dsl } from '@/test/duckdb-dashboard'
 import { supplier_risks_dsl } from '@/test/supplier-risks'
+import {API_URL as API_BASE_URL} from '../config/api'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
+const API_URL = API_BASE_URL; // points to backend api
 const default_ui_schema: UIComponent = createDefaultDSL()
 		
 const EditorSSE = () => {

@@ -1,4 +1,4 @@
-import { Routes, Route, useLocation, Navigate, useParams } from "react-router-dom";
+import { Routes, Route, useLocation, Navigate, useParams, useNavigate, matchPath, useMatch } from "react-router-dom";
 import {
   OrganizationProfile,
   useAuth,
@@ -14,34 +14,57 @@ import  AppSidebar  from "./components/Sidebar";
 import { SidebarProvider } from "./components/ui/sidebar";
 import { ProtectedRoute } from "./ProtectedRoute";
 import CreateOrganizationWrapper from "./components/CreateOrganization";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useOrganization } from "@clerk/clerk-react";
 import orgStore from "./stores/mobx_org_store";
+import { projectStore } from "./stores/mobx_project_store";
+import { motion, AnimatePresence } from "framer-motion";
 import SignUpPage from "./pages/SignUp";
 import { Toaster } from "react-hot-toast";
 import ProjApiKeys from "./pages/Project/ProjApiKeys";
 import ProjDoc from "./pages/Project/ProjDoc";
 import ProjDesignSys from "./pages/Project/ProjDesignSys";
-import ProjLogs from "./pages/Project/ProjLogs";
+import ProjLogsV2 from "./pages/Project/ProjLogsV2";
+import { API_URL } from "./config/api";
 
 export function App() {
   const { organization, isLoaded: orgLoaded } = useOrganization();
   const { isSignedIn, isLoaded: authLoaded } = useAuth();
   const location = useLocation();
   const params = useParams();
+  const navigate = useNavigate();
+  const prevOrgIdRef = useRef<string | null>(null);
 
   useEffect(() => {
-  if (orgLoaded) {
-    if (organization?.id) {
-      orgStore.setOrgId(organization.id);
-    }
-    else if (!organization) {
-      orgStore.setOrgId(null);
-    }
-  }
-}, [orgLoaded, organization?.id, params]);
+    if (orgLoaded) {
+      const currentOrgId = organization?.id || null;
+      const previousOrgId = prevOrgIdRef.current;
 
-  const hideSidebar = location.pathname.startsWith("/editor");
+      // Update the org store
+      if (organization?.id) {
+        orgStore.setOrgId(organization.id);
+      } else if (!organization) {
+        orgStore.setOrgId(null);
+      }
+
+      // If organization changed (not initial load) and user is signed in, reset project store and navigate to /projects
+      if (previousOrgId !== null && previousOrgId !== currentOrgId && isSignedIn) {
+        projectStore.resetPagination();
+        navigate('/projects');
+      }
+
+      // Update the ref to track the current org ID
+      prevOrgIdRef.current = currentOrgId;
+    }
+  }, [orgLoaded, organization?.id, navigate, isSignedIn]);
+
+  const match = useMatch("/projects/:projectId/:maybeUiId");
+  const hideSidebar =
+    match &&
+    !["api-keys", "documentation", "design-system", "project-logs"].includes(
+      match.params.maybeUiId || ""
+    );
+
   const isPublicRoute = [
     "/login",
     "/sign-up",
@@ -77,7 +100,14 @@ export function App() {
     <SidebarProvider className="overflow-hidden">
       <div className="">{!hideSidebar && <AppSidebar />}</div>
       {/* {!hideNavbar && <Navbar />} */}
-      <div className="h-screen overflow-auto w-full flex-1">
+      <motion.div
+        key={location.pathname}
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -10 }}
+        transition={{ duration: 0.15, ease: "easeOut" }}
+        className="h-screen overflow-auto w-full flex-1"
+      >
         <Routes>
           <Route path="/login" element={<Navigate to="/projects" replace />} />
           <Route path="/sign-up" element={<Navigate to="/projects" replace />} />
@@ -137,17 +167,18 @@ export function App() {
             }
           />
 
+          {/* Project Logs with 24h Persistence */}
           <Route
             path="projects/:projectId/project-logs"
             element={
               <ProtectedRoute>
-                <ProjLogs/>
+                <ProjLogsV2/>
               </ProtectedRoute>
             }
           />
 
           <Route
-            path="/editor/:uiId"
+            path="/projects/:projectId/:uiId"
             element={
               <ProtectedRoute>
                 <Editor />
@@ -175,7 +206,7 @@ export function App() {
             }
           />
         </Routes>
-      </div>
+      </motion.div>
       <Toaster
         position="top-center"
         reverseOrder={false}

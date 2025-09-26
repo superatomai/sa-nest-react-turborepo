@@ -49,15 +49,17 @@ const EndpointGroup: React.FC<EndpointGroupProps> = ({
               key={key}
               onClick={() => onEndpointSelect(key)}
               className={cn(
-                "w-full px-4 py-3 text-left hover:bg-muted transition-colors flex items-start gap-3",
+                "w-full px-4 py-3 text-left hover:bg-muted transition-colors relative",
                 selectedEndpoint === key && "bg-muted"
               )}
             >
-              <EndpointBadge
-                method={endpoint.method}
-                className="text-xs px-2 py-0.5"
-              />
-              <div className="flex-1 overflow-hidden">
+              <div className="absolute top-3 right-4">
+                <EndpointBadge
+                  method={endpoint.method}
+                  className="text-xs px-2 py-0.5"
+                />
+              </div>
+              <div className="pr-16">
                 <p className="font-mono text-sm truncate">{endpoint.path}</p>
                 <p className="text-xs text-muted-foreground truncate mt-1">
                   {endpoint.summary}

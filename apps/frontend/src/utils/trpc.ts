@@ -1,8 +1,9 @@
 import { createTRPCReact } from '@trpc/react-query';
 import { createTRPCClient, httpBatchLink } from '@trpc/client';
 import type { AppRouter } from '@superatom-turbo/trpc/types';
+import { API_URL as API_BASE_URL } from '../config/api';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+const API_URL = API_BASE_URL; // points to backend api
 
 export const trpc = createTRPCReact<AppRouter>();
 

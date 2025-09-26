@@ -12,6 +12,7 @@ import {
 } from '../ui/alert-dialog'
 import { projectStore } from '../../stores/mobx_project_store';
 import { trpc } from '@/utils';
+import toast from 'react-hot-toast';
 
 type props = {
     setShowDeleteProjectModal: React.Dispatch<React.SetStateAction<boolean>>,
@@ -30,10 +31,12 @@ const DeleteProjectModal = ({ setShowDeleteProjectModal, showDeleteProjectModal,
             projectStore.removeProjectFromStore(id);
             setShowDeleteProjectModal(false);
             setIsDeleting(false);
+            toast.success(`${Project_name} deleted successfully`);
         },
         onError: (error) => {
             console.error("Failed to delete project:", error);
             setIsDeleting(false);
+            toast.error('Failed to delete project. Please try again.');
         }
     });
 

@@ -108,10 +108,10 @@ const AddNewProjectModal = ({ setNewProjModalOpen, orgId }: Props) => {
           </Button>
         </CardHeader>
 
-        <CardContent className="space-y-4">
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Project Name *</Label>
+        <CardContent className="space-y-4 text-left">
+          <form onSubmit={handleSubmit} className="space-y-4 text-left">
+            <div className="space-y-2 text-left">
+              <Label htmlFor="name" className="text-left block">Project Name *</Label>
               <Input
                 id="name"
                 name="name"
@@ -123,8 +123,8 @@ const AddNewProjectModal = ({ setNewProjModalOpen, orgId }: Props) => {
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
+            <div className="space-y-2 text-left">
+              <Label htmlFor="description" className="text-left block">Description</Label>
               <Textarea
                 id="description"
                 name="description"

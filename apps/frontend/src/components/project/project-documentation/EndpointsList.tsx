@@ -1,6 +1,4 @@
 import React from 'react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import EndpointGroup from './EndpointGroup'
 
 // Types based on SimpleApiDocs structure
@@ -33,29 +31,19 @@ const EndpointsList: React.FC<EndpointsListProps> = ({
   )
 
   return (
-    <Card className="lg:col-span-1 h-full flex flex-col">
-      <CardHeader className="flex-shrink-0">
-        <CardTitle>Endpoints</CardTitle>
-        <CardDescription>
-          {totalEndpoints} endpoints available
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="p-0 flex-1 min-h-0">
-        <ScrollArea className="h-full px-6 pb-6">
-          {Object.entries(groupedEndpoints).map(([group, endpoints]) => (
-            <EndpointGroup
-              key={group}
-              groupName={group}
-              endpoints={endpoints}
-              isExpanded={expandedSections[group] === true}
-              selectedEndpoint={selectedEndpoint}
-              onToggle={() => onToggleSection(group)}
-              onEndpointSelect={onEndpointSelect}
-            />
-          ))}
-        </ScrollArea>
-      </CardContent>
-    </Card>
+    <div className="bg-gray-50/50 pr-4 py-3 space-y-2">
+      {Object.entries(groupedEndpoints).map(([group, endpoints]) => (
+        <EndpointGroup
+          key={group}
+          groupName={group}
+          endpoints={endpoints}
+          isExpanded={expandedSections[group] === true}
+          selectedEndpoint={selectedEndpoint}
+          onToggle={() => onToggleSection(group)}
+          onEndpointSelect={onEndpointSelect}
+        />
+      ))}
+    </div>
   )
 }
 

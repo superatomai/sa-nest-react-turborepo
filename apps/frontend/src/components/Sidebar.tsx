@@ -55,7 +55,7 @@ const navigationItems = [
         icon: "mdi:color",
       },
       {
-        title: "Documentation",
+        title: "Api Documentation",
         url: "/documentation",
         icon: "oui:documentation",
       },
