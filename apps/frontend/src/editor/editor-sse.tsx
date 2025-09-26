@@ -24,7 +24,6 @@ const EditorSSE = () => {
 	const [input, setInput] = useState('')
 
 	const [currentSchema, setCurrentSchema] = useState<UIComponent | null>()
-	const [projectId, setProjectId] = useState<string>("");
 	const [isDSLLoading, setIsDSLLoading] = useState<boolean>(false);
 	const [selectedNodeId, setSelectedNodeId] = useState<string>('');
 
@@ -37,6 +36,7 @@ const EditorSSE = () => {
 	const llmStreamRef = useRef<HTMLDivElement>(null);
 	const messagesContainerRef = useRef<HTMLDivElement>(null);
 	const abortControllerRef = useRef<AbortController | null>(null);
+	const loadedUiIdRef = useRef<string | null>(null);
 
 	// Auto-scroll to bottom of messages
 	const scrollToBottom = () => {
@@ -64,31 +64,35 @@ const EditorSSE = () => {
 		scrollToBottom();
 	};
 
-	const { uiId } = useParams<{ uiId: string }>();
+	// Get both projectId and uiId from URL params
+	const { projectId, uiId } = useParams<{ projectId: string, uiId: string }>();
 
 	const { data: uidata} = trpc.uisGetById.useQuery(
 		{ id: uiId! },   // non-null assertion
 		{ enabled: !!uiId } // only run query if uiId exists
 	);
 
-	useEffect(() => {
-		if (uiId && uidata) {
-			const ui = uidata.ui;
-			setProjectId(()=>{
-				return ui.projectId.toString()
-			})
-		}
-	}, [uiId, uidata]);
+	// Add version query to fetch DSL if needed
+	const getVersionQuery = trpc.versionsGetAll.useQuery(
+		{ uiId: uiId }, // Pass uiId to get versions for this UI
+		{ enabled: false } // Only run manually
+	);
 
-	// Load existing UI DSL on component mount - run after projectId is set
+	// Load existing UI DSL on component mount
 	useEffect(() => {
 		const loadExistingUI = async () => {
-			if (!projectId || !uiId || projectId === "") return;
-			
+			if (!uiId || !uidata?.ui) return;
+
+			// Prevent re-loading if we've already loaded this UI
+			if (loadedUiIdRef.current === uiId) {
+				return;
+			}
+
 			setIsDSLLoading(true);
 			try {
 				console.log('Loading existing UI for projectId:', projectId, 'uiId:', uiId);
-			
+				loadedUiIdRef.current = uiId; // Mark as loaded
+
 				if (uidata && uidata.ui) {
 					const ui_version = uidata.ui.uiVersion;
 
@@ -163,7 +167,7 @@ const EditorSSE = () => {
 			}
 		};
 		loadExistingUI();
-	}, [projectId, uiId]); // Run when projectId or uiId changes
+	}, [uiId, uidata]); // Run when uiId or uidata changes
 
 	// Auto-scroll when messages or SSE events change
 	useEffect(() => {
@@ -239,13 +243,6 @@ const EditorSSE = () => {
 			setInput(promptHistory[newIndex])
 		}
 	}
-
-
-	// Add version query to fetch DSL if needed
-	const getVersionQuery = trpc.versionsGetAll.useQuery(
-		{ uiId: uiId }, // Pass uiId to get versions for this UI
-		{ enabled: false } // Only run manually
-	);
 
 	// Database operations using centralized utilities
 	const { createVersionAndUpdateUI, isLoading: isSavingToDatabase } = DatabaseUtils.useCreateVersionAndUpdateUI()
@@ -561,25 +558,25 @@ const EditorSSE = () => {
 
 	const handleSend = async () => {
 		if (!input.trim()) return
-		
-		if (!projectId || projectId === "") {
-			console.error('ProjectId not available yet');
+
+		if (!projectId) {
+			console.error('ProjectId not available from URL');
 			setMessages(prev => [...prev, {
 				role: 'assistant',
-				content: 'Please wait for the project to load before generating UI.'
+				content: 'Project ID is missing from the URL. Please ensure you access this page with a valid project ID.'
 			}])
 			return;
 		}
 
 		const currentInput = input
-		
+
 		// Save prompt to history
 		savePromptToHistory(currentInput)
-		
+
 		setMessages([...messages, { role: 'user', content: input }])
 		scrollToBottom(); // Scroll after adding user message
 
-		// Use SSE UI generation
+		// Use SSE UI generation - projectId now comes from URL params
 		await generateUIWithSSE(currentInput, projectId, currentSchema || default_ui_schema);
 	}
 
@@ -601,7 +598,7 @@ const EditorSSE = () => {
 				<div className="h-full flex flex-col">
 					{/* Preview Content */}
 					<div className="flex-1 relative overflow-y-auto">
-						{isDSLLoading ? (
+						{(isDSLLoading || !currentSchema) ? (
 							<div className="h-full flex items-center justify-center bg-white">
 								<div className="text-center space-y-6">
 									<div className="relative w-20 h-20 mx-auto">
@@ -623,21 +620,9 @@ const EditorSSE = () => {
 									</div>
 								</div>
 							</div>
-						) : currentSchema ? (
+						) : (
 							<div className="">
 								{memoizedRenderer}
-							</div>
-						) : (
-							<div className="h-full flex items-center justify-center">
-								<div className="text-center space-y-4">
-									<div className="w-24 h-24 mx-auto bg-gradient-to-br from-indigo-100 to-purple-100 rounded-2xl flex items-center justify-center">
-										<svg className="w-12 h-12 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-											<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-										</svg>
-									</div>
-									<h3 className="text-xl font-semibold text-slate-700">Ready to Create</h3>
-									<p className="text-slate-500 max-w-sm">Describe what you want to build and watch it come to life</p>
-								</div>
 							</div>
 						)}
 					</div>

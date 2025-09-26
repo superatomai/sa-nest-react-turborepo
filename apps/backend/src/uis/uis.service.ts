@@ -20,6 +20,42 @@ export class UisService {
     },
     user?: User
   ) {
+    // Build the query with joins in a single query
+    let query = this.drizzleService.db
+      .select({
+        // UI fields
+        id: uis.id,
+        projectId: uis.projectId,
+        createdAt: uis.createdAt,
+        updatedAt: uis.updatedAt,
+        published: uis.published,
+        uiId: uis.uiId,
+        deleted: uis.deleted,
+        createdBy: uis.createdBy,
+        updatedBy: uis.updatedBy,
+        uiVersion: uis.uiVersion,
+        name: uis.name,
+        description: uis.description,
+        // Latest version using subquery
+        version_id: sql<number>`COALESCE((
+          SELECT MAX(${versions.versionId})
+          FROM ${versions}
+          WHERE ${versions.uiId} = ${uis.uiId}
+        ), 1)`.as('version_id'),
+        // Project info for orgId filtering
+        project_orgId: filters.orgId ? projects.orgId : sql<string>`NULL`.as('project_orgId'),
+      })
+      .from(uis);
+
+    // Join with projects only if orgId filter is needed
+    if (filters.orgId) {
+      query = query.leftJoin(projects, and(
+        eq(uis.projectId, projects.id),
+        eq(projects.deleted, false)
+      ));
+    }
+
+    // Build where conditions
     let whereConditions: any = [eq(uis.deleted, false)];
 
     // If projectId is provided, filter by it
@@ -32,26 +68,9 @@ export class UisService {
       whereConditions.push(eq(uis.uiId, filters.uiId));
     }
 
-    // If orgId is provided, we need to join with projects to filter
+    // If orgId is provided, filter by project's orgId
     if (filters.orgId) {
-      // This will require a join - we'll handle this with a subquery
-      const projectIds = await this.drizzleService.db
-        .select({ id: projects.id })
-        .from(projects)
-        .where(and(eq(projects.orgId, filters.orgId), eq(projects.deleted, false)));
-      
-      const validProjectIds = projectIds.map((p: { id: number }) => p.id);
-      if (validProjectIds.length > 0) {
-        whereConditions.push(sql`${uis.projectId} IN ${validProjectIds}`);
-      } else {
-        // No valid projects found for this org
-        return {
-          message: 'No UIs found for the specified organization',
-          uis: [],
-          totalCount: 0,
-          userId: user?.id || 'anonymous',
-        };
-      }
+      whereConditions.push(eq(projects.orgId, filters.orgId));
     }
 
     // Apply additional where conditions if provided
@@ -63,18 +82,15 @@ export class UisService {
       });
     }
 
-    // Build query
-    let query = this.drizzleService.db
-      .select()
-      .from(uis)
-      .where(and(...whereConditions));
+    // Apply where conditions
+    query = query.where(and(...whereConditions));
 
     // Apply ordering
     if (filters.orderBy) {
       const orderField = Object.keys(filters.orderBy)[0];
       const orderDirection = filters.orderBy[orderField];
       if (orderField in uis) {
-        query = orderDirection === 'desc' 
+        query = orderDirection === 'desc'
           ? query.orderBy(desc((uis as any)[orderField]))
           : query.orderBy((uis as any)[orderField]);
       }
@@ -91,63 +107,58 @@ export class UisService {
       query = query.limit(filters.limit);
     }
 
-    const uisList = await query;
+    // Execute the single query
+    const uisWithLatestVersion = await query;
 
-    // Get latest versions for each UI
-    const uiIds = uisList.map((ui:any) => ui.uiId);
-    let latestVersions: any[] = [];
-    
-    if (uiIds.length > 0) {
-      latestVersions = await this.drizzleService.db
-        .select({
-          uiId: versions.uiId,
-          maxVersionId: max(versions.versionId),
-        })
-        .from(versions)
-        .where(sql`${versions.uiId} IN ${uiIds}`)
-        .groupBy(versions.uiId);
-    }
-
-    // Combine UIs with their latest version info
-    const uisWithLatestVersion = uisList.map((ui: any) => {
-      const latestVersion = latestVersions.find((v: any) => v.uiId === ui.uiId);
-      return {
-        ...ui,
-        version_id: latestVersion?.maxVersionId || 1,
-      };
+    // Remove the project_orgId field from results as it was only for filtering
+    const cleanedUis = uisWithLatestVersion.map((ui: any) => {
+      const { project_orgId, ...rest } = ui;
+      return rest;
     });
 
     return {
-      message: `Found ${uisWithLatestVersion.length} UIs`,
-      uis: uisWithLatestVersion,
-      totalCount: uisWithLatestVersion.length,
+      message: `Found ${cleanedUis.length} UIs`,
+      uis: cleanedUis,
+      totalCount: cleanedUis.length,
       userId: user?.id || 'anonymous',
     };
   }
 
  async getUiById(id: string, user?: User) {
-  const ui = await this.drizzleService.db
-    .select()
+  // Single query to get UI with latest version
+  const result = await this.drizzleService.db
+    .select({
+      // UI fields
+      id: uis.id,
+      projectId: uis.projectId,
+      createdAt: uis.createdAt,
+      updatedAt: uis.updatedAt,
+      published: uis.published,
+      uiId: uis.uiId,
+      deleted: uis.deleted,
+      createdBy: uis.createdBy,
+      updatedBy: uis.updatedBy,
+      uiVersion: uis.uiVersion,
+      name: uis.name,
+      description: uis.description,
+      // Latest version using subquery
+      version_id: sql<number>`COALESCE((
+        SELECT MAX(${versions.versionId})
+        FROM ${versions}
+        WHERE ${versions.uiId} = ${uis.uiId}
+      ), 1)`.as('version_id'),
+    })
     .from(uis)
-    .where(and( eq (uis.uiId, id), eq(uis.deleted, false)))
+    .where(and(eq(uis.uiId, id), eq(uis.deleted, false)))
     .limit(1);
 
-  if (!ui.length) {
+  if (!result.length) {
     throw new NotFoundException(`UI with ID ${id} not found`);
   }
 
-  const latestVersion = await this.drizzleService.db
-    .select({ maxVersionId: max(versions.versionId) })
-    .from(versions)
-    .where(eq(versions.uiId, ui[0].uiId))
-    .groupBy(versions.uiId);
-
   return {
     message: `UI ${id} retrieved successfully`,
-    ui: {
-      ...(ui[0] as any),
-      version_id: latestVersion[0]?.maxVersionId || 1,
-    },
+    ui: result[0],
     userId: user?.id || 'anonymous',
   };
 }
