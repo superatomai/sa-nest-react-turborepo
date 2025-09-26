@@ -10,8 +10,9 @@ import NodeEditor from './components/NodeEditor'
 import { findNodeById, updateNodeById } from './utils/node-operations'
 import { COMPLEX_DSL } from '@/test/complex-dsl'
 import { editorModeStore } from '../stores/mobx_editor_mode_store'
+import {API_URL as API_BASE_URL} from '../config/api'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000'
+const API_URL = API_BASE_URL; // points to backend api
 const default_ui_schema: UIComponent = createDefaultDSL()
 		
 const EditorSSE = () => {

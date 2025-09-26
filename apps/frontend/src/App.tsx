@@ -25,6 +25,7 @@ import ProjApiKeys from "./pages/Project/ProjApiKeys";
 import ProjDoc from "./pages/Project/ProjDoc";
 import ProjDesignSys from "./pages/Project/ProjDesignSys";
 import ProjLogsV2 from "./pages/Project/ProjLogsV2";
+import { API_URL } from "./config/api";
 
 export function App() {
   const { organization, isLoaded: orgLoaded } = useOrganization();
@@ -33,6 +34,10 @@ export function App() {
   const params = useParams();
   const navigate = useNavigate();
   const prevOrgIdRef = useRef<string | null>(null);
+
+  useEffect(()=>{
+    console.log("API_URL:", API_URL);
+  })
 
   useEffect(() => {
     if (orgLoaded) {
