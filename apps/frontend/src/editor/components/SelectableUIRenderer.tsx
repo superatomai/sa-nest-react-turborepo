@@ -41,7 +41,6 @@ const SelectableUIRendererInner: React.FC<{
 
 	return (
 		<div className="relative">
-			{/* <SelectionControlPanel /> */}
 			<UpdatedDSLRenderer
 				uiComponent={uiComponent}
 				handlers={handlers}

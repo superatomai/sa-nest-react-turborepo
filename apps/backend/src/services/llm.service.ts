@@ -5,7 +5,7 @@ import { T_UI_Component, Z_UI_Component } from '../types/ui-schema';
 import { ProjectSchemaCacheService } from './project-schema-cache.service';
 import { OPENROUTER_API_KEY, GEMINI_API_KEY, LLM_PROVIDER } from '../env';
 import { t_llm_query_response, t_uis_list_response, z_llm_query_response, z_uis_list_response } from 'src/types/llm';
-import { UI_PROMPT } from './ui-gen-prompts';
+import { UI_PROMPT, UI_PROMPT_WITH_NATIVE } from './ui-gen-prompts';
 import { QUERY_PROMPT } from './query-gen-prompts';
 import { UI_LIST_PROMPT } from 'src/prompts/uilist-gen';
 import { T_LLM_PROVIDER, UIComponent, UIComponentSchema } from 'src/types/dsl';
@@ -1240,7 +1240,7 @@ IMPORTANT RULES:
 - Keep the same component-level properties (states, methods, effects) unless asked to modify them
 - Update the data property if new data structure is needed`;
 
-            const fullPrompt = `${UI_PROMPT}
+            const fullPrompt = `${UI_PROMPT_WITH_NATIVE}
 
 ${userMessage}`;
 

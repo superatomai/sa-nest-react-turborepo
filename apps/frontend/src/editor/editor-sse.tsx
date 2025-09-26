@@ -10,6 +10,10 @@ import NodeEditor from './components/NodeEditor'
 import { findNodeById, updateNodeById } from './utils/node-operations'
 import { COMPLEX_DSL } from '@/test/complex-dsl'
 import { editorModeStore } from '../stores/mobx_editor_mode_store'
+import { PERFORMANCE_OPTIMIZED_DSL } from '@/test/performance-optimized-dsl'
+import { COMPONENT_DSL } from '@/test/componet-dsl'
+import { duckdb_dashboard_dsl } from '@/test/duckdb-dashboard'
+import { supplier_risks_dsl } from '@/test/supplier-risks'
 import {API_URL as API_BASE_URL} from '../config/api'
 
 const API_URL = API_BASE_URL; // points to backend api
@@ -19,7 +23,7 @@ const EditorSSE = () => {
 	const [messages, setMessages] = useState<Array<{ role: string, content: string }>>([])
 	const [input, setInput] = useState('')
 
-	const [currentSchema, setCurrentSchema] = useState<UIComponent | null>(null)
+	const [currentSchema, setCurrentSchema] = useState<UIComponent | null>()
 	const [projectId, setProjectId] = useState<string>("");
 	const [isDSLLoading, setIsDSLLoading] = useState<boolean>(false);
 	const [selectedNodeId, setSelectedNodeId] = useState<string>('');

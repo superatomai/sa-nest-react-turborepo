@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { use } from 'react';
 import { UIComponent, UIElement, UIElementSchema } from '@/types/dsl';
 import { useNodeSelection } from '../hooks/useNodeSelection';
 import { useFigmaSelection } from '../hooks/useFigmaSelection';
@@ -9,6 +9,55 @@ import { SchemaUtils } from '../../utils/schema-utilities';
 import { observer } from 'mobx-react-lite';
 import { editorModeStore } from '../../stores/mobx_editor_mode_store';
 import { motion } from 'framer-motion';
+
+// Memoized wrapper for native components to prevent unnecessary re-renders
+const MemoizedNativeComponent = React.memo(({
+    type,
+    props,
+    children,
+    elementKey
+}: {
+    type: string;
+    props: any;
+    children?: React.ReactNode;
+    elementKey?: string | number;
+}) => {
+    // Add debugging for native component renders
+    const renderCount = React.useRef(0);
+    renderCount.current++;
+
+    if (process.env.NODE_ENV === 'development' && renderCount.current > 1) {
+        console.log(`🔄 Native component ${type} re-rendered ${renderCount.current} times`);
+    }
+
+    return withConditionalErrorBoundary(
+        <DynamicComponent
+            key={elementKey}
+            type={type}
+            props={props}
+        >
+            {children}
+        </DynamicComponent>,
+        type,
+        elementKey,
+        true
+    );
+}, (prevProps, nextProps) => {
+    // Custom comparison to prevent re-renders when props haven't actually changed
+    const propsEqual = JSON.stringify(prevProps.props) === JSON.stringify(nextProps.props);
+    const typeEqual = prevProps.type === nextProps.type;
+    const keyEqual = prevProps.elementKey === nextProps.elementKey;
+
+    if (process.env.NODE_ENV === 'development' && (!propsEqual || !typeEqual || !keyEqual)) {
+        console.log(`🔄 Native component ${prevProps.type} will re-render`, {
+            propsEqual,
+            typeEqual,
+            keyEqual
+        });
+    }
+
+    return propsEqual && typeEqual && keyEqual;
+});
 
 interface UpdatedDSLRendererProps {
     uiComponent: UIComponent;
@@ -717,19 +766,16 @@ export const UpdatedDSLRenderer: React.FC<UpdatedDSLRendererProps> = observer(({
             return renderElement(actualElement.children as UIElement, localContext, [...componentPath, 0]);
         };
 
-        // Check for dynamic components first
+        // Check for dynamic components first - use memoized wrapper for better performance
         if (actualElement.type.startsWith('COMP_')) {
-            return withConditionalErrorBoundary(
-                <DynamicComponent
-                    key={resolvedKey}
+            return (
+                <MemoizedNativeComponent
                     type={actualElement.type}
                     props={resolvedProps}
+                    elementKey={resolvedKey}
                 >
                     {renderChildren()}
-                </DynamicComponent>,
-                actualElement.type,
-                resolvedKey,
-                true // Force wrap all COMP_ components with error boundaries
+                </MemoizedNativeComponent>
             );
         }
 
@@ -897,6 +943,34 @@ export const UpdatedDSLRenderer: React.FC<UpdatedDSLRendererProps> = observer(({
                     actualElement.type,
                     resolvedKey
                 );
+
+            case 'svg':
+                return withConditionalAnimation(
+                    <svg key={resolvedKey} {...resolvedProps}>{renderChildren()}</svg>,
+                    actualElement.type,
+                    resolvedKey
+                );
+
+            case 'path':
+                return <path key={resolvedKey} {...resolvedProps} />;
+
+            case 'circle':
+                return <circle key={resolvedKey} {...resolvedProps} />;
+
+            case 'rect':
+                return <rect key={resolvedKey} {...resolvedProps} />;
+
+            case 'line':
+                return <line key={resolvedKey} {...resolvedProps} />;
+
+            case 'polygon':
+                return <polygon key={resolvedKey} {...resolvedProps} />;
+
+            case 'polyline':
+                return <polyline key={resolvedKey} {...resolvedProps} />;
+
+            case 'g':
+                return <g key={resolvedKey} {...resolvedProps}>{renderChildren()}</g>;
 
             default:
                 // console.warn(`Unknown element type: ${actualElement.type}`);
