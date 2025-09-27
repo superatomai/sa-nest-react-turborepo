@@ -71,22 +71,6 @@ export const appRouter = t.router({
     .input(z.object({ name: z.string() }))
     .query(({ input }) => ({ greeting: `Hello, ${input.name}!` })),
 
-  // Project CRUD Operations
-
-  // ----------------
-  // UI Generation
-  // ----------------
-  generateUI: t.procedure
-    .input(GenerateUIInputSchema)
-    .mutation(async ({ input, ctx }) => {
-      const trpcService = ctx.nestApp.get(TrpcService);
-      return trpcService.generateUI({
-        prompt: input.prompt,
-        projectId: input.projectId,
-        currentSchema: input.currentSchema,
-      });
-    }),
-
   // ----------------
   // UI Generation with SSE
   // ----------------
@@ -119,16 +103,6 @@ export const appRouter = t.router({
   statusSSE: t.procedure.query(async ({ ctx }) => {
     const trpcService = ctx.nestApp.get(TrpcService);
     return trpcService.getStatusSSE();
-  }),
-
-  health: t.procedure.query(async ({ ctx }) => {
-    const trpcService = ctx.nestApp.get(TrpcService);
-    return trpcService.getHealth();
-  }),
-
-  status: t.procedure.query(async ({ ctx }) => {
-    const trpcService = ctx.nestApp.get(TrpcService);
-    return trpcService.getStatus();
   }),
 
   // ----------------

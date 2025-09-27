@@ -112,7 +112,7 @@ export class UiGenerationSSEService {
 	
 				// Step 2: Generate GraphQL query from prompt
 				sseController.sendMessage('status', '🔍 Generating GraphQL query...');
-				const graphqlResult = await this.llmService.generateGraphQLFromPromptForProject2(
+				const graphqlResult = await this.llmService.generateGraphQLFromPromptForProject(
 					prompt,
 					projectId,
 					schemaData.data

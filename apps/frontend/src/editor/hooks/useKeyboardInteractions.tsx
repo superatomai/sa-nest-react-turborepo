@@ -485,25 +485,48 @@ export const useKeyboardInteractions = (
 			}
 		}
 
-		// Handle Arrow Keys for element movement
+		// Handle Arrow Keys for selection movement
 		if (config.allowArrowNavigation !== false && selectedNode) {
-			switch (event.key) {
-				case 'ArrowUp':
-					event.preventDefault()
-					moveElementAndUpdateSelection('up')
-					break
-				case 'ArrowDown':
-					event.preventDefault()
-					moveElementAndUpdateSelection('down')
-					break
-				case 'ArrowLeft':
-					event.preventDefault()
-					moveElementAndUpdateSelection('left')
-					break
-				case 'ArrowRight':
-					event.preventDefault()
-					moveElementAndUpdateSelection('right')
-					break
+			// Shift + Arrow Keys for element movement
+			if (event.shiftKey) {
+				switch (event.key) {
+					case 'ArrowUp':
+						event.preventDefault()
+						moveElementAndUpdateSelection('up')
+						break
+					case 'ArrowDown':
+						event.preventDefault()
+						moveElementAndUpdateSelection('down')
+						break
+					case 'ArrowLeft':
+						event.preventDefault()
+						moveElementAndUpdateSelection('left')
+						break
+					case 'ArrowRight':
+						event.preventDefault()
+						moveElementAndUpdateSelection('right')
+						break
+				}
+			} else {
+				// Arrow Keys alone for selection movement
+				switch (event.key) {
+					case 'ArrowUp':
+						event.preventDefault()
+						navigateToPreviousSibling()
+						break
+					case 'ArrowDown':
+						event.preventDefault()
+						navigateToNextSibling()
+						break
+					case 'ArrowLeft':
+						event.preventDefault()
+						navigateToPreviousSibling()
+						break
+					case 'ArrowRight':
+						event.preventDefault()
+						navigateToNextSibling()
+						break
+				}
 			}
 		}
 

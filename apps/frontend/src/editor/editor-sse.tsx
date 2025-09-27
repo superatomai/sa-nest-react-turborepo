@@ -3,18 +3,18 @@ import { UIComponent, UIComponentSchema } from '../types/dsl'
 import { trpc } from '../utils/trpc'
 import { observer } from 'mobx-react-lite'
 import { useParams } from 'react-router-dom'
-import SelectableUIRenderer from './components/SelectableUIRenderer'
+import SelectableUIRenderer from './renderer/SelectableUIRenderer'
 import { DatabaseUtils, parseDSLFromVersion } from '../utils/database'
 import { createDefaultDSL } from '../lib/utils/default-dsl'
-import NodeEditor from './components/NodeEditor'
+import NodeEditor from './renderer/NodeEditor'
 import { findNodeById, updateNodeById } from './utils/node-operations'
-import { COMPLEX_DSL } from '@/test/complex-dsl'
+import { COMPLEX_DSL } from '@/gen-dsls/complex-dsl'
 import { editorModeStore } from '../stores/mobx_editor_mode_store'
-import { PERFORMANCE_OPTIMIZED_DSL } from '@/test/performance-optimized-dsl'
-import { COMPONENT_DSL } from '@/test/componet-dsl'
-import { duckdb_dashboard_dsl } from '@/test/duckdb-dashboard'
-import { supplier_risks_dsl } from '@/test/supplier-risks'
+import { COMPONENT_DSL } from '@/gen-dsls/componet-dsl'
+import { duckdb_dashboard_dsl } from '@/gen-dsls/duckdb-dashboard'
+import { supplier_risks_dsl } from '@/gen-dsls/supplier-risks'
 import {API_URL as API_BASE_URL} from '../config/api'
+import KeyboardShortcutsDialog from '../components/KeyboardShortcutsDialog'
 
 const API_URL = API_BASE_URL; // points to backend api
 const default_ui_schema: UIComponent = createDefaultDSL()
@@ -23,7 +23,12 @@ const EditorSSE = () => {
 	const [messages, setMessages] = useState<Array<{ role: string, content: string }>>([])
 	const [input, setInput] = useState('')
 
-	const [currentSchema, setCurrentSchema] = useState<UIComponent | null>()
+	// Pagination state for conversations
+	const [conversationPage, setConversationPage] = useState<number>(0)
+	const [hasMoreConversations, setHasMoreConversations] = useState<boolean>(false)
+	const [isLoadingMoreConversations, setIsLoadingMoreConversations] = useState<boolean>(false)
+
+	const [currentSchema, setCurrentSchema] = useState<UIComponent | null>(supplier_risks_dsl)
 	const [projectId, setProjectId] = useState<string>("");
 	const [isDSLLoading, setIsDSLLoading] = useState<boolean>(false);
 	const [selectedNodeId, setSelectedNodeId] = useState<string>('');
@@ -81,89 +86,95 @@ const EditorSSE = () => {
 	}, [uiId, uidata]);
 
 	// Load existing UI DSL on component mount - run after projectId is set
-	useEffect(() => {
-		const loadExistingUI = async () => {
-			if (!projectId || !uiId || projectId === "") return;
+	// useEffect(() => {
+	// 	const loadExistingUI = async () => {
+	// 		if (!projectId || !uiId || projectId === "") return;
 			
-			setIsDSLLoading(true);
-			try {
-				console.log('Loading existing UI for projectId:', projectId, 'uiId:', uiId);
+	// 		setIsDSLLoading(true);
+	// 		try {
+	// 			console.log('Loading existing UI for projectId:', projectId, 'uiId:', uiId);
 			
-				if (uidata && uidata.ui) {
-					const ui_version = uidata.ui.uiVersion;
+	// 			if (uidata && uidata.ui) {
+	// 				const ui_version = uidata.ui.uiVersion;
 
-					let dslToUse = null;
+	// 				let dslToUse = null;
 
-					try {
-						const versionResult = await getVersionQuery.refetch();
-						if (versionResult.data && versionResult.data.versions) {
-							const versions = versionResult.data.versions;
-							
-							// Load conversations from all versions
-							const conversations: Array<{ role: string, content: string }> = [];
-							
-							if (Array.isArray(versions)) {
-								// Sort versions by creation date (assuming id is chronological or there's a createdAt field)
-								const sortedVersions = [...versions].sort((a, b) => a.id - b.id);
-								
-								sortedVersions.forEach(version => {
-									if (version.prompt && version.prompt.trim()) {
-										// Add user message (the prompt)
-										conversations.push({
-											role: 'user',
-											content: version.prompt
-										});
-										// Add assistant response
-										conversations.push({
-											role: 'assistant',
-											content: 'UI generated successfully!'
-										});
-									}
-								});
-							}
-							
-							// Set conversations in messages state
-							if (conversations.length > 0) {
-								setMessages(conversations);
-							}
-							
-							// Find the current version's DSL
-							const versionData = Array.isArray(versions) ? 
-								versions.find(v => v.id === ui_version) : null;
-							if (versionData && versionData.dsl) {
-								dslToUse = versionData.dsl;
-							}
-						}
-					} catch (versionError) {
-						console.error('Failed to fetch version data:', versionError);
-					}
+	// 				try {
+	// 					// Load conversations from first page
+	// 					const conversationResult = await getVersionQuery.refetch();
+	// 					if (conversationResult.data && conversationResult.data.versions) {
+	// 						const versions = conversationResult.data.versions;
 
-					// console.log('dsl to use', dslToUse);
-						// Parse and set the DSL if we found it using new utilities
-					if (dslToUse) {
-						try {
-							const uiComponent = parseDSLFromVersion(dslToUse);
+	// 						// Load conversations from first page (already sorted by orderBy in query)
+	// 						const conversations: Array<{ role: string, content: string }> = [];
 
-							if (uiComponent) {
-								console.log('Setting current schema from DSL:', uiComponent);
-								setCurrentSchema(uiComponent);
-							}
+	// 						if (Array.isArray(versions)) {
+	// 							versions.forEach((version: any) => {
+	// 								if (version.prompt && version.prompt.trim()) {
+	// 									// Add user message (the prompt)
+	// 									conversations.push({
+	// 										role: 'user',
+	// 										content: version.prompt
+	// 									});
+	// 									// Add assistant response
+	// 									conversations.push({
+	// 										role: 'assistant',
+	// 										content: 'UI generated successfully!'
+	// 									});
+	// 								}
+	// 							});
+	// 						}
 
-						} catch (parseError) {
-							console.error('Failed to parse DSL:', parseError);
-						}
-					} else {
-						console.error('No DSL found for this UI');
-					}
-				}
-			} catch (error) {
-				console.error('Failed to load existing UI:', error);
-			} finally {
-				setIsDSLLoading(false);
-			}
-		};
-		loadExistingUI();
-	}, [projectId, uiId]); // Run when projectId or uiId changes
+	// 						// Set initial conversations and pagination state
+	// 						if (conversations.length > 0) {
+	// 							setMessages(conversations);
+	// 							setConversationPage(0); // Reset to first page
+	// 							// Check if there are more conversations to load
+	// 							setHasMoreConversations(versions.length === CONVERSATIONS_PER_PAGE);
+	// 						}
+	// 					}
+
+	// 					// Load DSL from current UI version (separate query to get all versions)
+	// 					const dslResult = await getCurrentVersionDSLQuery.refetch();
+	// 					if (dslResult.data && dslResult.data.versions) {
+	// 						const allVersions = dslResult.data.versions;
+	// 						// Find the current version's DSL
+	// 						const versionData = Array.isArray(allVersions) ?
+	// 							allVersions.find((v: any) => v.id === ui_version) : null;
+	// 						if (versionData && versionData.dsl) {
+	// 							dslToUse = versionData.dsl;
+	// 						}
+	// 					}
+	// 				} catch (versionError) {
+	// 					console.error('Failed to fetch version data:', versionError);
+	// 				}
+
+	// 				// console.log('dsl to use', dslToUse);
+	// 					// Parse and set the DSL if we found it using new utilities
+	// 				if (dslToUse) {
+	// 					try {
+	// 						const uiComponent = parseDSLFromVersion(dslToUse);
+
+	// 						if (uiComponent) {
+	// 							console.log('Setting current schema from DSL:', uiComponent);
+	// 							setCurrentSchema(uiComponent);
+	// 						}
+
+	// 					} catch (parseError) {
+	// 						console.error('Failed to parse DSL:', parseError);
+	// 					}
+	// 				} else {
+	// 					console.error('No DSL found for this UI');
+	// 				}
+	// 			}
+	// 		} catch (error) {
+	// 			console.error('Failed to load existing UI:', error);
+	// 		} finally {
+	// 			setIsDSLLoading(false);
+	// 		}
+	// 	};
+	// 	loadExistingUI();
+	// }, [projectId, uiId]); // Run when projectId or uiId changes
 
 	// Auto-scroll when messages or SSE events change
 	useEffect(() => {
@@ -241,14 +252,93 @@ const EditorSSE = () => {
 	}
 
 
-	// Add version query to fetch DSL if needed
+	// Add version query to fetch DSL if needed with pagination
+	const CONVERSATIONS_PER_PAGE = 10
 	const getVersionQuery = trpc.versionsGetAll.useQuery(
-		{ uiId: uiId }, // Pass uiId to get versions for this UI
+		{
+			uiId: uiId,
+			limit: CONVERSATIONS_PER_PAGE,
+			skip: conversationPage * CONVERSATIONS_PER_PAGE,
+			orderBy: { id: 'asc' } // Order by ID to maintain consistent order
+		},
+		{ enabled: false } // Only run manually
+	);
+
+	// Separate query to get the current UI version DSL (get all versions to find the specific one)
+	const getCurrentVersionDSLQuery = trpc.versionsGetAll.useQuery(
+		{
+			uiId: uiId,
+			// No limit/skip for DSL - we need to find the specific version
+		},
 		{ enabled: false } // Only run manually
 	);
 
 	// Database operations using centralized utilities
 	const { createVersionAndUpdateUI, isLoading: isSavingToDatabase } = DatabaseUtils.useCreateVersionAndUpdateUI()
+
+	// Create a separate query for loading more conversations
+	const loadMoreVersionsQuery = trpc.versionsGetAll.useQuery(
+		{
+			uiId: uiId,
+			limit: CONVERSATIONS_PER_PAGE,
+			skip: (conversationPage + 1) * CONVERSATIONS_PER_PAGE,
+			orderBy: { id: 'asc' }
+		},
+		{ enabled: false } // Only run manually
+	);
+
+	// Function to load more conversations (older ones)
+	const loadMoreConversations = useCallback(async () => {
+		if (isLoadingMoreConversations || !hasMoreConversations) return
+
+		setIsLoadingMoreConversations(true)
+
+		// Store current scroll position
+		const currentScrollHeight = messagesContainerRef.current?.scrollHeight || 0
+
+		try {
+			const result = await loadMoreVersionsQuery.refetch()
+
+			if (result.data && result.data.versions && Array.isArray(result.data.versions)) {
+				const newConversations: Array<{ role: string, content: string }> = []
+
+				result.data.versions.forEach((version: any) => {
+					if (version.prompt && version.prompt.trim()) {
+						newConversations.push({
+							role: 'user',
+							content: version.prompt
+						})
+						newConversations.push({
+							role: 'assistant',
+							content: 'UI generated successfully!'
+						})
+					}
+				})
+
+				if (newConversations.length > 0) {
+					// Prepend older conversations to the beginning
+					setMessages(prev => [...newConversations, ...prev])
+					setConversationPage(prev => prev + 1)
+
+					// Maintain scroll position after adding content at the top
+					setTimeout(() => {
+						if (messagesContainerRef.current) {
+							const newScrollHeight = messagesContainerRef.current.scrollHeight
+							const scrollDiff = newScrollHeight - currentScrollHeight
+							messagesContainerRef.current.scrollTop += scrollDiff
+						}
+					}, 0)
+				}
+
+				// Check if there are more conversations to load
+				setHasMoreConversations(result.data.versions.length === CONVERSATIONS_PER_PAGE)
+			}
+		} catch (error) {
+			console.error('Failed to load more conversations:', error)
+		} finally {
+			setIsLoadingMoreConversations(false)
+		}
+	}, [loadMoreVersionsQuery, isLoadingMoreConversations, hasMoreConversations])
 
 	// SSE UI Generation Function
 	const generateUIWithSSE = async (prompt: string, projectId: string, currentSchema: UIComponent) => {
@@ -588,14 +678,17 @@ const EditorSSE = () => {
 		<div className="flex h-screen bg-white overflow-hidden">
 			{/* Left Side - Generated React Component */}
 			<div className={`${editorModeStore.isPreview ? 'w-full' : 'flex-1'} bg-white bg-opacity-90 ${editorModeStore.isDev ? 'border-r border-gray-300' : ''} shadow-xl overflow-hidden relative`}>
-				{/* Floating toggle button in preview mode */}
+				{/* Floating toggle button and help in preview mode */}
 				{editorModeStore.isPreview && (
-					<button
-						onClick={() => editorModeStore.toggleMode()}
-						className="absolute top-4 right-4 px-3 bg-white py-1.5 text-xs font-medium text-teal-700 hover:text-white hover:bg-teal-600 rounded-md transition-all duration-200 shadow-lg hover:shadow-xl z-20"
-					>
-						{editorModeStore.currentMode.toUpperCase()}
-					</button>
+					<div className="absolute top-4 right-4 flex items-center space-x-2 z-20">
+						<button
+							onClick={() => editorModeStore.toggleMode()}
+							className="px-3 bg-white py-1.5 text-xs font-medium text-teal-700 hover:text-white hover:bg-teal-600 rounded-md transition-all duration-200 shadow-lg hover:shadow-xl"
+						>
+							{editorModeStore.currentMode.toUpperCase()}
+						</button>
+						<KeyboardShortcutsDialog />
+					</div>
 				)}
 
 				<div className="h-full flex flex-col">
@@ -623,21 +716,9 @@ const EditorSSE = () => {
 									</div>
 								</div>
 							</div>
-						) : currentSchema ? (
+						) : currentSchema && (
 							<div className="">
 								{memoizedRenderer}
-							</div>
-						) : (
-							<div className="h-full flex items-center justify-center">
-								<div className="text-center space-y-4">
-									<div className="w-24 h-24 mx-auto bg-gradient-to-br from-indigo-100 to-purple-100 rounded-2xl flex items-center justify-center">
-										<svg className="w-12 h-12 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-											<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-										</svg>
-									</div>
-									<h3 className="text-xl font-semibold text-slate-700">Ready to Create</h3>
-									<p className="text-slate-500 max-w-sm">Describe what you want to build and watch it come to life</p>
-								</div>
 							</div>
 						)}
 					</div>
@@ -648,15 +729,16 @@ const EditorSSE = () => {
 			{/* Right Side - Chat Interface with SSE Logs (Dev mode only) */}
 			{editorModeStore.isDev && (
 				<div className="w-96 bg-gradient-to-b from-teal-50 to-cyan-50 flex flex-col shadow-2xl overflow-hidden">
-					{/* Header with Mode Toggle */}
+					{/* Header with Mode Toggle and Help */}
 					<div className="px-4 py-3 bg-cyan-50 border-b border-teal-200">
-						<div className="flex items-center justify-end">
+						<div className="flex items-center justify-end space-x-2">
 							<button
 								onClick={() => editorModeStore.toggleMode()}
 								className="px-3 bg-white py-1.5 text-xs font-medium text-teal-700 hover:text-white hover:bg-teal-600 rounded-md transition-all duration-200 shadow-sm hover:shadow-md"
 							>
 								{editorModeStore.currentMode.toUpperCase()}
 							</button>
+							<KeyboardShortcutsDialog />
 						</div>
 					</div>
 
@@ -678,6 +760,34 @@ const EditorSSE = () => {
 
 					{/* Messages and SSE Logs */}
 					<div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-4 space-y-3">
+						{/* Load More Conversations Button - At top for scrolling up to load older conversations */}
+						{hasMoreConversations && !isGenerating && messages.length > 0 && (
+							<div className="text-center py-3">
+								<button
+									onClick={loadMoreConversations}
+									disabled={isLoadingMoreConversations}
+									className="px-4 py-2 bg-white border border-teal-300 text-teal-700 text-sm rounded-lg hover:bg-teal-50 hover:border-teal-400 transition-colors duration-200 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2 mx-auto"
+								>
+									{isLoadingMoreConversations ? (
+										<>
+											<svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+												<circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" className="opacity-25"></circle>
+												<path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" className="opacity-75"></path>
+											</svg>
+											<span>Loading older...</span>
+										</>
+									) : (
+										<>
+											<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+												<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+											</svg>
+											<span>Load Older</span>
+										</>
+									)}
+								</button>
+							</div>
+						)}
+
 						{messages.length === 0 && (
 							<div className="text-center py-12">
 								<div className="w-12 h-12 mx-auto bg-gradient-to-br from-teal-100 to-cyan-100 rounded-lg flex items-center justify-center mb-3 shadow-sm">
