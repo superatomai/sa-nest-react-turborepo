@@ -29,7 +29,6 @@ const EditorSSE = () => {
 	const [isLoadingMoreConversations, setIsLoadingMoreConversations] = useState<boolean>(false)
 
 	const [currentSchema, setCurrentSchema] = useState<UIComponent | null>()
-	const [projectId, setProjectId] = useState<string>("");
 	const [isDSLLoading, setIsDSLLoading] = useState<boolean>(false);
 	const [selectedNodeId, setSelectedNodeId] = useState<string>('');
 
@@ -42,6 +41,7 @@ const EditorSSE = () => {
 	const llmStreamRef = useRef<HTMLDivElement>(null);
 	const messagesContainerRef = useRef<HTMLDivElement>(null);
 	const abortControllerRef = useRef<AbortController | null>(null);
+	const loadedUiIdRef = useRef<string | null>(null);
 
 	// Auto-scroll to bottom of messages
 	const scrollToBottom = () => {
@@ -69,31 +69,29 @@ const EditorSSE = () => {
 		scrollToBottom();
 	};
 
-	const { uiId } = useParams<{ uiId: string }>();
+	// Get both projectId and uiId from URL params
+	const { projectId, uiId } = useParams<{ projectId: string, uiId: string }>();
 
 	const { data: uidata} = trpc.uisGetById.useQuery(
 		{ id: uiId! },   // non-null assertion
 		{ enabled: !!uiId } // only run query if uiId exists
 	);
 
-	useEffect(() => {
-		if (uiId && uidata) {
-			const ui = uidata.ui;
-			setProjectId(()=>{
-				return ui.projectId.toString()
-			})
-		}
-	}, [uiId, uidata]);
-
-	// Load existing UI DSL on component mount - run after projectId is set
+	// Load existing UI DSL on component mount
 	useEffect(() => {
 		const loadExistingUI = async () => {
-			if (!projectId || !uiId || projectId === "") return;
-			
+			if (!uiId || !uidata?.ui) return;
+
+			// Prevent re-loading if we've already loaded this UI
+			if (loadedUiIdRef.current === uiId) {
+				return;
+			}
+
 			setIsDSLLoading(true);
 			try {
 				console.log('Loading existing UI for projectId:', projectId, 'uiId:', uiId);
-			
+				loadedUiIdRef.current = uiId; // Mark as loaded
+
 				if (uidata && uidata.ui) {
 					const ui_version = uidata.ui.uiVersion;
 
@@ -174,7 +172,7 @@ const EditorSSE = () => {
 			}
 		};
 		loadExistingUI();
-	}, [projectId, uiId]); // Run when projectId or uiId changes
+	}, [uiId, uidata]); // Run when uiId or uidata changes
 
 	// Auto-scroll when messages or SSE events change
 	useEffect(() => {
@@ -651,25 +649,25 @@ const EditorSSE = () => {
 
 	const handleSend = async () => {
 		if (!input.trim()) return
-		
-		if (!projectId || projectId === "") {
-			console.error('ProjectId not available yet');
+
+		if (!projectId) {
+			console.error('ProjectId not available from URL');
 			setMessages(prev => [...prev, {
 				role: 'assistant',
-				content: 'Please wait for the project to load before generating UI.'
+				content: 'Project ID is missing from the URL. Please ensure you access this page with a valid project ID.'
 			}])
 			return;
 		}
 
 		const currentInput = input
-		
+
 		// Save prompt to history
 		savePromptToHistory(currentInput)
-		
+
 		setMessages([...messages, { role: 'user', content: input }])
 		scrollToBottom(); // Scroll after adding user message
 
-		// Use SSE UI generation
+		// Use SSE UI generation - projectId now comes from URL params
 		await generateUIWithSSE(currentInput, projectId, currentSchema || default_ui_schema);
 	}
 
@@ -694,7 +692,7 @@ const EditorSSE = () => {
 				<div className="h-full flex flex-col">
 					{/* Preview Content */}
 					<div className="flex-1 relative overflow-y-auto">
-						{isDSLLoading ? (
+						{(isDSLLoading || !currentSchema) ? (
 							<div className="h-full flex items-center justify-center bg-white">
 								<div className="text-center space-y-6">
 									<div className="relative w-20 h-20 mx-auto">
@@ -716,7 +714,7 @@ const EditorSSE = () => {
 									</div>
 								</div>
 							</div>
-						) : currentSchema && (
+						) : (
 							<div className="">
 								{memoizedRenderer}
 							</div>
