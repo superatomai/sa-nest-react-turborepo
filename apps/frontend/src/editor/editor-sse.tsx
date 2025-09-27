@@ -28,7 +28,7 @@ const EditorSSE = () => {
 	const [hasMoreConversations, setHasMoreConversations] = useState<boolean>(false)
 	const [isLoadingMoreConversations, setIsLoadingMoreConversations] = useState<boolean>(false)
 
-	const [currentSchema, setCurrentSchema] = useState<UIComponent | null>(supplier_risks_dsl)
+	const [currentSchema, setCurrentSchema] = useState<UIComponent | null>()
 	const [projectId, setProjectId] = useState<string>("");
 	const [isDSLLoading, setIsDSLLoading] = useState<boolean>(false);
 	const [selectedNodeId, setSelectedNodeId] = useState<string>('');
@@ -86,95 +86,95 @@ const EditorSSE = () => {
 	}, [uiId, uidata]);
 
 	// Load existing UI DSL on component mount - run after projectId is set
-	// useEffect(() => {
-	// 	const loadExistingUI = async () => {
-	// 		if (!projectId || !uiId || projectId === "") return;
+	useEffect(() => {
+		const loadExistingUI = async () => {
+			if (!projectId || !uiId || projectId === "") return;
 			
-	// 		setIsDSLLoading(true);
-	// 		try {
-	// 			console.log('Loading existing UI for projectId:', projectId, 'uiId:', uiId);
+			setIsDSLLoading(true);
+			try {
+				console.log('Loading existing UI for projectId:', projectId, 'uiId:', uiId);
 			
-	// 			if (uidata && uidata.ui) {
-	// 				const ui_version = uidata.ui.uiVersion;
+				if (uidata && uidata.ui) {
+					const ui_version = uidata.ui.uiVersion;
 
-	// 				let dslToUse = null;
+					let dslToUse = null;
 
-	// 				try {
-	// 					// Load conversations from first page
-	// 					const conversationResult = await getVersionQuery.refetch();
-	// 					if (conversationResult.data && conversationResult.data.versions) {
-	// 						const versions = conversationResult.data.versions;
+					try {
+						// Load conversations from first page
+						const conversationResult = await getVersionQuery.refetch();
+						if (conversationResult.data && conversationResult.data.versions) {
+							const versions = conversationResult.data.versions;
 
-	// 						// Load conversations from first page (already sorted by orderBy in query)
-	// 						const conversations: Array<{ role: string, content: string }> = [];
+							// Load conversations from first page (already sorted by orderBy in query)
+							const conversations: Array<{ role: string, content: string }> = [];
 
-	// 						if (Array.isArray(versions)) {
-	// 							versions.forEach((version: any) => {
-	// 								if (version.prompt && version.prompt.trim()) {
-	// 									// Add user message (the prompt)
-	// 									conversations.push({
-	// 										role: 'user',
-	// 										content: version.prompt
-	// 									});
-	// 									// Add assistant response
-	// 									conversations.push({
-	// 										role: 'assistant',
-	// 										content: 'UI generated successfully!'
-	// 									});
-	// 								}
-	// 							});
-	// 						}
+							if (Array.isArray(versions)) {
+								versions.forEach((version: any) => {
+									if (version.prompt && version.prompt.trim()) {
+										// Add user message (the prompt)
+										conversations.push({
+											role: 'user',
+											content: version.prompt
+										});
+										// Add assistant response
+										conversations.push({
+											role: 'assistant',
+											content: 'UI generated successfully!'
+										});
+									}
+								});
+							}
 
-	// 						// Set initial conversations and pagination state
-	// 						if (conversations.length > 0) {
-	// 							setMessages(conversations);
-	// 							setConversationPage(0); // Reset to first page
-	// 							// Check if there are more conversations to load
-	// 							setHasMoreConversations(versions.length === CONVERSATIONS_PER_PAGE);
-	// 						}
-	// 					}
+							// Set initial conversations and pagination state
+							if (conversations.length > 0) {
+								setMessages(conversations);
+								setConversationPage(0); // Reset to first page
+								// Check if there are more conversations to load
+								setHasMoreConversations(versions.length === CONVERSATIONS_PER_PAGE);
+							}
+						}
 
-	// 					// Load DSL from current UI version (separate query to get all versions)
-	// 					const dslResult = await getCurrentVersionDSLQuery.refetch();
-	// 					if (dslResult.data && dslResult.data.versions) {
-	// 						const allVersions = dslResult.data.versions;
-	// 						// Find the current version's DSL
-	// 						const versionData = Array.isArray(allVersions) ?
-	// 							allVersions.find((v: any) => v.id === ui_version) : null;
-	// 						if (versionData && versionData.dsl) {
-	// 							dslToUse = versionData.dsl;
-	// 						}
-	// 					}
-	// 				} catch (versionError) {
-	// 					console.error('Failed to fetch version data:', versionError);
-	// 				}
+						// Load DSL from current UI version (separate query to get all versions)
+						const dslResult = await getCurrentVersionDSLQuery.refetch();
+						if (dslResult.data && dslResult.data.versions) {
+							const allVersions = dslResult.data.versions;
+							// Find the current version's DSL
+							const versionData = Array.isArray(allVersions) ?
+								allVersions.find((v: any) => v.id === ui_version) : null;
+							if (versionData && versionData.dsl) {
+								dslToUse = versionData.dsl;
+							}
+						}
+					} catch (versionError) {
+						console.error('Failed to fetch version data:', versionError);
+					}
 
-	// 				// console.log('dsl to use', dslToUse);
-	// 					// Parse and set the DSL if we found it using new utilities
-	// 				if (dslToUse) {
-	// 					try {
-	// 						const uiComponent = parseDSLFromVersion(dslToUse);
+					// console.log('dsl to use', dslToUse);
+						// Parse and set the DSL if we found it using new utilities
+					if (dslToUse) {
+						try {
+							const uiComponent = parseDSLFromVersion(dslToUse);
 
-	// 						if (uiComponent) {
-	// 							console.log('Setting current schema from DSL:', uiComponent);
-	// 							setCurrentSchema(uiComponent);
-	// 						}
+							if (uiComponent) {
+								console.log('Setting current schema from DSL:', uiComponent);
+								setCurrentSchema(uiComponent);
+							}
 
-	// 					} catch (parseError) {
-	// 						console.error('Failed to parse DSL:', parseError);
-	// 					}
-	// 				} else {
-	// 					console.error('No DSL found for this UI');
-	// 				}
-	// 			}
-	// 		} catch (error) {
-	// 			console.error('Failed to load existing UI:', error);
-	// 		} finally {
-	// 			setIsDSLLoading(false);
-	// 		}
-	// 	};
-	// 	loadExistingUI();
-	// }, [projectId, uiId]); // Run when projectId or uiId changes
+						} catch (parseError) {
+							console.error('Failed to parse DSL:', parseError);
+						}
+					} else {
+						console.error('No DSL found for this UI');
+					}
+				}
+			} catch (error) {
+				console.error('Failed to load existing UI:', error);
+			} finally {
+				setIsDSLLoading(false);
+			}
+		};
+		loadExistingUI();
+	}, [projectId, uiId]); // Run when projectId or uiId changes
 
 	// Auto-scroll when messages or SSE events change
 	useEffect(() => {
