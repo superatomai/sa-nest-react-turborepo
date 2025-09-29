@@ -777,7 +777,7 @@ const EditorSSE = () => {
 					width: editorModeStore.isPreview ? '100%' : `${leftPanelWidth}%`
 				}}
 			>
-				{/* Floating toggle button and help in preview mode */}
+				{/* Floating toggle button in preview mode */}
 				{editorModeStore.isPreview && (
 					<div className="absolute top-4 right-4 flex items-center space-x-2 z-20">
 						<button
@@ -785,13 +785,6 @@ const EditorSSE = () => {
 							className="px-3 bg-white py-1.5 text-xs font-medium text-teal-700 hover:text-white hover:bg-teal-600 rounded-md transition-all duration-200 shadow-lg hover:shadow-xl"
 						>
 							{editorModeStore.currentMode.toUpperCase()}
-						</button>
-						<button
-							onClick={handlePublish}
-							disabled={updateUiMutation.isPending}
-							className="px-3 bg-white py-1.5 text-xs font-medium text-teal-700 hover:text-white hover:bg-teal-600 rounded-md transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
-						>
-							{updateUiMutation.isPending ? 'PUBLISHING...' : 'PUBLISH'}
 						</button>
 					</div>
 				)}
