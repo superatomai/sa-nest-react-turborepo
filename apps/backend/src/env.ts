@@ -51,9 +51,11 @@ dotenv.config({ path: envPath });
 
 console.log('[ENV] Loaded OPENROUTER_API_KEY:', process.env.OPENROUTER_API_KEY ? '[set]' : '[missing]');
 console.log('[ENV] Loaded GEMINI_API_KEY:', process.env.GEMINI_API_KEY ? '[set]' : '[missing]');
+console.log('[ENV] Loaded GROQ_API_KEY:', process.env.GROQ_API_KEY ? '[set]' : '[missing]');
 export const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 export const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-export const LLM_PROVIDER = process.env.LLM_PROVIDER ; // 'openrouter' or 'gemini'
+export const GROQ_API_KEY = process.env.GROQ_API_KEY;
+export const LLM_PROVIDER = process.env.LLM_PROVIDER ; // 'openrouter', 'gemini', or 'groq'
 export const DATABASE_URL = process.env.DATABASE_URL;
 export const WEBSOCKET_URL = process.env.WEBSOCKET_URL;
 export const RUNTIME_PROJECT_ID = process.env.RUNTIME_PROJECT_ID;

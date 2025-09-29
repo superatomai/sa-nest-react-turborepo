@@ -15,6 +15,7 @@ import { UisModule } from './uis/uis.module';
 import { ProjectKeysModule } from './project_keys/project_keys.module';
 import { DesignSystemModule } from './design_system/design_system.module';
 import { WebhooksModule } from './webhooks/webhooks.module';
+import { RuntimeModule } from './runtime/runtime.module';
 import { DeploymentController } from './controllers/deployment.controller';
 import { DeploymentService } from './services/deployment.service';
 
@@ -33,6 +34,7 @@ import { DeploymentService } from './services/deployment.service';
     ProjectKeysModule,
     DesignSystemModule,
     WebhooksModule,
+    RuntimeModule,
     TrpcModule
   ],
   controllers: [AppController, DeploymentController],
