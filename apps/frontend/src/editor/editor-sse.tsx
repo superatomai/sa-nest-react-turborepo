@@ -16,6 +16,7 @@ import { supplier_risks_dsl } from '@/gen-dsls/supplier-risks'
 import {API_URL as API_BASE_URL} from '../config/api'
 import KeyboardShortcutsDialog from '../components/KeyboardShortcutsDialog'
 import DuckDBFileUpload from '../duckdb/components/DuckDBFileUpload'
+import toast from 'react-hot-toast'
 
 const API_URL = API_BASE_URL; // points to backend api
 const default_ui_schema: UIComponent = createDefaultDSL()
@@ -80,6 +81,39 @@ const EditorSSE = () => {
 		{ id: uiId! },   // non-null assertion
 		{ enabled: !!uiId } // only run query if uiId exists
 	);
+
+	// Mutation for updating UI publish status
+	const updateUiMutation = trpc.uisUpdate.useMutation({
+		onSuccess: () => {
+			console.log('UI publish status updated successfully');
+			toast.success('UI published successfully! 🚀', {
+				duration: 3000,
+				position: 'top-right',
+			});
+		},
+		onError: (error) => {
+			console.error('Failed to update UI publish status:', error);
+			toast.error('Failed to publish UI. Please try again.', {
+				duration: 4000,
+				position: 'top-right',
+			});
+		}
+	});
+
+	// Handle publish - only sets to true once
+	const handlePublish = async () => {
+		if (!uidata?.ui || !uiId || uidata.ui.published) return;
+
+		try {
+			await updateUiMutation.mutateAsync({
+				id: uidata.ui.id,
+				published: true
+			});
+			// The query will automatically refetch due to optimistic updates
+		} catch (error) {
+			console.error('Error updating publish status:', error);
+		}
+	};
 
 	// Load existing UI DSL on component mount
 	useEffect(() => {
@@ -752,7 +786,13 @@ const EditorSSE = () => {
 						>
 							{editorModeStore.currentMode.toUpperCase()}
 						</button>
-						<KeyboardShortcutsDialog />
+						<button
+							onClick={handlePublish}
+							disabled={updateUiMutation.isPending || uidata?.ui?.published}
+							className="px-3 bg-white py-1.5 text-xs font-medium text-teal-700 hover:text-white hover:bg-teal-600 rounded-md transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
+						>
+							{updateUiMutation.isPending ? 'PUBLISHING...' : 'PUBLISH'}
+						</button>
 					</div>
 				)}
 
@@ -815,7 +855,15 @@ const EditorSSE = () => {
 							>
 								{editorModeStore.currentMode.toUpperCase()}
 							</button>
-							<KeyboardShortcutsDialog />
+							<button
+								onClick={handlePublish}
+								disabled={updateUiMutation.isPending || uidata?.ui?.published}
+								className="px-3 bg-white py-1.5 text-xs font-medium text-teal-700 hover:text-white hover:bg-teal-600 rounded-md transition-all duration-200 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+							>
+								{updateUiMutation.isPending ? 'PUBLISHING...' : 'PUBLISH'}
+							</button>
+							{/* Keyboard shortcuts only visible in dev mode */}
+							{editorModeStore.isDev && <KeyboardShortcutsDialog />}
 						</div>
 					</div>
 
