@@ -1045,5 +1045,4 @@ When modifying an existing UI schema:
 
 Return ONLY the JSON schema with no additional text.`;
 
-export const UI_PROMPT = ui_prompt_v4_uicomponent;
-export const UI_PROMPT_WITH_NATIVE = ui_prompt_v5_with_native_components;
+export const UI_PROMPT = ui_prompt_v5_with_native_components;

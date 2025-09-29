@@ -154,4 +154,4 @@ export const validateDSL = (dsl: unknown): UIElement => {
     return UIElementSchema.parse(dsl);
 };
 
-export type T_LLM_PROVIDER = 'openrouter' | 'gemini';
+export type T_LLM_PROVIDER = 'openrouter' | 'gemini' | 'groq';

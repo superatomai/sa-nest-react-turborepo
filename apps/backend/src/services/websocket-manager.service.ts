@@ -716,38 +716,38 @@ export class WebSocketManagerService implements OnModuleInit, OnModuleDestroy {
 	}
 
 	async onModuleInit() {
-		const runtimeProjectId = RUNTIME_PROJECT_ID;
-		if (!runtimeProjectId) {
-			console.warn('⚠️ No RUNTIME_PROJECT_ID set. Skipping auto-connect.');
-			return;
-		}
+		// const runtimeProjectId = RUNTIME_PROJECT_ID;
+		// if (!runtimeProjectId) {
+		// 	console.warn('⚠️ No RUNTIME_PROJECT_ID set. Skipping auto-connect.');
+		// 	return;
+		// }
 
-		if (this.autoConnectInProgress) {
-			return;
-		}
+		// if (this.autoConnectInProgress) {
+		// 	return;
+		// }
 
-		if (this.autoConnectCompleted) {
-			return;
-		}
+		// if (this.autoConnectCompleted) {
+		// 	return;
+		// }
 
-		this.autoConnectInProgress = true;
-		try {
-			await this.getClientForUser(runtimeProjectId);
-			console.log(`✅ Runtime WebSocket connected for project ${runtimeProjectId}`);
-			this.autoConnectCompleted = true;
-		} catch (err) {
-			const errorMsg = err instanceof Error ? err.message : String(err);
+		// this.autoConnectInProgress = true;
+		// try {
+		// 	await this.getClientForUser(runtimeProjectId);
+		// 	console.log(`✅ Runtime WebSocket connected for project ${runtimeProjectId}`);
+		// 	this.autoConnectCompleted = true;
+		// } catch (err) {
+		// 	const errorMsg = err instanceof Error ? err.message : String(err);
 			
-			// Don't log "already connected" as an error
-			if (errorMsg.includes('Runtime already connected')) {
-				console.log(`✅ Runtime already connected for project ${runtimeProjectId} - skipping auto-connect`);
-				this.autoConnectCompleted = true;
-			} else {
-				console.error(`❌ Failed to auto-connect runtime project ${runtimeProjectId}:`, errorMsg);
-			}
-		} finally {
-			this.autoConnectInProgress = false;
-		}
+		// 	// Don't log "already connected" as an error
+		// 	if (errorMsg.includes('Runtime already connected')) {
+		// 		console.log(`✅ Runtime already connected for project ${runtimeProjectId} - skipping auto-connect`);
+		// 		this.autoConnectCompleted = true;
+		// 	} else {
+		// 		console.error(`❌ Failed to auto-connect runtime project ${runtimeProjectId}:`, errorMsg);
+		// 	}
+		// } finally {
+		// 	this.autoConnectInProgress = false;
+		// }
 	}
 
 	/**

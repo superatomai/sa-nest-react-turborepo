@@ -43,6 +43,7 @@ const EditorSSE = () => {
 	const [llmStream, setLlmStream] = useState<string>('');
 	const [isLlmStreaming, setIsLlmStreaming] = useState<boolean>(false);
 	const [isLlmAccordionOpen, setIsLlmAccordionOpen] = useState<boolean>(true);
+	const [currentProvider, setCurrentProvider] = useState<string>('');
 	const llmStreamRef = useRef<HTMLDivElement>(null);
 	const messagesContainerRef = useRef<HTMLDivElement>(null);
 	const abortControllerRef = useRef<AbortController | null>(null);
@@ -67,6 +68,7 @@ const EditorSSE = () => {
 		setIsLlmStreaming(false);
 		setLlmStream('');
 		setSSEEvents([]);
+		setCurrentProvider('');
 		setMessages(prev => [...prev, {
 			role: 'assistant',
 			content: 'Generation cancelled by user.'
@@ -427,6 +429,7 @@ const EditorSSE = () => {
 		setSSEEvents([]);
 		setLlmStream('');
 		setIsLlmStreaming(false);
+		setCurrentProvider('');
 		setIsLlmAccordionOpen(true); // Default to open for new generations
 
 		try {
@@ -477,6 +480,24 @@ const EditorSSE = () => {
 							// Only add non-LLM streaming events to SSE events display
 							if (eventData.type !== 'llm_stream' && eventData.type !== 'llm_complete') {
 								setSSEEvents(prev => [...prev, sseEvent]);
+							}
+
+							// Handle provider switching - clear LLM stream for fresh start
+							if (eventData.type === 'status' && (
+								eventData.message.includes('🚀 Attempting UI generation with') ||
+								eventData.message.includes('🔄 Switching to')
+							)) {
+								// Completely reset LLM streaming state when switching providers
+								setLlmStream('');
+								setIsLlmStreaming(false);
+
+								// Extract provider name from message
+								if (eventData.message.includes('🚀 Attempting UI generation with')) {
+									const providerMatch = eventData.message.match(/🚀 Attempting UI generation with (\w+)/);
+									if (providerMatch) {
+										setCurrentProvider(providerMatch[1]);
+									}
+								}
 							}
 
 							// Handle LLM streaming events
@@ -972,8 +993,19 @@ const EditorSSE = () => {
 									</div>
 									<div className="space-y-1">
 										{sseEvents.map((event, index) => {
-											// Check if this is the "Generating UI" event to add accordion
-											const isGeneratingUI = event.message.includes('🎨 Generating UI');
+											// Check if this is any UI generation attempt to add accordion
+											const isGeneratingUI = event.message.includes('🎨 Generating UI') ||
+											                      event.message.includes('🚀 Attempting UI generation');
+
+											// Only show LLM accordion for the most recent provider attempt
+											const isCurrentProviderAttempt = isGeneratingUI &&
+												currentProvider &&
+												event.message.includes(`🚀 Attempting UI generation with ${currentProvider.toUpperCase()}`);
+
+											// Show accordion if this is the current provider attempt or the initial generating UI message
+											const shouldShowAccordion = (isCurrentProviderAttempt ||
+												(event.message.includes('🎨 Generating UI') && !currentProvider)) &&
+												(isLlmStreaming || llmStream);
 
 											return (
 												<div key={index}>
@@ -988,7 +1020,7 @@ const EditorSSE = () => {
 														}`}>
 															{event.message}
 														</span>
-														{isGeneratingUI && (isLlmStreaming || llmStream) && (
+														{shouldShowAccordion && (
 															<button
 																onClick={() => setIsLlmAccordionOpen(!isLlmAccordionOpen)}
 																className="ml-2 text-blue-500 hover:text-blue-700 transition-colors"
@@ -998,14 +1030,17 @@ const EditorSSE = () => {
 														)}
 													</div>
 
-													{/* LLM Streaming Accordion - appears right after "Generating UI" */}
-													{isGeneratingUI && (isLlmStreaming || llmStream) && isLlmAccordionOpen && (
+													{/* LLM Streaming Accordion - only show for current provider */}
+													{shouldShowAccordion && isLlmAccordionOpen && (
 														<div className="mt-2 ml-4 border-l-2 border-teal-300 pl-3">
 															<div className="bg-black rounded-md p-3 shadow-inner">
 																<div className="flex items-center space-x-2 mb-2">
 																	<div className={`w-1.5 h-1.5 ${isLlmStreaming ? 'bg-green-400 animate-pulse' : 'bg-gray-400'} rounded-full`}></div>
 																	<span className="text-green-400 text-xs font-medium">
-																		{isLlmStreaming ? 'AI_GENERATING' : 'AI_COMPLETE'}
+																		{isLlmStreaming ?
+																			`${currentProvider ? currentProvider.toUpperCase() + '_' : ''}AI_GENERATING` :
+																			`${currentProvider ? currentProvider.toUpperCase() + '_' : ''}AI_COMPLETE`
+																		}
 																	</span>
 																</div>
 																<div

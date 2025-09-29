@@ -46,16 +46,29 @@ function findEnvFile(): string {
 }
 
 const envPath = findEnvFile();
-console.log(`[ENV] Loading from: ${envPath}`);
 dotenv.config({ path: envPath }); 
 
 console.log('[ENV] Loaded OPENROUTER_API_KEY:', process.env.OPENROUTER_API_KEY ? '[set]' : '[missing]');
 console.log('[ENV] Loaded GEMINI_API_KEY:', process.env.GEMINI_API_KEY ? '[set]' : '[missing]');
+console.log('[ENV] Loaded GROQ_API_KEY:', process.env.GROQ_API_KEY ? '[set]' : '[missing]');
+
+// Test environment variables for forcing provider failures
+console.log('[ENV] Test mode FORCE_GROQ_FAIL:', process.env.FORCE_GROQ_FAIL ? '[enabled]' : '[disabled]');
+console.log('[ENV] Test mode FORCE_GEMINI_FAIL:', process.env.FORCE_GEMINI_FAIL ? '[enabled]' : '[disabled]');
+console.log('[ENV] Test mode FORCE_OPENROUTER_FAIL:', process.env.FORCE_OPENROUTER_FAIL ? '[enabled]' : '[disabled]');
+
 export const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 export const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-export const LLM_PROVIDER = process.env.LLM_PROVIDER ; // 'openrouter' or 'gemini'
+export const GROQ_API_KEY = process.env.GROQ_API_KEY;
+export const LLM_PROVIDER = process.env.LLM_PROVIDER ; // 'openrouter', 'gemini', or 'groq'
+
+// Test environment variables
+export const FORCE_GROQ_FAIL = process.env.FORCE_GROQ_FAIL === 'true';
+export const FORCE_GEMINI_FAIL = process.env.FORCE_GEMINI_FAIL === 'true';
+export const FORCE_OPENROUTER_FAIL = process.env.FORCE_OPENROUTER_FAIL === 'true';
 export const DATABASE_URL = process.env.DATABASE_URL;
 export const WEBSOCKET_URL = process.env.WEBSOCKET_URL;
 export const RUNTIME_PROJECT_ID = process.env.RUNTIME_PROJECT_ID;
 export const CLERK_PUBLISHABLE_KEY = process.env.CLERK_PUBLISHABLE_KEY;
 export const CLERK_SECRET_KEY = process.env.CLERK_SECRET_KEY;
+export const PORT = process.env.PORT 
