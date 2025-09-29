@@ -15,6 +15,7 @@ import { duckdb_dashboard_dsl } from '@/gen-dsls/duckdb-dashboard'
 import { supplier_risks_dsl } from '@/gen-dsls/supplier-risks'
 import {API_URL as API_BASE_URL} from '../config/api'
 import KeyboardShortcutsDialog from '../components/KeyboardShortcutsDialog'
+import DuckDBFileUpload from '../duckdb/components/DuckDBFileUpload'
 
 const API_URL = API_BASE_URL; // points to backend api
 const default_ui_schema: UIComponent = createDefaultDSL()
@@ -31,6 +32,9 @@ const EditorSSE = () => {
 	const [currentSchema, setCurrentSchema] = useState<UIComponent | null>()
 	const [isDSLLoading, setIsDSLLoading] = useState<boolean>(false);
 	const [selectedNodeId, setSelectedNodeId] = useState<string>('');
+
+	const [leftPanelWidth, setLeftPanelWidth] = useState<number>(80); // Percentage
+	const [isResizing, setIsResizing] = useState<boolean>(false);
 
 	// SSE specific states
 	const [isGenerating, setIsGenerating] = useState<boolean>(false);
@@ -178,6 +182,48 @@ const EditorSSE = () => {
 	useEffect(() => {
 		scrollToBottom();
 	}, [messages, sseEvents, isGenerating, isLlmStreaming, llmStream, isLlmAccordionOpen]);
+
+	// Handle resizing
+	const handleMouseDown = useCallback((e: React.MouseEvent) => {
+		setIsResizing(true);
+		e.preventDefault();
+	}, []);
+
+	const handleMouseMove = useCallback((e: MouseEvent) => {
+		if (!isResizing) return;
+
+		const containerWidth = window.innerWidth;
+		const newLeftWidth = (e.clientX / containerWidth) * 100;
+
+		// Constrain between 20% and 80%
+		const constrainedWidth = Math.min(Math.max(newLeftWidth, 20), 80);
+		setLeftPanelWidth(constrainedWidth);
+	}, [isResizing]);
+
+	const handleMouseUp = useCallback(() => {
+		setIsResizing(false);
+	}, []);
+
+	useEffect(() => {
+		if (isResizing) {
+			document.addEventListener('mousemove', handleMouseMove);
+			document.addEventListener('mouseup', handleMouseUp);
+			document.body.style.cursor = 'col-resize';
+			document.body.style.userSelect = 'none';
+		} else {
+			document.removeEventListener('mousemove', handleMouseMove);
+			document.removeEventListener('mouseup', handleMouseUp);
+			document.body.style.cursor = '';
+			document.body.style.userSelect = '';
+		}
+
+		return () => {
+			document.removeEventListener('mousemove', handleMouseMove);
+			document.removeEventListener('mouseup', handleMouseUp);
+			document.body.style.cursor = '';
+			document.body.style.userSelect = '';
+		};
+	}, [isResizing, handleMouseMove, handleMouseUp]);
 
 	// Prompt history state
 	const [promptHistory, setPromptHistory] = useState<string[]>([])
@@ -650,6 +696,24 @@ const EditorSSE = () => {
 	const handleSend = async () => {
 		if (!input.trim()) return
 
+		const currentInput = input.trim()
+
+		// Check if the prompt is /duckdb
+		if (currentInput === '/duckdb') {
+			// Save prompt to history
+			savePromptToHistory(currentInput)
+
+			setMessages([...messages, { role: 'user', content: input }])
+			setMessages(prev => [...prev, {
+				role: 'assistant',
+				content: 'duckdb_component' // Special marker for rendering DuckDB component
+			}])
+
+			setInput('')
+			scrollToBottom()
+			return
+		}
+
 		if (!projectId) {
 			console.error('ProjectId not available from URL');
 			setMessages(prev => [...prev, {
@@ -658,8 +722,6 @@ const EditorSSE = () => {
 			}])
 			return;
 		}
-
-		const currentInput = input
 
 		// Save prompt to history
 		savePromptToHistory(currentInput)
@@ -675,7 +737,12 @@ const EditorSSE = () => {
 	return (
 		<div className="flex h-screen bg-white overflow-hidden">
 			{/* Left Side - Generated React Component */}
-			<div className={`${editorModeStore.isPreview ? 'w-full' : 'flex-1'} bg-white bg-opacity-90 ${editorModeStore.isDev ? 'border-r border-gray-300' : ''} shadow-xl overflow-hidden relative`}>
+			<div
+				className={`${editorModeStore.isPreview ? 'w-full' : ''} bg-white bg-opacity-90 shadow-xl overflow-hidden relative`}
+				style={{
+					width: editorModeStore.isPreview ? '100%' : `${leftPanelWidth}%`
+				}}
+			>
 				{/* Floating toggle button and help in preview mode */}
 				{editorModeStore.isPreview && (
 					<div className="absolute top-4 right-4 flex items-center space-x-2 z-20">
@@ -722,11 +789,23 @@ const EditorSSE = () => {
 					</div>
 				</div>
 			</div>
-			{/* bg-gradient-to-r from-teal-100 to-cyan-100 */}
+
+			{/* Resizer Bar - Only visible in dev mode */}
+			{editorModeStore.isDev && !editorModeStore.isPreview && (
+				<div
+					className={`w-1 bg-gray-300 hover:bg-teal-400 cursor-col-resize transition-colors duration-200 ${isResizing ? 'bg-teal-500' : ''}`}
+					onMouseDown={handleMouseDown}
+				></div>
+			)}
 
 			{/* Right Side - Chat Interface with SSE Logs (Dev mode only) */}
 			{editorModeStore.isDev && (
-				<div className="w-96 bg-gradient-to-b from-teal-50 to-cyan-50 flex flex-col shadow-2xl overflow-hidden">
+				<div
+					className="bg-gradient-to-b from-teal-50 to-cyan-50 flex flex-col shadow-2xl overflow-hidden"
+					style={{
+						width: `${100 - leftPanelWidth}%`
+					}}
+				>
 					{/* Header with Mode Toggle and Help */}
 					<div className="px-4 py-3 bg-cyan-50 border-b border-teal-200">
 						<div className="flex items-center justify-end space-x-2">
@@ -799,12 +878,30 @@ const EditorSSE = () => {
 
 						{messages.map((msg, i) => (
 							<div key={i} className={`${msg.role === 'user' ? 'text-right' : 'text-left'}`}>
-								<div className={`inline-block px-3 py-2 rounded-lg max-w-[85%] text-sm shadow-sm ${msg.role === 'user'
-									? 'bg-gradient-to-r from-teal-600 to-teal-700 text-white'
-									: 'bg-white border border-teal-200 text-teal-800'
-									}`}>
-									{msg.content}
-								</div>
+								{msg.content === 'duckdb_component' ? (
+									<div className="w-full">
+										<div className="bg-white border border-teal-200 rounded-lg p-4 shadow-sm">
+											<div className="flex items-center justify-between mb-4">
+												<h3 className="text-lg font-semibold text-teal-800">DuckDB Interface</h3>
+											</div>
+											<DuckDBFileUpload
+												onFileLoaded={(filename, size) => {
+													console.log(`DuckDB file loaded: ${filename} (${size} bytes)`)
+												}}
+												onError={(error) => {
+													console.error('DuckDB error:', error)
+												}}
+											/>
+										</div>
+									</div>
+								) : (
+									<div className={`inline-block px-3 py-2 rounded-lg max-w-[85%] text-sm shadow-sm ${msg.role === 'user'
+										? 'bg-gradient-to-r from-teal-600 to-teal-700 text-white'
+										: 'bg-white border border-teal-200 text-teal-800'
+										}`}>
+										{msg.content}
+									</div>
+								)}
 							</div>
 						))}
 
