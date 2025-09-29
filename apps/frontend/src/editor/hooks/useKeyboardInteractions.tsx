@@ -1,7 +1,8 @@
 import { useEffect, useCallback, startTransition } from 'react'
 import { useNodeSelection } from './useNodeSelection'
 import { SchemaUtils } from '../../utils/schema-utilities'
-import { UIComponent, UIElement } from '../../types/dsl'
+import { UIComponent, UIElement, UIComponentSchema, UIElementSchema } from '../../types/dsl'
+import toast from 'react-hot-toast'
 
 interface KeyboardInteractionsConfig {
 	enabled: boolean
@@ -27,7 +28,8 @@ export const useKeyboardInteractions = (
 		pasteAsChild,
 		deleteSelectedNode,
 		selectNode,
-		onSchemaUpdate
+		onSchemaUpdate,
+		clearCopiedNode
 	} = useNodeSelection()
 
 	// Move element and update selection
@@ -425,6 +427,111 @@ export const useKeyboardInteractions = (
 		selectNode(duplicateId, newPath)
 	}, [selectedNode, selectNode, rootSchema, onSchemaUpdate])
 
+	// Helper function to check if the modifier key is pressed (Ctrl on Windows/Linux, Cmd on macOS)
+	const isModifierKeyPressed = useCallback((event: KeyboardEvent) => {
+		const isMac = /Mac|iPhone|iPod|iPad/.test(navigator.userAgent)
+		return isMac ? event.metaKey : event.ctrlKey
+	}, [])
+
+	// Handle paste functionality - supports both internal clipboard and JSON from external clipboard
+	const handlePaste = useCallback(async () => {
+		try {
+			// First, check if we have an internal copied node
+			if (selectedNode && copiedNode) {
+				pasteAsChild()
+				return
+			}
+
+			// If no internal copied node, try to read from system clipboard
+			if (!navigator.clipboard) {
+				toast.error('Clipboard access not available')
+				return
+			}
+
+			const clipboardText = await navigator.clipboard.readText()
+			if (!clipboardText.trim()) {
+				toast.error('Clipboard is empty')
+				return
+			}
+
+			// Try to parse as JSON
+			let parsedData
+			try {
+				parsedData = JSON.parse(clipboardText)
+			} catch {
+				toast.error('Clipboard content is not valid JSON')
+				return
+			}
+
+			// Check if it's a UIComponent (has render property)
+			const isUIComponent = parsedData && typeof parsedData === 'object' && 'render' in parsedData
+
+			if (isUIComponent) {
+				// Validate as UIComponent
+				const validationResult = UIComponentSchema.safeParse(parsedData)
+				if (!validationResult.success) {
+					toast.error('Invalid UIComponent JSON structure')
+					console.error('UIComponent validation error:', validationResult.error)
+					return
+				}
+
+				// Replace the entire UI with this component
+				if (!onSchemaUpdate) {
+					toast.error('Cannot update schema: Schema update not available')
+					return
+				}
+
+				const newComponent = validationResult.data
+				// Generate new IDs to avoid conflicts
+				const componentWithNewIds = SchemaUtils.cloneElementWithNewIds(newComponent)
+				onSchemaUpdate(componentWithNewIds, 'paste-json-component')
+				toast.success(`Replaced entire UI with "${newComponent.name || newComponent.id}" component`)
+				console.log('🔄 Replaced entire UI with UIComponent:', newComponent.id)
+
+				// Clear any internal copied node since we successfully pasted JSON
+				clearCopiedNode()
+			} else {
+				// Validate as UIElement
+				const validationResult = UIElementSchema.safeParse(parsedData)
+				if (!validationResult.success) {
+					toast.error('Invalid UIElement JSON structure')
+					console.error('UIElement validation error:', validationResult.error)
+					return
+				}
+
+				// Add as child to selected element
+				if (!selectedNode) {
+					toast.error('No element selected to paste into')
+					return
+				}
+
+				if (!rootSchema || !onSchemaUpdate) {
+					toast.error('Cannot paste: Schema update not available')
+					return
+				}
+
+				const newElement = validationResult.data
+				// Generate new IDs to avoid conflicts
+				const elementWithNewIds = SchemaUtils.cloneElementWithNewIds(newElement)
+
+				// Add as child to selected element
+				const updatedSchema = SchemaUtils.addComponentAtPath(rootSchema, selectedNode.path, elementWithNewIds)
+				onSchemaUpdate(updatedSchema, 'paste-json-element')
+
+				const targetElement = SchemaUtils.findComponentByPath(rootSchema, selectedNode.path)
+				const targetInfo = targetElement ? SchemaUtils.getElementInfo(targetElement) : null
+				toast.success(`Added "${newElement.type}" element to "${targetInfo?.type || 'selected element'}"`)
+				console.log('📌 Added UIElement as child:', newElement.id)
+
+				// Clear any internal copied node since we successfully pasted JSON
+				clearCopiedNode()
+			}
+		} catch (error) {
+			toast.error('Error handling paste')
+			console.error('Paste error:', error)
+		}
+	}, [selectedNode, copiedNode, rootSchema, onSchemaUpdate, pasteAsChild, clearCopiedNode])
+
 	// Main keyboard event handler
 	const handleKeyDown = useCallback((event: KeyboardEvent) => {
 		// Only handle keys when selection is enabled and keyboard interactions are enabled
@@ -532,32 +639,30 @@ export const useKeyboardInteractions = (
 
 		// Handle Copy-Paste operations
 		if (config.allowCopyPaste !== false) {
-			// Handle Ctrl+C (Copy)
-			if (event.ctrlKey && event.key === 'c') {
+			// Handle Ctrl+C / Cmd+C (Copy)
+			if (isModifierKeyPressed(event) && event.key === 'c') {
 				if (selectedNode) {
 					event.preventDefault()
 					copySelectedNode()
 				}
 			}
 
-			// Handle Ctrl+X (Cut)
-			if (event.ctrlKey && event.key === 'x') {
+			// Handle Ctrl+X / Cmd+X (Cut)
+			if (isModifierKeyPressed(event) && event.key === 'x') {
 				if (selectedNode) {
 					event.preventDefault()
 					cutSelectedNode()
 				}
 			}
 
-			// Handle Ctrl+V (Paste)
-			if (event.ctrlKey && event.key === 'v') {
-				if (selectedNode && copiedNode) {
-					event.preventDefault()
-					pasteAsChild()
-				}
+			// Handle Ctrl+V / Cmd+V (Paste)
+			if (isModifierKeyPressed(event) && event.key === 'v') {
+				event.preventDefault()
+				handlePaste()
 			}
 
-			// Handle Ctrl+D (Duplicate)
-			if (event.ctrlKey && event.key === 'd') {
+			// Handle Ctrl+D / Cmd+D (Duplicate)
+			if (isModifierKeyPressed(event) && event.key === 'd') {
 				if (selectedNode) {
 					event.preventDefault()
 					duplicateSelectedElement()
@@ -565,9 +670,12 @@ export const useKeyboardInteractions = (
 			}
 		}
 
-		// Handle Delete key
+		// Handle Delete key (Delete on Windows/Linux, Backspace on Mac)
 		if (config.allowDelete !== false) {
-			if (event.key === 'Delete') {
+			const isMac = /Mac|iPhone|iPod|iPad/.test(navigator.userAgent)
+			const deleteKey = isMac ? 'Backspace' : 'Delete'
+
+			if (event.key === deleteKey) {
 				if (selectedNode) {
 					event.preventDefault()
 					deleteSelectedNode()
@@ -592,7 +700,9 @@ export const useKeyboardInteractions = (
 		copySelectedNode,
 		cutSelectedNode,
 		pasteAsChild,
-		deleteSelectedNode
+		deleteSelectedNode,
+		isModifierKeyPressed,
+		handlePaste
 	])
 
 	// Set up event listeners

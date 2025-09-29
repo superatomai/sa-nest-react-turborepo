@@ -16,6 +16,11 @@ interface KeyboardShortcut {
 }
 
 const KeyboardShortcutsDialog = () => {
+  // Detect platform for correct modifier key display
+  const isMac = /Mac|iPhone|iPod|iPad/.test(navigator.userAgent)
+  const modifierKey = isMac ? '⌘' : 'Ctrl'
+  const deleteKey = isMac ? '⌫' : 'Delete'
+
   const shortcuts: KeyboardShortcut[] = [
     {
       category: "Selection Navigation",
@@ -41,11 +46,11 @@ const KeyboardShortcutsDialog = () => {
     {
       category: "Copy & Paste",
       shortcuts: [
-        { keys: ["Ctrl", "C"], description: "Copy selected element" },
-        { keys: ["Ctrl", "X"], description: "Cut selected element" },
-        { keys: ["Ctrl", "V"], description: "Paste as child of selected element" },
-        { keys: ["Ctrl", "D"], description: "Duplicate selected element" },
-        { keys: ["Delete"], description: "Delete selected element" },
+        { keys: [modifierKey, "C"], description: "Copy selected element" },
+        { keys: [modifierKey, "X"], description: "Cut selected element" },
+        { keys: [modifierKey, "V"], description: "Paste as child of selected element" },
+        { keys: [modifierKey, "D"], description: "Duplicate selected element" },
+        { keys: [deleteKey], description: "Delete selected element" },
       ]
     },
     {

@@ -88,21 +88,21 @@ const EditorSSE = () => {
 			console.log('UI publish status updated successfully');
 			toast.success('UI published successfully! 🚀', {
 				duration: 3000,
-				position: 'top-right',
+				position: 'top-center',
 			});
 		},
 		onError: (error) => {
 			console.error('Failed to update UI publish status:', error);
 			toast.error('Failed to publish UI. Please try again.', {
 				duration: 4000,
-				position: 'top-right',
+				position: 'top-center',
 			});
 		}
 	});
 
 	// Handle publish - only sets to true once
 	const handlePublish = async () => {
-		if (!uidata?.ui || !uiId || uidata.ui.published) return;
+		if (!uidata?.ui || !uiId ) return;
 
 		try {
 			await updateUiMutation.mutateAsync({
@@ -788,7 +788,7 @@ const EditorSSE = () => {
 						</button>
 						<button
 							onClick={handlePublish}
-							disabled={updateUiMutation.isPending || uidata?.ui?.published}
+							disabled={updateUiMutation.isPending}
 							className="px-3 bg-white py-1.5 text-xs font-medium text-teal-700 hover:text-white hover:bg-teal-600 rounded-md transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
 						>
 							{updateUiMutation.isPending ? 'PUBLISHING...' : 'PUBLISH'}
@@ -847,23 +847,28 @@ const EditorSSE = () => {
 					}}
 				>
 					{/* Header with Mode Toggle and Help */}
-					<div className="px-4 py-3 bg-cyan-50 border-b border-teal-200">
-						<div className="flex items-center justify-end space-x-2">
-							<button
-								onClick={() => editorModeStore.toggleMode()}
-								className="px-3 bg-white py-1.5 text-xs font-medium text-teal-700 hover:text-white hover:bg-teal-600 rounded-md transition-all duration-200 shadow-sm hover:shadow-md"
-							>
-								{editorModeStore.currentMode.toUpperCase()}
-							</button>
-							<button
-								onClick={handlePublish}
-								disabled={updateUiMutation.isPending || uidata?.ui?.published}
-								className="px-3 bg-white py-1.5 text-xs font-medium text-teal-700 hover:text-white hover:bg-teal-600 rounded-md transition-all duration-200 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
-							>
-								{updateUiMutation.isPending ? 'PUBLISHING...' : 'PUBLISH'}
-							</button>
-							{/* Keyboard shortcuts only visible in dev mode */}
-							{editorModeStore.isDev && <KeyboardShortcutsDialog />}
+					<div className="px-4 py-2 bg-cyan-50 border-b border-teal-200">
+						<div className="flex items-center justify-between">
+							<div className='flex jsutify-center'>
+								<button
+									onClick={() => editorModeStore.toggleMode()}
+									className="px-3 bg-white py-1.5 text-xs font-medium text-teal-700 hover:text-white hover:bg-teal-600 rounded-md transition-all duration-200 shadow-sm hover:shadow-md"
+								>
+									{editorModeStore.currentMode.toUpperCase()}
+								</button>
+							</div>
+
+							<div className='flex justify-center gap-4 items-center'>
+								<button
+									onClick={handlePublish}
+									disabled={updateUiMutation.isPending}
+									className="px-3 bg-white py-1.5 text-xs font-medium text-teal-700 hover:text-white hover:bg-teal-600 rounded-md transition-all duration-200 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+								>
+									{updateUiMutation.isPending ? 'PUBLISHING...' : 'PUBLISH'}
+								</button>
+								{/* Keyboard shortcuts only visible in dev mode */}
+								{editorModeStore.isDev && <KeyboardShortcutsDialog />}
+							</div>
 						</div>
 					</div>
 

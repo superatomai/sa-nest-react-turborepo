@@ -33,6 +33,7 @@ interface NodeSelectionContextType {
 	cutSelectedNode: () => void
 	pasteAsChild: () => void
 	hasCopiedNode: () => boolean
+	clearCopiedNode: () => void
 
 	// Delete action
 	deleteSelectedNode: () => void
@@ -243,6 +244,9 @@ export const NodeSelectionProvider: React.FC<NodeSelectionProviderProps> = ({
 			const targetInfo = SchemaUtils.getElementInfo(targetParent)
 			toast.success(`Pasted "${copiedInfo.type}" into "${targetInfo.type}"`)
 			console.log('📌 Pasted element as child of:', targetInfo.id)
+
+			// Clear the copied node after successful paste
+			setCopiedNode(null)
 		} catch (error) {
 			toast.error('Error pasting component')
 			console.error('Paste error:', error)
@@ -294,6 +298,11 @@ export const NodeSelectionProvider: React.FC<NodeSelectionProviderProps> = ({
 		return copiedNode !== null
 	}, [copiedNode])
 
+	// Clear copied node
+	const clearCopiedNode = useCallback(() => {
+		setCopiedNode(null)
+	}, [])
+
 	// Note: Keyboard handling has been moved to useKeyboardInteractions hook
 	// This allows for better separation of concerns and easier customization
 
@@ -334,6 +343,7 @@ export const NodeSelectionProvider: React.FC<NodeSelectionProviderProps> = ({
 		cutSelectedNode,
 		pasteAsChild,
 		hasCopiedNode,
+		clearCopiedNode,
 		deleteSelectedNode,
 		isNodeSelectable,
 		isNodeSelected,
