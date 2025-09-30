@@ -49,6 +49,9 @@ const EditorSSE = () => {
 	const abortControllerRef = useRef<AbortController | null>(null);
 	const loadedUiIdRef = useRef<string | null>(null);
 
+	// Generation method state
+	const [generationMethod, setGenerationMethod] = useState<'regular' | 'claude-agent'>('regular');
+
 	// Auto-scroll to bottom of messages
 	const scrollToBottom = () => {
 		setTimeout(() => {
@@ -598,7 +601,180 @@ const EditorSSE = () => {
 			}, 3000);
 		}
 	};
-	
+
+	// Claude Agent SSE UI Generation Function
+	const generateUIWithClaudeAgent = async (prompt: string, projectId: string, currentSchema: UIComponent) => {
+		// Create new AbortController for this request
+		abortControllerRef.current = new AbortController();
+
+		setIsGenerating(true);
+		setSSEEvents([]);
+		setLlmStream('');
+		setIsLlmStreaming(false);
+		setCurrentProvider('Claude Agent');
+		setIsLlmAccordionOpen(true); // Default to open for new generations
+
+		try {
+			// Use the Claude Agent SSE endpoint
+			const response = await fetch(`${API_URL}/claude/generate-ui-sse`, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+				},
+				body: JSON.stringify({
+					prompt,
+					projectId,
+					uiId: uiId!,
+					currentSchema
+				}),
+				signal: abortControllerRef.current.signal
+			});
+
+			if (!response.ok) {
+				throw new Error(`HTTP error! status: ${response.status}`);
+			}
+
+			const reader = response.body?.getReader();
+			const decoder = new TextDecoder();
+
+			if (!reader) {
+				throw new Error('No response body');
+			}
+
+			while (true) {
+				const { done, value } = await reader.read();
+				if (done) break;
+
+				const chunk = decoder.decode(value);
+				const lines = chunk.split('\n');
+
+				for (const line of lines) {
+					if (line.startsWith('data: ')) {
+						try {
+							const eventData = JSON.parse(line.slice(6));
+
+							const sseEvent = {
+								type: eventData.type || 'unknown',
+								message: eventData.message || eventData.data || 'Unknown event',
+								data: eventData.data,
+								timestamp: new Date()
+							};
+
+							// Add all events except Claude streaming to SSE events display
+							// This includes: status, tool_use, error, complete
+							if (eventData.type !== 'claude_stream' && eventData.type !== 'claude_complete') {
+								setSSEEvents(prev => [...prev, sseEvent]);
+							}
+
+							// Handle Claude streaming events
+							if (eventData.type === 'claude_stream') {
+								setIsLlmStreaming(true);
+								const claudeContent = eventData.message.replace(/^🤖 /, ''); // Remove emoji prefix
+								setLlmStream(prev => {
+									const newStream = prev + claudeContent;
+									// Auto-scroll to bottom after state update
+									setTimeout(() => {
+										if (llmStreamRef.current) {
+											llmStreamRef.current.scrollTop = llmStreamRef.current.scrollHeight;
+										}
+									}, 0);
+									return newStream;
+								});
+							}
+
+							// Handle Claude completion event
+							if (eventData.type === 'claude_complete') {
+								setIsLlmStreaming(false);
+							}
+
+							// Handle completion event
+							if (eventData.type === 'complete' && eventData.data) {
+								const response = eventData.data;
+								if (response.success && response.data) {
+									console.log('Claude Agent UI generated and converted to DSL:', response.data);
+									const claudeDSL = response.data;
+
+									// Validate the DSL structure
+									const p = UIComponentSchema.safeParse(claudeDSL);
+									if (!p.success) {
+										console.error('Failed to parse Claude-generated DSL:', p.error);
+										setMessages(prev => [...prev, {
+											role: 'assistant',
+											content: 'UI generated but failed to parse DSL format. Please try again.'
+										}]);
+										return;
+									}
+
+									const updated_ui = p.data;
+
+									// Update the UI with the converted DSL
+									setCurrentSchema(updated_ui);
+
+									// Create version using new database utilities
+									createVersionAndUpdateUI({
+										uiId: uiId!,
+										uiComponent: updated_ui,
+										prompt: prompt,
+										operation: 'Claude Agent Generation'
+									}, uidata);
+
+									// Show success message with conversion info
+									const conversionInfo = response.metadata?.convertedFromJSX
+										? ` (JSX converted to DSL in ${response.metadata.groqConversionTime}ms)`
+										: ' (using fallback DSL)';
+
+									setMessages(prev => [...prev, {
+										role: 'assistant',
+										content: `UI generated successfully with Claude Agent${conversionInfo}!`
+									}]);
+
+									// Clear loading states immediately on completion
+									setIsGenerating(false);
+									setIsLlmStreaming(false);
+
+									scrollToBottom();
+									setInput('')
+								}
+							}
+						} catch (e) {
+							console.error('Failed to parse Claude Agent SSE event:', e);
+						}
+					}
+				}
+			}
+		} catch (error) {
+			// Handle abort error differently from other errors
+			if (error instanceof Error && error.name === 'AbortError') {
+				console.log('Claude Agent generation was cancelled');
+				// Don't add error messages for cancelled requests
+				return;
+			}
+
+			console.error('Claude Agent SSE Error:', error);
+			setSSEEvents(prev => [...prev, {
+				type: 'error',
+				message: `Claude Agent Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+				timestamp: new Date()
+			}]);
+			setMessages(prev => [...prev, {
+				role: 'assistant',
+				content: 'Failed to generate UI with Claude Agent. Please try again.'
+			}]);
+			scrollToBottom();
+		} finally {
+			// Clean up abort controller
+			abortControllerRef.current = null;
+
+			// Always set generating to false and clear LLM states
+			setIsGenerating(false);
+			// Clear LLM stream after a delay to allow user to see the completion
+			setTimeout(() => {
+				setLlmStream('');
+				setIsLlmStreaming(false);
+			}, 3000);
+		}
+	};
+
 	// Define handlers that can be used in generated UI
 	const handlers = useMemo(() => ({
 		handleClick: () => alert('Button clicked!'),
@@ -784,8 +960,12 @@ const EditorSSE = () => {
 		setMessages([...messages, { role: 'user', content: input }])
 		scrollToBottom(); // Scroll after adding user message
 
-		// Use SSE UI generation - projectId now comes from URL params
-		await generateUIWithSSE(currentInput, projectId, currentSchema || default_ui_schema);
+		// Use selected generation method - projectId now comes from URL params
+		if (generationMethod === 'claude-agent') {
+			await generateUIWithClaudeAgent(currentInput, projectId, currentSchema || default_ui_schema);
+		} else {
+			await generateUIWithSSE(currentInput, projectId, currentSchema || default_ui_schema);
+		}
 	}
 
 
@@ -863,13 +1043,37 @@ const EditorSSE = () => {
 					{/* Header with Mode Toggle and Help */}
 					<div className="px-4 py-2 bg-cyan-50 border-b border-teal-200">
 						<div className="flex items-center justify-between">
-							<div className='flex jsutify-center'>
+							<div className='flex jsutify-center gap-2'>
 								<button
 									onClick={() => editorModeStore.toggleMode()}
 									className="px-3 bg-white py-1.5 text-xs font-medium text-teal-700 hover:text-white hover:bg-teal-600 rounded-md transition-all duration-200 shadow-sm hover:shadow-md"
 								>
 									{editorModeStore.currentMode.toUpperCase()}
 								</button>
+
+								{/* Generation Method Toggle */}
+								<div className="flex items-center bg-white rounded-md border border-teal-300 overflow-hidden">
+									<button
+										onClick={() => setGenerationMethod('regular')}
+										className={`px-2 py-1.5 text-xs font-medium transition-all duration-200 ${
+											generationMethod === 'regular'
+												? 'bg-teal-600 text-white'
+												: 'text-teal-700 hover:bg-teal-50'
+										}`}
+									>
+										LLM
+									</button>
+									<button
+										onClick={() => setGenerationMethod('claude-agent')}
+										className={`px-2 py-1.5 text-xs font-medium transition-all duration-200 ${
+											generationMethod === 'claude-agent'
+												? 'bg-teal-600 text-white'
+												: 'text-teal-700 hover:bg-teal-50'
+										}`}
+									>
+										CLAUDE
+									</button>
+								</div>
 							</div>
 
 							<div className='flex justify-center gap-4 items-center'>
@@ -1015,8 +1219,10 @@ const EditorSSE = () => {
 														</span>
 														<span className={`ml-2 ${
 															event.type === 'error' ? 'text-red-600' :
-															event.type === 'complete' ? 'text-teal-600' :
-															'text-blue-600'
+															event.type === 'complete' ? 'text-green-600 font-semibold' :
+															event.type === 'tool_use' ? 'text-purple-600' :
+															event.type === 'status' ? 'text-blue-600' :
+															'text-gray-600'
 														}`}>
 															{event.message}
 														</span>
@@ -1099,7 +1305,7 @@ const EditorSSE = () => {
 									}
 								}}
 								className="w-full pr-12 pl-3 py-3 bg-white border border-teal-300 text-teal-900 rounded-lg resize-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-all duration-200 text-sm placeholder-teal-400 shadow-sm"
-								placeholder="Describe your UI..."
+								placeholder={`Describe your UI (${generationMethod === 'claude-agent' ? 'Claude Agent' : 'LLM'})...`}
 								style={{ minHeight: '44px' }}
 								disabled={isGenerating}
 							/>
@@ -1121,7 +1327,10 @@ const EditorSSE = () => {
 							</button>
 						</div>
 						<div className="mt-2 text-xs text-teal-600">
-							Enter to send • Shift+Enter for new line • ↑/↓ for history
+							Enter to send • Shift+Enter for new line • ↑/↓ for history •
+							<span className={`font-medium ${generationMethod === 'claude-agent' ? 'text-purple-600' : 'text-blue-600'}`}>
+								{generationMethod === 'claude-agent' ? 'Claude Agent Mode' : 'LLM Mode'}
+							</span>
 						</div>
 					</div>
 				</div>
