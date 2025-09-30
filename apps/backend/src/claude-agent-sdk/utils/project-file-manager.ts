@@ -22,8 +22,8 @@ export class ProjectFileManager {
 	private readonly projectsRoot: string;
 
 	constructor() {
-		// Always resolve relative to backend source directory
-		this.projectsRoot = path.join(__dirname, '.projects');
+		  // Always resolve relative to project root (where Node is started)
+  		this.projectsRoot = path.join(process.cwd(), '.projects');
 	}
 
 	async ensureProjectsRoot(): Promise<void> {
