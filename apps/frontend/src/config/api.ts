@@ -1,24 +1,28 @@
 const getApiEndpoint = ()=>{
 
-    let apiUrl = 'https://api.superatom.ai';
+    const vite_local_api_url = import.meta.env.VITE_LOCAL_API_URL;
+    const vite_dev_api_url = import.meta.env.VITE_API_URL;
+    const vite_prdo_api_url = import.meta.env.VITE_PRDO_API_URL;
+
+    const branch = import.meta.env.VITE_CF_PAGES_BRANCH;
+
+    let apiUrl = vite_prdo_api_url;
 
 
     const isLocalHost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 
     // for local dev
     if(isLocalHost){
-
-        apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+        apiUrl = vite_local_api_url;
         
     }
 
-    const branch = import.meta.env.VITE_CF_PAGES_BRANCH;
 
     if(branch === 'main'){
-        apiUrl = 'https://api.superatom.ai';
+        apiUrl = vite_prdo_api_url
     }
     else if(branch === 'dev'){
-        apiUrl = 'https://devruntime.superatom.ai';
+        apiUrl = vite_dev_api_url
     }
     
     console.log("Using API URL:", apiUrl);

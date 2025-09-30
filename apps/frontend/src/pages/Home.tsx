@@ -55,14 +55,6 @@ export default function Home() {
 						<div>🎯 Type-safe</div>
 					</div>
 				</div>
-
-				{/* Debug info - remove in production */}
-				{process.env.NODE_ENV !== 'production' && organization && (
-					<div className="bg-gray-100 p-4 rounded-lg">
-						<p className="font-semibold">Current Organization: {organization.name}</p>
-						<p className="text-sm text-gray-600">Organization ID: {organization.id}</p>
-					</div>
-				)}
 			</div>
 		</div>
 	);
