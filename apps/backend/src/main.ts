@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { clerkMiddleware } from '@clerk/express';
 import { trpcMiddleware, setNestApp } from './trpc';
+import { PORT } from './env';
 
 async function bootstrap() {
   console.log('🚀 Starting NestJS application...');
@@ -27,7 +28,7 @@ async function bootstrap() {
   app.use(clerkMiddleware());
   app.use('/trpc', trpcMiddleware);
 
-  const port: number = parseInt(process.env.PORT ?? '3000', 10);
+  const port: number = parseInt(PORT ?? '3000', 10);
   
   await app.listen(port);
   

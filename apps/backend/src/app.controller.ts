@@ -35,6 +35,7 @@ export class AppController {
         },
         ui: {
           'POST /generate-ui-sse': 'Generate UI with Server-Sent Events streaming',
+          'POST /test-provider-fallback': 'Test provider fallback system with forced failures',
           'POST /init-ui': 'Generate UI suggestions from docs',
           'POST /init-ui/from-project': 'Generate UI suggestions from project ID'
         },
@@ -155,6 +156,56 @@ export class AppController {
         error instanceof Error ? error.message : 'Failed to check agent status',
         HttpStatus.INTERNAL_SERVER_ERROR
       );
+    }
+  }
+
+  @Post('test-provider-fallback')
+  async testProviderFallback(
+    @Body() body: {
+      prompt: string;
+      projectId: string;
+      currentSchema?: any;
+      forceFailProviders?: ('groq' | 'gemini' | 'openrouter')[];
+    },
+    @Res() res: Response
+  ) {
+    try {
+      console.log('🧪 [TEST MODE] Force fail providers:', body.forceFailProviders || 'none');
+
+      // Temporarily set environment variables for testing
+      const originalEnv = {
+        FORCE_GROQ_FAIL: process.env.FORCE_GROQ_FAIL,
+        FORCE_GEMINI_FAIL: process.env.FORCE_GEMINI_FAIL,
+        FORCE_OPENROUTER_FAIL: process.env.FORCE_OPENROUTER_FAIL,
+      };
+
+      // Set test failures
+      if (body.forceFailProviders?.includes('groq')) {
+        process.env.FORCE_GROQ_FAIL = 'true';
+      }
+      if (body.forceFailProviders?.includes('gemini')) {
+        process.env.FORCE_GEMINI_FAIL = 'true';
+      }
+      if (body.forceFailProviders?.includes('openrouter')) {
+        process.env.FORCE_OPENROUTER_FAIL = 'true';
+      }
+
+      // Call the SSE endpoint
+      await this.trpcSSEService.generateUISSE(body, res);
+
+      // Restore original environment
+      process.env.FORCE_GROQ_FAIL = originalEnv.FORCE_GROQ_FAIL;
+      process.env.FORCE_GEMINI_FAIL = originalEnv.FORCE_GEMINI_FAIL;
+      process.env.FORCE_OPENROUTER_FAIL = originalEnv.FORCE_OPENROUTER_FAIL;
+
+    } catch (error) {
+      console.error('🧪 [TEST MODE] Error in test endpoint:', error);
+      if (!res.headersSent) {
+        res.status(500).json({
+          error: 'Test endpoint error',
+          message: error instanceof Error ? error.message : 'Unknown error'
+        });
+      }
     }
   }
 

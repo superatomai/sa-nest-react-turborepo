@@ -5,8 +5,6 @@ import { ProjectSchemaCacheService } from './project-schema-cache.service';
 import { SSEService, SSEController } from './sse.service';
 import { nanoid } from 'nanoid';
 import { T_LLM_PROVIDER, UIComponent, UIElement } from 'src/types/dsl';
-import { AnyARecord } from 'dns';
-import { LLM_PROVIDER } from 'src/env';
 
 export interface GenerateUISSERequest {
 	prompt: string;
@@ -42,7 +40,12 @@ export class UiGenerationSSEService {
 	): Promise<void> {
 		const startTime = Date.now();
 
-		const provider = LLM_PROVIDER as T_LLM_PROVIDER; // or 'openai', could be parameterized later
+		// Provider fallback order: groq -> gemini -> openrouter
+		const providerFallbackOrder: T_LLM_PROVIDER[] = ['groq', 'gemini', 'openrouter'];
+		console.log(`🤖 Provider fallback order: ${providerFallbackOrder.join(' → ')}`);
+
+		// Send initial provider strategy message
+		sseController.sendMessage('status', `🎯 Provider fallback strategy: ${providerFallbackOrder.map(p => p.toUpperCase()).join(' → ')}`);
 
 		try {
 			const { prompt, currentSchema, projectId } = request;
@@ -74,18 +77,18 @@ export class UiGenerationSSEService {
 				graphql: "",
 			};
 			// Check if there's an active data agent connection for the project
-			try {
-				sseController.sendMessage('status', '🔌 Checking for active data agent connection...');
-				const checkAgentConnection = await this.webSocketManager.checkAgentConnectionForProject(projectId);
-				hasActiveAgent = checkAgentConnection.hasAgent;
-				sseController.sendMessage('status', hasActiveAgent ? '✅ Active data agent found' : '❌ No active data agent found');
-			} catch (error) {
-				console.error('Error checking agent connection:', error);
-				sseController.sendError('Error checking agent connection', {
-					originalError: error instanceof Error ? error.message : 'Unknown error',
-					suggestion: 'Please check your project WebSocket connection and try again.'
-				});
-			}
+			// try {
+			// 	sseController.sendMessage('status', '🔌 Checking for active data agent connection...');
+			// 	const checkAgentConnection = await this.webSocketManager.checkAgentConnectionForProject(projectId);
+			// 	hasActiveAgent = checkAgentConnection.hasAgent;
+			// 	sseController.sendMessage('status', hasActiveAgent ? '✅ Active data agent found' : '❌ No active data agent found');
+			// } catch (error) {
+			// 	console.error('Error checking agent connection:', error);
+			// 	sseController.sendError('Error checking agent connection', {
+			// 		originalError: error instanceof Error ? error.message : 'Unknown error',
+			// 		suggestion: 'Please check your project WebSocket connection and try again.'
+			// 	});
+			// }
 
 
 			if(hasActiveAgent) {
@@ -180,7 +183,7 @@ export class UiGenerationSSEService {
 				data = currentSchema.data || {};
 			}
 
-			// Step 4: Generate UI schema from data with streaming
+			// Step 4: Generate UI schema from data with streaming and provider fallback
 			sseController.sendMessage('status', '🎨 Generating UI...');
 
 			// Update currentSchema with the fetched data
@@ -189,43 +192,21 @@ export class UiGenerationSSEService {
 				data: data
 			};
 
-			// Stream LLM generation to frontend
-			let llmBuffer = '';
-			let lastSentLength = 0;
-			const streamCallback = (chunk: string) => {
-				llmBuffer += chunk;
-
-				// Send incremental updates to avoid overwhelming the frontend
-				if (llmBuffer.length - lastSentLength > 50) { // Send every ~50 characters
-					sseController.sendMessage('llm_stream', `🤖 ${llmBuffer.slice(lastSentLength)}`);
-					lastSentLength = llmBuffer.length;
-				}
-			};
-
-			const schema_res:any = await this.llmService.generateUIFromData2WithProvider(
+			// Try providers with fallback
+			const schema = await this.generateUIWithProviderFallback(
 				prompt,
 				updatedCurrentSchema,
-				provider,
+				providerFallbackOrder,
 				projectId,
-				streamCallback
+				sseController
 			);
 
-			// Send any remaining buffer content
-			if (llmBuffer.length > lastSentLength) {
-				sseController.sendMessage('llm_stream', `🤖 ${llmBuffer.slice(lastSentLength)}`);
-			}
-
-			// Send completion signal for LLM streaming
-			sseController.sendMessage('llm_complete', '✅ LLM generation complete');
-
-			if(!schema_res.success || !schema_res.data){
-				sseController.sendError('Failed to generate UI', {
-					originalError: schema_res.error
+			if (!schema) {
+				sseController.sendError('Failed to generate UI with all providers', {
+					originalError: 'All provider attempts failed'
 				});
 				return;
 			}
-
-			const schema = schema_res.data;
 
 			sseController.sendMessage('status', '✅ UI generated');
 
@@ -262,6 +243,90 @@ export class UiGenerationSSEService {
 				originalError: error instanceof Error ? error.message : 'Unknown error'
 			});
 		}
+	}
+
+	// Provider fallback method with detailed SSE logging
+	private async generateUIWithProviderFallback(
+		prompt: string,
+		currentSchema: UIComponent,
+		providerOrder: T_LLM_PROVIDER[],
+		projectId: string,
+		sseController: SSEController
+	): Promise<UIComponent | null> {
+		let lastError = '';
+
+		for (let i = 0; i < providerOrder.length; i++) {
+			const provider = providerOrder[i];
+			const isLastProvider = i === providerOrder.length - 1;
+
+			try {
+				// Send provider attempt message
+				sseController.sendMessage('status', `🚀 Attempting UI generation with ${provider.toUpperCase()}...`);
+				console.log(`🚀 Trying provider: ${provider} (attempt ${i + 1}/${providerOrder.length})`);
+
+				// Stream LLM generation to frontend
+				let llmBuffer = '';
+				let lastSentLength = 0;
+				const streamCallback = (chunk: string) => {
+					llmBuffer += chunk;
+
+					// Send incremental updates - immediately for every chunk
+					sseController.sendMessage('llm_stream', `🤖 ${llmBuffer.slice(lastSentLength)}`);
+					lastSentLength = llmBuffer.length;
+				};
+
+				// Attempt UI generation with current provider
+				const schema_res = await this.llmService.generateUIFromData2WithProvider(
+					prompt,
+					currentSchema,
+					provider,
+					projectId,
+					streamCallback
+				);
+
+				// Send any remaining buffer content
+				if (llmBuffer.length > lastSentLength) {
+					sseController.sendMessage('llm_stream', `🤖 ${llmBuffer.slice(lastSentLength)}`);
+				}
+
+				// Send completion signal for LLM streaming
+				sseController.sendMessage('llm_complete', `✅ ${provider.toUpperCase()} generation complete`);
+
+				// Check if generation was successful
+				if (schema_res.success && 'data' in schema_res && schema_res.data) {
+					sseController.sendMessage('status', `✅ UI generated successfully with ${provider.toUpperCase()}`);
+					console.log(`✅ Success with provider: ${provider}`);
+					return schema_res.data;
+				} else {
+					// Generation failed, log the error
+					lastError = ('error' in schema_res && schema_res.error) ? schema_res.error : 'Unknown error - no data returned';
+					throw new Error(lastError);
+				}
+
+			} catch (error: any) {
+				const errorMessage = error?.message || 'Unknown error';
+				lastError = errorMessage;
+
+				console.error(`❌ Provider ${provider} failed:`, errorMessage);
+
+				if (isLastProvider) {
+					// This is the last provider, send final error
+					sseController.sendMessage('status', `❌ ${provider.toUpperCase()} failed: ${errorMessage}`);
+					sseController.sendMessage('status', '❌ All providers failed - Unable to generate UI');
+				} else {
+					// Not the last provider, send switch message
+					const nextProvider = providerOrder[i + 1];
+					sseController.sendMessage('status', `❌ ${provider.toUpperCase()} failed: ${errorMessage}`);
+					sseController.sendMessage('status', `🔄 Switching to ${nextProvider.toUpperCase()}...`);
+
+					// Add a small delay to make the switching visible
+					await new Promise(resolve => setTimeout(resolve, 500));
+				}
+			}
+		}
+
+		console.error(`❌ All providers failed. Last error: ${lastError}`);
+		return null;
 	}
 
 	private async executeQuery(

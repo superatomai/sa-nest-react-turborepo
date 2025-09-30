@@ -3,9 +3,9 @@ import OpenAI from 'openai';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { T_UI_Component } from '../types/ui-schema';
 import { ProjectSchemaCacheService } from './project-schema-cache.service';
-import { OPENROUTER_API_KEY, GEMINI_API_KEY, LLM_PROVIDER } from '../env';
+import { OPENROUTER_API_KEY, GEMINI_API_KEY, GROQ_API_KEY, LLM_PROVIDER, FORCE_GEMINI_FAIL, FORCE_GROQ_FAIL, FORCE_OPENROUTER_FAIL } from '../env';
 import { t_llm_query_response, t_uis_list_response, z_llm_query_response, z_uis_list_response } from 'src/types/llm';
-import { UI_PROMPT, UI_PROMPT_WITH_NATIVE } from './ui-gen-prompts';
+import { UI_PROMPT } from './ui-gen-prompts';
 import { QUERY_PROMPT } from './query-gen-prompts';
 import { T_LLM_PROVIDER, UIComponent, UIComponentSchema } from 'src/types/dsl';
 
@@ -13,6 +13,7 @@ import { T_LLM_PROVIDER, UIComponent, UIComponentSchema } from 'src/types/dsl';
 @Injectable()
 export class LlmService {
     private openai: OpenAI | null = null;
+    private groq: OpenAI | null = null;
     private gemini: GoogleGenerativeAI | null = null;
     private currentProvider: T_LLM_PROVIDER ;
 
@@ -30,6 +31,17 @@ export class LlmService {
         console.log('✅ OpenRouter client initialized');
     } else {
         console.warn('⚠️ OPENROUTER_API_KEY not found, OpenRouter client not initialized');
+    }
+
+    // Initialize Groq
+    if (GROQ_API_KEY) {
+        this.groq = new OpenAI({
+            apiKey: GROQ_API_KEY,
+            baseURL: 'https://api.groq.com/openai/v1'
+        });
+        console.log('✅ Groq client initialized');
+    } else {
+        console.warn('⚠️ GROQ_API_KEY not found, Groq client not initialized');
     }
 
     // Initialize Gemini
@@ -119,8 +131,11 @@ export class LlmService {
         schemaData: any
     ) {
         try {
-            if (!this.openai) {
-                return {success:false, error:'OpenRouter API key not configured. Please set OPENROUTER_API_KEY environment variable.'};
+            const client = this.currentProvider === 'groq' ? this.groq : this.openai;
+            const providerName = this.currentProvider === 'groq' ? 'Groq' : 'OpenRouter';
+
+            if (!client) {
+                return {success:false, error:`${providerName} API key not configured. Please set ${this.currentProvider === 'groq' ? 'GROQ_API_KEY' : 'OPENROUTER_API_KEY'} environment variable.`};
             }
 
             console.log(`Generating GraphQL query for project ${projectId}, "${prompt}"`);
@@ -131,8 +146,10 @@ export class LlmService {
             const schemaInfo = this.GetDocsForLLM(schemaData);
 
             // Generate GraphQL query using schema
-            const completion = await this.openai.chat.completions.create({
-                model: "openai/gpt-5",
+            const model = this.currentProvider === 'groq' ? 'openai/gpt-oss-120b' : 'openai/gpt-5';
+
+            const completion = await client.chat.completions.create({
+                model: model,
                 messages: [
                     {
                         role: "system",
@@ -148,7 +165,7 @@ export class LlmService {
             });
 
             const result = completion.choices[0].message.content?.trim();
-            if (!result) throw new Error('No response from OpenRouter');
+            if (!result) throw new Error(`No response from ${providerName}`);
 
             // Clean up any potential markdown formatting
             const cleanResult = result.replace(/```json\n?/g, '').replace(/```\n?/g, '');
@@ -157,17 +174,17 @@ export class LlmService {
             try {
                 parsedResult = JSON.parse(cleanResult);
             }   catch (e) {
-                console.error('Failed to parse JSON response from OpenRouter:', e);
+                console.error(`Failed to parse JSON response from ${providerName}:`, e);
                 console.error('Received malformed response:', cleanResult.substring(0, 500) + (cleanResult.length > 500 ? '...' : ''));
-                return {success:false, error:'Failed to parse JSON response from OpenRouter: ' + (e instanceof Error ? e.message : 'Unknown error')};
+                return {success:false, error:`Failed to parse JSON response from ${providerName}: ` + (e instanceof Error ? e.message : 'Unknown error')};
             }
 
             console.log("llm query gen res:", JSON.stringify(parsedResult,null,2));
 
             const p = z_llm_query_response.safeParse(parsedResult);
             if (!p.success) {
-                console.error('Failed tozod  parse JSON response from OpenRouter:', p.error);
-                return {success:false, error:'Failed to zod parse JSON response from OpenRouter'};
+                console.error(`Failed to zod parse JSON response from ${providerName}:`, p.error);
+                return {success:false, error:`Failed to zod parse JSON response from ${providerName}`};
             }
 
             parsedResult = p.data;
@@ -188,6 +205,13 @@ export class LlmService {
         streamCallback?: (chunk: string) => void
     ) {
         console.log('🎨 Generating UI for prompt with streaming', prompt);
+
+        // Forced failure for testing
+        if (FORCE_OPENROUTER_FAIL) {
+            console.log('🧪 [TEST MODE] Forcing OpenRouter failure');
+            return { success: false, error: 'TEST MODE: Forced OpenRouter failure for fallback testing' };
+        }
+
         const data = currentUI.data || {};
 
         try {
@@ -305,6 +329,13 @@ IMPORTANT RULES:
         streamCallback?: (chunk: string) => void
     ) {
         console.log('🎨 Generating UI for prompt using Gemini with streaming', prompt);
+
+        // Forced failure for testing
+        if (FORCE_GEMINI_FAIL) {
+            console.log('🧪 [TEST MODE] Forcing Gemini failure');
+            return { success: false, error: 'TEST MODE: Forced Gemini failure for fallback testing' };
+        }
+
         const data = currentUI.data || {};
 
         try {
@@ -313,10 +344,11 @@ IMPORTANT RULES:
             }
 
             const model = this.gemini.getGenerativeModel({
-                model: "gemini-2.0-flash-exp",
+                model: "gemini-2.5-flash",
                 generationConfig: {
                     temperature: 0.4,
                     maxOutputTokens: 8192,
+                    responseMimeType: "application/json"
                 }
             });
 
@@ -349,11 +381,12 @@ IMPORTANT RULES:
 - Keep the same component-level properties (states, methods, effects) unless asked to modify them
 - Update the data property if new data structure is needed`;
 
-            const fullPrompt = `${UI_PROMPT_WITH_NATIVE}
+            const fullPrompt = `${UI_PROMPT}
 
 ${userMessage}`;
 
             // Generate streaming content
+            console.log('🤖 Starting Gemini content generation...');
             const result = await model.generateContentStream(fullPrompt);
             let fullResponse = '';
 
@@ -414,8 +447,148 @@ ${userMessage}`;
             }
 
         } catch (error: any) {
-            console.error("Error generating UI with Gemini streaming:", error);
+            console.error("Error generating UI with Gemini streaming:", {
+                message: error?.message,
+                stack: error?.stack,
+                status: error?.status,
+                code: error?.code,
+                details: error?.details
+            });
             return { success: false, error: 'Error generating UI with Gemini streaming: ' + (error?.message || error) };
+        }
+    }
+
+    // Streaming version for Groq
+    async generateUIFromDataWithGroqStreaming(
+        prompt: string,
+        currentUI: UIComponent,
+        projectId?: string,
+        streamCallback?: (chunk: string) => void
+    ) {
+        console.log('🎨 Generating UI for prompt using Groq with streaming', prompt);
+
+        // Forced failure for testing
+        if (FORCE_GROQ_FAIL) {
+            console.log('🧪 [TEST MODE] Forcing Groq failure');
+            return { success: false, error: 'TEST MODE: Forced Groq failure for fallback testing' };
+        }
+
+        const data = currentUI.data || {};
+
+        try {
+            if (!this.groq) {
+                return { success: false, error: 'Groq API key not configured. Please set GROQ_API_KEY environment variable.' };
+            }
+
+            const userMessage = `CURRENT UI COMPONENT TO WORK WITH:
+${JSON.stringify(currentUI, null, 2)}
+
+USER REQUEST: "${prompt}"
+
+Data structure available:
+${JSON.stringify(data, null, 2)}
+
+Available data fields: ${data ? Object.keys(data).join(', ') : 'none'}
+${data && Object.keys(data)[0] ? `Sample item fields: ${Object.keys(data[Object.keys(data)[0]]?.[0] || {}).join(', ')}` : ''}
+
+INSTRUCTIONS:
+Based on the user request above, analyze what needs to be done and decide the best approach:
+
+1. **MODIFY EXISTING**: If the request is to change existing elements (styling, text, structure)
+2. **ADD NEW**: If the request is to add new components or elements to the existing UI
+3. **RESTRUCTURE**: If the request requires reorganizing or changing the layout
+4. **ENHANCE**: If the request is to improve or extend existing functionality
+
+IMPORTANT RULES:
+- Always return a complete UIComponent with the same id as the current one
+- The render property should contain the updated UIElement tree
+- Children can be: strings, objects, arrays, UIElements, or nested UIComponents
+- Preserve existing data bindings unless specifically asked to change them
+- Maintain existing styling patterns unless specifically asked to change them
+- If adding new elements, integrate them naturally into the existing structure
+- Keep the same component-level properties (states, methods, effects) unless asked to modify them
+- Update the data property if new data structure is needed`;
+
+            const stream = await this.groq.chat.completions.create({
+                model: "openai/gpt-oss-120b",
+                messages: [
+                    {
+                        role: "system",
+                        content: UI_PROMPT
+                    },
+                    {
+                        role: "user",
+                        content: userMessage
+                    }
+                ],
+                response_format: { type: "json_object" },
+                temperature: 0.4,
+                stream: true,
+                max_tokens: 8192
+            });
+
+            let fullResponse = '';
+
+            // Stream the response
+            console.log('🚀 Starting Groq streaming...');
+            for await (const chunk of stream) {
+                const content = chunk.choices[0]?.delta?.content || '';
+                if (content) {
+                    fullResponse += content;
+                    console.log('📡 Groq chunk received:', content.slice(0, 50) + (content.length > 50 ? '...' : ''));
+                    // Send streaming updates via callback
+                    if (streamCallback) {
+                        streamCallback(content);
+                    }
+                }
+            }
+            console.log('🏁 Groq streaming completed, total length:', fullResponse.length);
+
+            if (!fullResponse) {
+                return { success: false, error: 'No response from Groq' };
+            }
+
+            let parsed: UIComponent;
+            try {
+                parsed = JSON.parse(fullResponse);
+
+                // Validate against UIComponent schema
+                const validatedResult = UIComponentSchema.safeParse(parsed);
+                if (validatedResult.success) {
+                    console.log('✅ Groq Schema validation passed');
+                    return { success: true, data: validatedResult.data };
+                } else {
+                    console.warn('⚠️ Groq Schema validation failed:');
+                    console.warn('Validation errors:', validatedResult.error.issues.slice(0, 5));
+
+                    // Check specifically for missing IDs
+                    const missingIdErrors = validatedResult.error.issues.filter(issue =>
+                        issue.path.includes('id') || issue.message.includes('id')
+                    );
+
+                    if (missingIdErrors.length > 0) {
+                        console.error('❌ Critical ID validation errors found:', missingIdErrors);
+                        return { success: false, error: 'Missing required ID fields in generated UI. Groq must provide IDs for all elements.' };
+                    }
+
+                    console.warn('Non-critical validation issues found, using generated UI anyway');
+                    return { success: true, data: parsed };
+                }
+
+            } catch (parseErr: any) {
+                console.error("Failed to parse Groq response:", parseErr);
+                return { success: false, error: 'Failed to parse Groq response: ' + parseErr.message };
+            }
+
+        } catch (error: any) {
+            console.error("Error generating UI with Groq streaming:", {
+                message: error?.message,
+                stack: error?.stack,
+                status: error?.status,
+                code: error?.code,
+                details: error?.details
+            });
+            return { success: false, error: 'Error generating UI with Groq streaming: ' + (error?.message || error) };
         }
     }
 
@@ -434,6 +607,11 @@ ${userMessage}`;
                 return { success: false, error: 'Gemini not configured. Please set GEMINI_API_KEY environment variable.' };
             }
             return this.generateUIFromDataWithGeminiStreaming(prompt, currentUI, projectId, streamCallback);
+        } else if (provider === 'groq') {
+            if (!this.groq) {
+                return { success: false, error: 'Groq not configured. Please set GROQ_API_KEY environment variable.' };
+            }
+            return this.generateUIFromDataWithGroqStreaming(prompt, currentUI, projectId, streamCallback);
         } else {
             if (!this.openai) {
                 return { success: false, error: 'OpenRouter not configured. Please set OPENROUTER_API_KEY environment variable.' };
