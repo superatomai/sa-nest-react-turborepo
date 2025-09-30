@@ -17,6 +17,8 @@ import { DesignSystemModule } from './design_system/design_system.module';
 import { WebhooksModule } from './webhooks/webhooks.module';
 import { DeploymentController } from './controllers/deployment.controller';
 import { DeploymentService } from './services/deployment.service';
+import { ClaudeAgentModule } from './claude-agent-sdk/claude-agent.module';
+import { JSXToDSLService } from './services/jsx-to-dsl.service';
 
 @Module({
   imports: [
@@ -33,7 +35,8 @@ import { DeploymentService } from './services/deployment.service';
     ProjectKeysModule,
     DesignSystemModule,
     WebhooksModule,
-    TrpcModule
+    TrpcModule,
+    ClaudeAgentModule
   ],
   controllers: [AppController, DeploymentController],
   providers: [
@@ -41,6 +44,7 @@ import { DeploymentService } from './services/deployment.service';
     UiDataService,
     TrpcSSEService,
     DeploymentService,
+    JSXToDSLService,
   ],
 })
 export class AppModule {}

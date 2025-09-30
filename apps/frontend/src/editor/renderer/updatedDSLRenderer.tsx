@@ -438,6 +438,123 @@ export const UpdatedDSLRenderer: React.FC<UpdatedDSLRendererProps> = observer(({
         figmaSelection = null;
     }
 
+    // Create React state for component states
+    const [componentStates, setComponentStates] = React.useState<Record<string, any>>(() => {
+        const initialStates: Record<string, any> = {};
+        if (uiComponent.states) {
+            for (const [key, value] of Object.entries(uiComponent.states)) {
+                // Resolve initial state values
+                const initialContext = {
+                    ...uiComponent.data || {},
+                    props: uiComponent.props || {}
+                };
+                initialStates[key] = resolver.resolveValue(value, initialContext);
+            }
+        }
+        return initialStates;
+    });
+
+    // Create setState function for methods
+    const setState = React.useCallback((key: string, value: any) => {
+        setComponentStates(prev => ({
+            ...prev,
+            [key]: value
+        }));
+    }, []);
+
+    // Create method handlers from component.methods
+    const methodHandlers = React.useMemo(() => {
+        const handlers: Record<string, Function> = {};
+
+        if (uiComponent.methods) {
+            for (const [methodName, methodDef] of Object.entries(uiComponent.methods)) {
+                if (methodDef.fn) {
+                    try {
+                        // Create context for method execution
+                        const createMethodContext = () => ({
+                            ...uiComponent.data || {},
+                            ...componentStates,
+                            states: componentStates,
+                            props: uiComponent.props || {},
+                            setState,
+                            // Add common utilities
+                            console,
+                            Math,
+                            Date,
+                            String,
+                            Number,
+                            Boolean,
+                            Array,
+                            Object,
+                            JSON
+                        });
+
+                        // Parse the function string and create executable function
+                        const fnString = methodDef.fn;
+
+                        // Create the method function
+                        handlers[methodName] = (...args: any[]) => {
+                            try {
+                                const context = createMethodContext();
+                                const paramNames = Object.keys(context);
+                                const paramValues = Object.values(context);
+
+                                // Add function arguments to context
+                                paramNames.push('args');
+                                paramValues.push(args);
+
+                                const func = new Function(...paramNames, `
+                                    "use strict";
+                                    return (${fnString})(...args);
+                                `);
+
+                                return func(...paramValues);
+                            } catch (error) {
+                                console.error(`Error executing method ${methodName}:`, error);
+                            }
+                        };
+                    } catch (error) {
+                        console.error(`Error creating method ${methodName}:`, error);
+                    }
+                }
+            }
+        }
+
+        return handlers;
+    }, [uiComponent.methods, uiComponent.data, uiComponent.props, componentStates, setState]);
+
+    // Handle effects
+    React.useEffect(() => {
+        if (uiComponent.effects) {
+            for (const effect of uiComponent.effects) {
+                try {
+                    const context = {
+                        ...uiComponent.data || {},
+                        ...componentStates,
+                        states: componentStates,
+                        props: uiComponent.props || {},
+                        setState,
+                        console,
+                        Math,
+                        Date
+                    };
+
+                    const paramNames = Object.keys(context);
+                    const paramValues = Object.values(context);
+
+                    const func = new Function(...paramNames, `
+                        "use strict";
+                        return (${effect.fn})();
+                    `);
+
+                    func(...paramValues);
+                } catch (error) {
+                    console.error('Error executing effect:', error);
+                }
+            }
+        }
+    }, [uiComponent.effects, componentStates, uiComponent.data, uiComponent.props, setState]);
+
 
     const renderElement = (
         element: UIElement | UIComponent | string,
@@ -615,10 +732,10 @@ export const UpdatedDSLRenderer: React.FC<UpdatedDSLRendererProps> = observer(({
                 return acc;
             }, {} as Record<string, any>) : {};
 
-        // Handle event handlers
+        // Handle event handlers - check methodHandlers first (from component.methods), then external handlers
         if (resolvedProps.onClick && typeof resolvedProps.onClick === 'string') {
             const handlerName = resolvedProps.onClick;
-            resolvedProps.onClick = handlers[handlerName] || (() => {
+            resolvedProps.onClick = methodHandlers[handlerName] || handlers[handlerName] || (() => {
                 console.warn(`Missing handler: ${handlerName}`);
             });
         }
@@ -991,10 +1108,28 @@ export const UpdatedDSLRenderer: React.FC<UpdatedDSLRendererProps> = observer(({
         );
     }
 
-    // Extract the full context (component data + any additional context)
+    // Resolve computed data properties (data can contain expressions that depend on states/props)
+    const resolvedData = React.useMemo(() => {
+        const resolved: Record<string, any> = {};
+        if (uiComponent.data) {
+            const dataContext = {
+                ...componentStates,
+                states: componentStates,
+                props: uiComponent.props || {}
+            };
+
+            for (const [key, value] of Object.entries(uiComponent.data)) {
+                resolved[key] = resolver.resolveValue(value, dataContext);
+            }
+        }
+        return resolved;
+    }, [uiComponent.data, uiComponent.props, componentStates]);
+
+    // Extract the full context (resolved data + component states + props)
     const fullContext = {
-        ...uiComponent.data || {},
-        states: uiComponent.states || {},
+        ...resolvedData,
+        ...componentStates,
+        states: componentStates,
         props: uiComponent.props || {}
     };
 
