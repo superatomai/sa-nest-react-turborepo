@@ -135,16 +135,16 @@ export class ClaudeUIAgentService {
 									// Format tool usage for display
 									if (toolName === 'Write' || toolName === 'Edit') {
 										const filePath = toolInput.file_path || 'unknown';
-										const fileName = filePath.split('/').pop();
-										streamCallback(`🔨 ${toolName}: ${fileName}`, 'tool_use');
+										const filePath2 = filePath.split('/').pop();
+										streamCallback(`🔨 ${toolName}: ${filePath}`, 'tool_use');
 									} else if (toolName === 'Read') {
 										const filePath = toolInput.file_path || 'unknown';
-										const fileName = filePath.split('/').pop();
-										streamCallback(`📖 Reading: ${fileName}`, 'tool_use');
+										const filePath2 = filePath.split('/').pop();
+										streamCallback(`📖 Reading: ${filePath}`, 'tool_use');
 									} else if (toolName === 'Bash') {
 										const command = toolInput.command || 'unknown';
 										const shortCmd = command.length > 50 ? command.substring(0, 50) + '...' : command;
-										streamCallback(`⚙️  Bash: ${shortCmd}`, 'tool_use');
+										streamCallback(`⚙️  Bash: ${command}`, 'tool_use');
 									} else {
 										streamCallback(`🛠️  ${toolName}`, 'tool_use');
 									}
@@ -426,17 +426,29 @@ Start the conversion now.`;
 ${prompt}
 
 ## Your Task
-You are working within a project directory. The user wants to modify an existing React component.
+You are working within a project directory. The user wants to **ADD TO** or **MODIFY** an existing React component.
+
+**🚨 CRITICAL: DO NOT REPLACE THE ENTIRE COMPONENT! You must PRESERVE all existing elements and ADD new ones.**
 
 1. **First, read the CLAUDE.md file** to understand the project structure and guidelines
 2. **Read the existing component** at the path: \`uis/${uiId}/ui.tsx\`
 3. **Understand the current component structure** and implementation
-4. **Modify the component** according to the user's request
+4. **Add or modify** according to the user's request while **keeping all existing elements**
+
+## Editing Guidelines
+When the user says:
+- "add a login form **to this component**" → Add the login form AS PART OF the existing component, keeping all existing elements
+- "add X to the component" → Insert X into the existing structure, preserving everything else
+- "modify the button" → Only change the button, keep everything else
+- "replace the component with X" → Only then replace the entire component
+
+**Default behavior: ADDITIVE, not REPLACEMENT**
 
 ## Component Requirements
+- **PRESERVE ALL EXISTING ELEMENTS** - Keep all existing JSX, state, hooks, and logic unless explicitly asked to remove them
+- When adding new elements, integrate them into the existing component structure
 - Maintain React functional component structure with hooks
 - Keep the default export
-- Preserve existing functionality unless specifically asked to change it
 - Make modifications responsive and accessible using Tailwind CSS
 - Follow existing naming conventions and patterns
 - **IMPORTANT: Use ONLY Tailwind v4 CSS classes for styling** - replace any inline styles or custom CSS with Tailwind v4 utilities
@@ -451,16 +463,18 @@ You are working within a project directory. The user wants to modify an existing
 ## Process
 1. Use the **Read** tool to check CLAUDE.md for project guidelines
 2. Use the **Read** tool to examine the existing component at \`uis/${uiId}/ui.tsx\`
-3. Use the **Edit** tool to modify the TSX file based on the user's request
-4. Ensure modifications follow the project's established patterns
+3. **IMPORTANT**: Use the **Edit** tool (NOT Write) to modify specific parts of the TSX file
+4. If adding new elements, use Edit to insert them while preserving existing code
+5. Ensure modifications follow the project's established patterns
 
 ## Important
 - Work within the current directory (the project root)
 - Use your file manipulation tools (Read, Write, Edit, Glob, Grep)
-- Preserve existing functionality unless explicitly asked to change it
+- **USE EDIT TOOL, NOT WRITE TOOL** - Edit preserves existing code, Write replaces everything
 - The file path is relative: \`uis/${uiId}/ui.tsx\`
+- **When in doubt, ADD rather than REPLACE**
 
-Start by reading the CLAUDE.md file and the existing component, then make the requested modifications.`;
+Start by reading the CLAUDE.md file and the existing component, then make the requested modifications using the Edit tool.`;
 		} else {
 			return `# React Component Generation Task
 
