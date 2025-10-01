@@ -71,6 +71,13 @@
       "when": 1758794180971,
       "tag": "0009_loud_wong",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1759241547735,
+      "tag": "0010_smart_chamber",
+      "breakpoints": true
     }
   ]
 }

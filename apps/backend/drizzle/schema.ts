@@ -1,5 +1,6 @@
 import { pgTable, serial, text, timestamp, boolean, varchar, integer, foreignKey, jsonb } from "drizzle-orm/pg-core"
 import { sql } from "drizzle-orm"
+import { table } from "console";
 
 
 export const page = pgTable("Page", {
@@ -148,5 +149,21 @@ export const uis = pgTable("uis", {
 			columns: [table.projectId],
 			foreignColumns: [projects.id],
 			name: "uis_project_id_fkey"
+		}).onUpdate("cascade").onDelete("restrict"),
+]);
+
+export const projectSourceCode = pgTable("project_source_code", {
+	id: serial().primaryKey().notNull(),
+	projectId: integer("project_id").notNull().unique(),
+	sourceCode: text("source_code"),
+	createdAt: timestamp("created_at", { precision: 6, withTimezone: true, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`),
+	updatedAt: timestamp("updated_at", { precision: 6, withTimezone: true, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`),
+	deleted: boolean().default(false).notNull(),
+	createdBy: varchar("created_by"),
+},(table) => [
+	foreignKey({
+			columns: [table.projectId],
+			foreignColumns: [projects.id],
+			name: "project_source_code_project_id_fkey"
 		}).onUpdate("cascade").onDelete("restrict"),
 ]);

@@ -36,11 +36,11 @@ export class UisService {
         uiVersion: uis.uiVersion,
         name: uis.name,
         description: uis.description,
-        // Latest version using subquery
+        // Current version number (versionId of the version that uiVersion points to)
         version_id: sql<number>`COALESCE((
-          SELECT MAX(${versions.versionId})
+          SELECT ${versions.versionId}
           FROM ${versions}
-          WHERE ${versions.uiId} = ${uis.uiId}
+          WHERE ${versions.id} = ${uis.uiVersion}
         ), 1)`.as('version_id'),
         // Project info for orgId filtering
         project_orgId: filters.orgId ? projects.orgId : sql<string>`NULL`.as('project_orgId'),
@@ -141,11 +141,11 @@ export class UisService {
       uiVersion: uis.uiVersion,
       name: uis.name,
       description: uis.description,
-      // Latest version using subquery
+      // Current version number (versionId of the version that uiVersion points to)
       version_id: sql<number>`COALESCE((
-        SELECT MAX(${versions.versionId})
+        SELECT ${versions.versionId}
         FROM ${versions}
-        WHERE ${versions.uiId} = ${uis.uiId}
+        WHERE ${versions.id} = ${uis.uiVersion}
       ), 1)`.as('version_id'),
     })
     .from(uis)

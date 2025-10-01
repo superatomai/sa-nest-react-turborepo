@@ -1,0 +1,867 @@
+{
+  "id": "create-task-form",
+  "name": "Create Task Form",
+  "props": {
+    "theme": "modern"
+  },
+  "states": {
+    "title": "",
+    "description": "",
+    "status": "pending",
+    "priority": "medium",
+    "assigned_to": "",
+    "estimated_hours": "",
+    "start_date": "",
+    "due_date": "",
+    "task_type": "feature",
+    "requires_compliance_check": false,
+    "is_blocking": false,
+    "tasks": [],
+    "successMessage": "",
+    "showSuccess": false
+  },
+  "effects": [
+    {
+      "fn": "async () => { try { console.log('Loading tasks from localStorage'); const savedTasks = localStorage.getItem('project_tasks'); if (savedTasks) { setState('tasks', JSON.parse(savedTasks)); } } catch(e) { console.error('Error loading tasks:', e); } }",
+      "deps": []
+    }
+  ],
+  "methods": {
+    "handleTitleChange": {
+      "fn": "(e) => setState('title', e.target.value)"
+    },
+    "handleDescriptionChange": {
+      "fn": "(e) => setState('description', e.target.value)"
+    },
+    "handleStatusChange": {
+      "fn": "(e) => setState('status', e.target.value)"
+    },
+    "handlePriorityChange": {
+      "fn": "(e) => setState('priority', e.target.value)"
+    },
+    "handleAssignedToChange": {
+      "fn": "(e) => setState('assigned_to', e.target.value)"
+    },
+    "handleTaskTypeChange": {
+      "fn": "(e) => setState('task_type', e.target.value)"
+    },
+    "handleEstimatedHoursChange": {
+      "fn": "(e) => setState('estimated_hours', e.target.value)"
+    },
+    "handleStartDateChange": {
+      "fn": "(e) => setState('start_date', e.target.value)"
+    },
+    "handleDueDateChange": {
+      "fn": "(e) => setState('due_date', e.target.value)"
+    },
+    "handleComplianceChange": {
+      "fn": "(e) => setState('requires_compliance_check', e.target.checked)"
+    },
+    "handleBlockingChange": {
+      "fn": "(e) => setState('is_blocking', e.target.checked)"
+    },
+    "handleSubmit": {
+      "fn": "async () => { try { if (!title.trim()) { alert('Please enter a task title'); return; } const newTask = { id: Date.now().toString(), title, description, status, priority, assigned_to, estimated_hours: estimated_hours ? parseFloat(estimated_hours) : null, start_date, due_date, task_type, requires_compliance_check, is_blocking, created_at: new Date().toISOString() }; const updatedTasks = [...tasks, newTask]; setState('tasks', updatedTasks); localStorage.setItem('project_tasks', JSON.stringify(updatedTasks)); setState('successMessage', 'Task created successfully!'); setState('showSuccess', true); setTimeout(() => setState('showSuccess', false), 3000); handleClearForm(); } catch(e) { console.error('Error creating task:', e); alert('Failed to create task. Please try again.'); } }"
+    },
+    "handleClearForm": {
+      "fn": "() => { setState('title', ''); setState('description', ''); setState('status', 'pending'); setState('priority', 'medium'); setState('assigned_to', ''); setState('estimated_hours', ''); setState('start_date', ''); setState('due_date', ''); setState('task_type', 'feature'); setState('requires_compliance_check', false); setState('is_blocking', false); }"
+    }
+  },
+  "render": {
+    "id": "task-form-container",
+    "type": "div",
+    "props": {
+      "className": "min-h-screen bg-gray-50 p-6"
+    },
+    "children": [
+      {
+        "id": "header",
+        "type": "div",
+        "props": {
+          "className": "bg-white rounded-lg shadow-sm p-6 mb-6"
+        },
+        "children": [
+          {
+            "id": "title-header",
+            "type": "h1",
+            "props": {
+              "className": "text-3xl font-bold text-gray-900 flex items-center gap-3"
+            },
+            "children": [
+              {
+                "id": "title-icon",
+                "type": "COMP_ICONIFY_ICON",
+                "props": {
+                  "icon": "mdi:plus-circle",
+                  "width": 36,
+                  "height": 36,
+                  "color": "#10B981"
+                }
+              },
+              {
+                "id": "title-text",
+                "type": "span",
+                "children": "Create New Task"
+              }
+            ]
+          },
+          {
+            "id": "subtitle",
+            "type": "p",
+            "props": {
+              "className": "text-gray-600 mt-2"
+            },
+            "children": "Fill out the form below to create a new project task"
+          }
+        ]
+      },
+      {
+        "id": "success-message",
+        "type": "div",
+        "if": {
+          "$exp": "showSuccess",
+          "$deps": ["showSuccess"]
+        },
+        "props": {
+          "className": "bg-green-50 border border-green-200 rounded-lg p-4 mb-6 flex items-center"
+        },
+        "children": [
+          {
+            "id": "success-icon",
+            "type": "COMP_ICONIFY_ICON",
+            "props": {
+              "icon": "mdi:check-circle",
+              "width": 24,
+              "height": 24,
+              "color": "#10B981",
+              "className": "mr-3"
+            }
+          },
+          {
+            "id": "success-text",
+            "type": "span",
+            "props": {
+              "className": "text-green-800 font-medium"
+            },
+            "children": {
+              "$bind": "successMessage"
+            }
+          }
+        ]
+      },
+      {
+        "id": "form-container",
+        "type": "div",
+        "props": {
+          "className": "bg-white rounded-lg shadow-sm p-6 mb-6"
+        },
+        "children": [
+          {
+            "id": "task-form",
+            "type": "div",
+            "props": {
+              "className": "space-y-6"
+            },
+            "children": [
+              {
+                "id": "title-field",
+                "type": "div",
+                "props": {
+                  "className": "space-y-2"
+                },
+                "children": [
+                  {
+                    "id": "title-label",
+                    "type": "label",
+                    "props": {
+                      "className": "block text-sm font-medium text-gray-700"
+                    },
+                    "children": "Task Title *"
+                  },
+                  {
+                    "id": "title-input",
+                    "type": "input",
+                    "props": {
+                      "type": "text",
+                      "placeholder": "Enter task title...",
+                      "className": "w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500",
+                      "value": {
+                        "$bind": "title"
+                      },
+                      "onChange": "handleTitleChange"
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "description-field",
+                "type": "div",
+                "props": {
+                  "className": "space-y-2"
+                },
+                "children": [
+                  {
+                    "id": "description-label",
+                    "type": "label",
+                    "props": {
+                      "className": "block text-sm font-medium text-gray-700"
+                    },
+                    "children": "Description"
+                  },
+                  {
+                    "id": "description-input",
+                    "type": "textarea",
+                    "props": {
+                      "placeholder": "Enter task description...",
+                      "rows": 4,
+                      "className": "w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-vertical",
+                      "value": {
+                        "$bind": "description"
+                      },
+                      "onChange": "handleDescriptionChange"
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "status-priority-row",
+                "type": "div",
+                "props": {
+                  "className": "grid grid-cols-1 md:grid-cols-2 gap-6"
+                },
+                "children": [
+                  {
+                    "id": "status-field",
+                    "type": "div",
+                    "props": {
+                      "className": "space-y-2"
+                    },
+                    "children": [
+                      {
+                        "id": "status-label",
+                        "type": "label",
+                        "props": {
+                          "className": "block text-sm font-medium text-gray-700"
+                        },
+                        "children": "Status"
+                      },
+                      {
+                        "id": "status-select",
+                        "type": "select",
+                        "props": {
+                          "className": "w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500",
+                          "value": {
+                            "$bind": "status"
+                          },
+                          "onChange": "handleStatusChange"
+                        },
+                        "children": [
+                          {
+                            "id": "status-pending",
+                            "type": "option",
+                            "props": {
+                              "value": "pending"
+                            },
+                            "children": "Pending"
+                          },
+                          {
+                            "id": "status-in-progress",
+                            "type": "option",
+                            "props": {
+                              "value": "in_progress"
+                            },
+                            "children": "In Progress"
+                          },
+                          {
+                            "id": "status-completed",
+                            "type": "option",
+                            "props": {
+                              "value": "completed"
+                            },
+                            "children": "Completed"
+                          },
+                          {
+                            "id": "status-on-hold",
+                            "type": "option",
+                            "props": {
+                              "value": "on_hold"
+                            },
+                            "children": "On Hold"
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "id": "priority-field",
+                    "type": "div",
+                    "props": {
+                      "className": "space-y-2"
+                    },
+                    "children": [
+                      {
+                        "id": "priority-label",
+                        "type": "label",
+                        "props": {
+                          "className": "block text-sm font-medium text-gray-700"
+                        },
+                        "children": "Priority"
+                      },
+                      {
+                        "id": "priority-select",
+                        "type": "select",
+                        "props": {
+                          "className": "w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500",
+                          "value": {
+                            "$bind": "priority"
+                          },
+                          "onChange": "handlePriorityChange"
+                        },
+                        "children": [
+                          {
+                            "id": "priority-low",
+                            "type": "option",
+                            "props": {
+                              "value": "low"
+                            },
+                            "children": "Low"
+                          },
+                          {
+                            "id": "priority-medium",
+                            "type": "option",
+                            "props": {
+                              "value": "medium",
+                              "selected": true
+                            },
+                            "children": "Medium"
+                          },
+                          {
+                            "id": "priority-high",
+                            "type": "option",
+                            "props": {
+                              "value": "high"
+                            },
+                            "children": "High"
+                          },
+                          {
+                            "id": "priority-critical",
+                            "type": "option",
+                            "props": {
+                              "value": "critical"
+                            },
+                            "children": "Critical"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "assignment-row",
+                "type": "div",
+                "props": {
+                  "className": "grid grid-cols-1 md:grid-cols-2 gap-6"
+                },
+                "children": [
+                  {
+                    "id": "assigned-to-field",
+                    "type": "div",
+                    "props": {
+                      "className": "space-y-2"
+                    },
+                    "children": [
+                      {
+                        "id": "assigned-to-label",
+                        "type": "label",
+                        "props": {
+                          "className": "block text-sm font-medium text-gray-700"
+                        },
+                        "children": "Assigned To"
+                      },
+                      {
+                        "id": "assigned-to-input",
+                        "type": "input",
+                        "props": {
+                          "type": "text",
+                          "placeholder": "Enter assignee name or email...",
+                          "className": "w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500",
+                          "value": {
+                            "$bind": "assigned_to"
+                          },
+                          "onChange": "handleAssignedToChange"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "id": "task-type-field",
+                    "type": "div",
+                    "props": {
+                      "className": "space-y-2"
+                    },
+                    "children": [
+                      {
+                        "id": "task-type-label",
+                        "type": "label",
+                        "props": {
+                          "className": "block text-sm font-medium text-gray-700"
+                        },
+                        "children": "Task Type"
+                      },
+                      {
+                        "id": "task-type-select",
+                        "type": "select",
+                        "props": {
+                          "className": "w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500",
+                          "value": {
+                            "$bind": "task_type"
+                          },
+                          "onChange": "handleTaskTypeChange"
+                        },
+                        "children": [
+                          {
+                            "id": "type-feature",
+                            "type": "option",
+                            "props": {
+                              "value": "feature",
+                              "selected": true
+                            },
+                            "children": "Feature"
+                          },
+                          {
+                            "id": "type-bug",
+                            "type": "option",
+                            "props": {
+                              "value": "bug"
+                            },
+                            "children": "Bug Fix"
+                          },
+                          {
+                            "id": "type-maintenance",
+                            "type": "option",
+                            "props": {
+                              "value": "maintenance"
+                            },
+                            "children": "Maintenance"
+                          },
+                          {
+                            "id": "type-research",
+                            "type": "option",
+                            "props": {
+                              "value": "research"
+                            },
+                            "children": "Research"
+                          },
+                          {
+                            "id": "type-documentation",
+                            "type": "option",
+                            "props": {
+                              "value": "documentation"
+                            },
+                            "children": "Documentation"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "hours-row",
+                "type": "div",
+                "props": {
+                  "className": "grid grid-cols-1 md:grid-cols-1 gap-6"
+                },
+                "children": [
+                  {
+                    "id": "estimated-hours-field",
+                    "type": "div",
+                    "props": {
+                      "className": "space-y-2"
+                    },
+                    "children": [
+                      {
+                        "id": "estimated-hours-label",
+                        "type": "label",
+                        "props": {
+                          "className": "block text-sm font-medium text-gray-700"
+                        },
+                        "children": "Estimated Hours"
+                      },
+                      {
+                        "id": "estimated-hours-input",
+                        "type": "input",
+                        "props": {
+                          "type": "number",
+                          "min": "0",
+                          "step": "0.5",
+                          "placeholder": "Enter estimated hours...",
+                          "className": "w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500",
+                          "value": {
+                            "$bind": "estimated_hours"
+                          },
+                          "onChange": "handleEstimatedHoursChange"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "dates-row",
+                "type": "div",
+                "props": {
+                  "className": "grid grid-cols-1 md:grid-cols-2 gap-6"
+                },
+                "children": [
+                  {
+                    "id": "start-date-field",
+                    "type": "div",
+                    "props": {
+                      "className": "space-y-2"
+                    },
+                    "children": [
+                      {
+                        "id": "start-date-label",
+                        "type": "label",
+                        "props": {
+                          "className": "block text-sm font-medium text-gray-700"
+                        },
+                        "children": "Start Date"
+                      },
+                      {
+                        "id": "start-date-input",
+                        "type": "input",
+                        "props": {
+                          "type": "date",
+                          "className": "w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500",
+                          "value": {
+                            "$bind": "start_date"
+                          },
+                          "onChange": "handleStartDateChange"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "id": "due-date-field",
+                    "type": "div",
+                    "props": {
+                      "className": "space-y-2"
+                    },
+                    "children": [
+                      {
+                        "id": "due-date-label",
+                        "type": "label",
+                        "props": {
+                          "className": "block text-sm font-medium text-gray-700"
+                        },
+                        "children": "Due Date"
+                      },
+                      {
+                        "id": "due-date-input",
+                        "type": "input",
+                        "props": {
+                          "type": "date",
+                          "className": "w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500",
+                          "value": {
+                            "$bind": "due_date"
+                          },
+                          "onChange": "handleDueDateChange"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "checkboxes-section",
+                "type": "div",
+                "props": {
+                  "className": "space-y-4"
+                },
+                "children": [
+                  {
+                    "id": "compliance-check",
+                    "type": "div",
+                    "props": {
+                      "className": "flex items-center"
+                    },
+                    "children": [
+                      {
+                        "id": "compliance-checkbox",
+                        "type": "input",
+                        "props": {
+                          "type": "checkbox",
+                          "className": "h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded mr-2",
+                          "checked": {
+                            "$bind": "requires_compliance_check"
+                          },
+                          "onChange": "handleComplianceChange"
+                        }
+                      },
+                      {
+                        "id": "compliance-label",
+                        "type": "label",
+                        "props": {
+                          "className": "text-sm font-medium text-gray-700"
+                        },
+                        "children": "Requires Compliance Check"
+                      }
+                    ]
+                  },
+                  {
+                    "id": "blocking-check",
+                    "type": "div",
+                    "props": {
+                      "className": "flex items-center"
+                    },
+                    "children": [
+                      {
+                        "id": "blocking-checkbox",
+                        "type": "input",
+                        "props": {
+                          "type": "checkbox",
+                          "className": "h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded mr-2",
+                          "checked": {
+                            "$bind": "is_blocking"
+                          },
+                          "onChange": "handleBlockingChange"
+                        }
+                      },
+                      {
+                        "id": "blocking-label",
+                        "type": "label",
+                        "props": {
+                          "className": "text-sm font-medium text-gray-700"
+                        },
+                        "children": "Is Blocking Other Tasks"
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "submit-section",
+                "type": "div",
+                "props": {
+                  "className": "flex items-center justify-between pt-6 border-t border-gray-200"
+                },
+                "children": [
+                  {
+                    "id": "submit-button",
+                    "type": "button",
+                    "props": {
+                      "className": "px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 font-medium",
+                      "onClick": "handleSubmit"
+                    },
+                    "children": "Create Task"
+                  },
+                  {
+                    "id": "clear-button",
+                    "type": "button",
+                    "props": {
+                      "className": "px-6 py-3 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 font-medium",
+                      "onClick": "handleClearForm"
+                    },
+                    "children": "Clear Form"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "tasks-list-section",
+        "type": "div",
+        "if": {
+          "$exp": "tasks.length > 0",
+          "$deps": ["tasks"]
+        },
+        "props": {
+          "className": "bg-white rounded-lg shadow-sm p-6 mb-6"
+        },
+        "children": [
+          {
+            "id": "tasks-list-header",
+            "type": "h2",
+            "props": {
+              "className": "text-2xl font-bold text-gray-900 mb-4 flex items-center gap-3"
+            },
+            "children": [
+              {
+                "id": "tasks-list-icon",
+                "type": "COMP_ICONIFY_ICON",
+                "props": {
+                  "icon": "mdi:format-list-checks",
+                  "width": 28,
+                  "height": 28,
+                  "color": "#3B82F6"
+                }
+              },
+              {
+                "id": "tasks-list-title",
+                "type": "span",
+                "children": {
+                  "$exp": "`Created Tasks (${tasks.length})`",
+                  "$deps": ["tasks"]
+                }
+              }
+            ]
+          },
+          {
+            "id": "tasks-grid",
+            "type": "div",
+            "props": {
+              "className": "grid grid-cols-1 md:grid-cols-2 gap-4"
+            },
+            "for": {
+              "in": {
+                "$bind": "tasks"
+              },
+              "as": "task",
+              "key": "task.id"
+            },
+            "children": {
+              "id": "task-card",
+              "type": "div",
+              "props": {
+                "className": "border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+              },
+              "children": [
+                {
+                  "id": "task-title-row",
+                  "type": "h3",
+                  "props": {
+                    "className": "text-lg font-semibold text-gray-900 mb-2"
+                  },
+                  "children": {
+                    "$bind": "task.title"
+                  }
+                },
+                {
+                  "id": "task-description",
+                  "type": "p",
+                  "if": {
+                    "$exp": "task.description",
+                    "$deps": ["task"]
+                  },
+                  "props": {
+                    "className": "text-sm text-gray-600 mb-3"
+                  },
+                  "children": {
+                    "$bind": "task.description"
+                  }
+                },
+                {
+                  "id": "task-meta",
+                  "type": "div",
+                  "props": {
+                    "className": "flex flex-wrap gap-2 text-xs"
+                  },
+                  "children": [
+                    {
+                      "id": "task-status-badge",
+                      "type": "span",
+                      "props": {
+                        "className": {
+                          "$exp": "`px-2 py-1 rounded ${task.status === 'completed' ? 'bg-green-100 text-green-800' : task.status === 'in_progress' ? 'bg-blue-100 text-blue-800' : task.status === 'on_hold' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800'}`",
+                          "$deps": ["task"]
+                        }
+                      },
+                      "children": {
+                        "$exp": "task.status.replace('_', ' ').toUpperCase()",
+                        "$deps": ["task"]
+                      }
+                    },
+                    {
+                      "id": "task-priority-badge",
+                      "type": "span",
+                      "props": {
+                        "className": {
+                          "$exp": "`px-2 py-1 rounded ${task.priority === 'critical' ? 'bg-red-100 text-red-800' : task.priority === 'high' ? 'bg-orange-100 text-orange-800' : task.priority === 'medium' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'}`",
+                          "$deps": ["task"]
+                        }
+                      },
+                      "children": {
+                        "$exp": "task.priority.toUpperCase()",
+                        "$deps": ["task"]
+                      }
+                    },
+                    {
+                      "id": "task-type-badge",
+                      "type": "span",
+                      "props": {
+                        "className": "px-2 py-1 rounded bg-purple-100 text-purple-800"
+                      },
+                      "children": {
+                        "$exp": "task.task_type.replace('_', ' ').toUpperCase()",
+                        "$deps": ["task"]
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "id": "info-section",
+        "type": "div",
+        "props": {
+          "className": "bg-blue-50 border border-blue-200 rounded-lg p-4"
+        },
+        "children": [
+          {
+            "id": "info-content",
+            "type": "div",
+            "props": {
+              "className": "flex items-start"
+            },
+            "children": [
+              {
+                "id": "info-icon",
+                "type": "COMP_ICONIFY_ICON",
+                "props": {
+                  "icon": "mdi:information",
+                  "width": 20,
+                  "height": 20,
+                  "color": "#3B82F6",
+                  "className": "mr-3 mt-0.5"
+                }
+              },
+              {
+                "id": "info-text",
+                "type": "div",
+                "props": {
+                  "className": "text-blue-800"
+                },
+                "children": [
+                  {
+                    "id": "info-title",
+                    "type": "p",
+                    "props": {
+                      "className": "font-medium"
+                    },
+                    "children": "Task Creation Form"
+                  },
+                  {
+                    "id": "info-description",
+                    "type": "p",
+                    "props": {
+                      "className": "text-sm mt-1"
+                    },
+                    "children": "This form creates tasks based on your project table structure with all the necessary fields including status, priority, assignments, and compliance requirements."
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

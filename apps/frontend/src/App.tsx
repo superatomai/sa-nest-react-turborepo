@@ -27,6 +27,7 @@ import ProjDesignSys from "./pages/Project/ProjDesignSys";
 import ProjLogsV2 from "./pages/Project/ProjLogsV2";
 import { API_URL } from "./config/api";
 import Demo from "./pages/demo";
+import DslShowcase from "./pages/DslShowcase";
 
 export function App() {
 	const { organization, isLoaded: orgLoaded } = useOrganization();
@@ -202,6 +203,15 @@ export function App() {
 						element={
 							<ProtectedRoute>
 								<Demo />
+							</ProtectedRoute>
+						}
+					/>
+
+					<Route
+						path="/showcase"
+						element={
+							<ProtectedRoute>
+								<DslShowcase />
 							</ProtectedRoute>
 						}
 					/>

@@ -1,0 +1,429 @@
+{
+  "id": "duckdb-data-viewer",
+  "name": "DuckDB Data Viewer",
+  "props": {
+    "theme": "modern"
+  },
+  "states": {
+    "activeTab": "tables",
+    "tables": [],
+    "selectedTable": null,
+    "tableData": [],
+    "isLoadingTables": false,
+    "isLoadingData": false
+  },
+  "effects": [
+    {
+      "fn": "async () => { setState('isLoadingTables', true); try { const conn = await duckdb.getConnection(); const result = await conn.query(\"SELECT table_name FROM information_schema.tables WHERE table_catalog = 'ddb' ORDER BY table_name\"); setState('tables', result.toArray()); if (result.toArray().length > 0) { setState('selectedTable', result.toArray()[0].table_name); const dataResult = await conn.query(`SELECT * FROM ddb.${result.toArray()[0].table_name} LIMIT 1000`); setState('tableData', dataResult.toArray()); } } catch(e) { console.error('Error loading tables:', e); setState('tables', []); } setState('isLoadingTables', false); }",
+      "deps": []
+    }
+  ],
+  "render": {
+    "id": "data-viewer-container",
+    "type": "div",
+    "props": {
+      "className": "min-h-screen bg-gray-50 p-6"
+    },
+    "children": [
+      {
+        "id": "header",
+        "type": "div",
+        "props": {
+          "className": "bg-white rounded-lg shadow-sm p-6 mb-6"
+        },
+        "children": [
+          {
+            "id": "title",
+            "type": "h1",
+            "props": {
+              "className": "text-3xl font-bold text-gray-900 flex items-center gap-3"
+            },
+            "children": [
+              {
+                "id": "title-icon",
+                "type": "COMP_ICONIFY_ICON",
+                "props": {
+                  "icon": "mdi:database-eye",
+                  "width": 36,
+                  "height": 36,
+                  "color": "#3B82F6"
+                }
+              },
+              {
+                "id": "title-text",
+                "type": "span",
+                "children": "DuckDB Data Viewer"
+              }
+            ]
+          },
+          {
+            "id": "subtitle",
+            "type": "p",
+            "props": {
+              "className": "text-gray-600 mt-2"
+            },
+            "children": "Explore all tables and data from your uploaded DuckDB file"
+          }
+        ]
+      },
+      {
+        "id": "tabs-container",
+        "type": "div",
+        "props": {
+          "className": "bg-white rounded-lg shadow-sm mb-6"
+        },
+        "children": [
+          {
+            "id": "tabs-header",
+            "type": "div",
+            "props": {
+              "className": "flex border-b border-gray-200"
+            },
+            "children": [
+              {
+                "id": "tables-tab",
+                "type": "div",
+                "props": {
+                  "className": "px-6 py-3 border-b-2 border-blue-500 text-blue-600 font-medium text-sm"
+                },
+                "children": "Database Tables"
+              },
+              {
+                "id": "query-tab",
+                "type": "div",
+                "props": {
+                  "className": "px-6 py-3 border-b-2 border-transparent text-gray-500 font-medium text-sm"
+                },
+                "children": "SQL Query Interface"
+              }
+            ]
+          },
+          {
+            "id": "tab-content",
+            "type": "div",
+            "props": {
+              "className": "p-6"
+            },
+            "children": [
+              {
+                "id": "tables-overview",
+                "type": "div",
+                "children": [
+                  {
+                    "id": "tables-header",
+                    "type": "h3",
+                    "props": {
+                      "className": "text-lg font-semibold mb-4"
+                    },
+                    "children": "Available Tables"
+                  },
+                  {
+                    "id": "tables-loading",
+                    "type": "div",
+                    "if": {
+                      "$exp": "isLoadingTables",
+                      "$deps": ["isLoadingTables"]
+                    },
+                    "props": {
+                      "className": "flex items-center justify-center py-8"
+                    },
+                    "children": [
+                      {
+                        "id": "loading-spinner",
+                        "type": "div",
+                        "props": {
+                          "className": "w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mr-3"
+                        }
+                      },
+                      {
+                        "id": "loading-text",
+                        "type": "span",
+                        "children": "Loading tables..."
+                      }
+                    ]
+                  },
+                  {
+                    "id": "tables-grid",
+                    "type": "div",
+                    "if": {
+                      "$exp": "!isLoadingTables && tables.length > 0",
+                      "$deps": ["isLoadingTables", "tables"]
+                    },
+                    "props": {
+                      "className": "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6"
+                    },
+                    "for": {
+                      "in": {
+                        "$bind": "tables"
+                      },
+                      "as": "table"
+                    },
+                    "children": {
+                      "id": "table-card",
+                      "type": "div",
+                      "props": {
+                        "className": "border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+                      },
+                      "children": [
+                        {
+                          "id": "table-header",
+                          "type": "div",
+                          "props": {
+                            "className": "flex items-center gap-3 mb-3"
+                          },
+                          "children": [
+                            {
+                              "id": "table-icon",
+                              "type": "COMP_ICONIFY_ICON",
+                              "props": {
+                                "icon": "mdi:table",
+                                "width": 24,
+                                "height": 24,
+                                "color": "#6B7280"
+                              }
+                            },
+                            {
+                              "id": "table-name",
+                              "type": "h4",
+                              "props": {
+                                "className": "font-medium text-gray-900"
+                              },
+                              "children": {
+                                "$bind": "table.table_name"
+                              }
+                            }
+                          ]
+                        },
+                        {
+                          "id": "table-preview",
+                          "type": "div",
+                          "props": {
+                            "className": "text-sm text-gray-600"
+                          },
+                          "children": {
+                            "$exp": "selectedTable === table.table_name ? 'Currently displayed below' : 'Available for viewing'",
+                            "$deps": ["selectedTable", "table"]
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "id": "no-tables",
+                    "type": "div",
+                    "if": {
+                      "$exp": "!isLoadingTables && tables.length === 0",
+                      "$deps": ["isLoadingTables", "tables"]
+                    },
+                    "props": {
+                      "className": "text-center py-8"
+                    },
+                    "children": [
+                      {
+                        "id": "no-tables-icon",
+                        "type": "COMP_ICONIFY_ICON",
+                        "props": {
+                          "icon": "mdi:database-off",
+                          "width": 48,
+                          "height": 48,
+                          "color": "#9CA3AF",
+                          "className": "mx-auto mb-2"
+                        }
+                      },
+                      {
+                        "id": "no-tables-text",
+                        "type": "p",
+                        "props": {
+                          "className": "text-gray-500"
+                        },
+                        "children": "No tables found. Please upload a DuckDB file using /duckdb command."
+                      }
+                    ]
+                  },
+                  {
+                    "id": "data-section",
+                    "type": "div",
+                    "if": {
+                      "$exp": "selectedTable !== null",
+                      "$deps": ["selectedTable"]
+                    },
+                    "children": [
+                      {
+                        "id": "data-header",
+                        "type": "div",
+                        "props": {
+                          "className": "flex justify-between items-center mb-4 pt-6 border-t border-gray-200"
+                        },
+                        "children": [
+                          {
+                            "id": "data-title",
+                            "type": "h3",
+                            "props": {
+                              "className": "text-lg font-semibold"
+                            },
+                            "children": {
+                              "$exp": "`Data from: ${selectedTable}`",
+                              "$deps": ["selectedTable"]
+                            }
+                          },
+                          {
+                            "id": "row-count",
+                            "type": "div",
+                            "props": {
+                              "className": "text-sm text-gray-600"
+                            },
+                            "children": {
+                              "$exp": "`${tableData.length} rows`",
+                              "$deps": ["tableData"]
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "id": "data-loading",
+                        "type": "div",
+                        "if": {
+                          "$exp": "isLoadingData",
+                          "$deps": ["isLoadingData"]
+                        },
+                        "props": {
+                          "className": "flex items-center justify-center py-8"
+                        },
+                        "children": [
+                          {
+                            "id": "data-loading-spinner",
+                            "type": "div",
+                            "props": {
+                              "className": "w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mr-3"
+                            }
+                          },
+                          {
+                            "id": "data-loading-text",
+                            "type": "span",
+                            "children": "Loading data..."
+                          }
+                        ]
+                      },
+                      {
+                        "id": "data-table",
+                        "type": "div",
+                        "if": {
+                          "$exp": "!isLoadingData && tableData.length > 0",
+                          "$deps": ["isLoadingData", "tableData"]
+                        },
+                        "props": {
+                          "className": "w-full border border-gray-200 rounded-lg overflow-hidden"
+                        },
+                        "children": {
+                          "id": "ag-grid",
+                          "type": "COMP_AGGRID",
+                          "props": {
+                            "columnDefs": {
+                              "$exp": "tableData.length > 0 ? Object.keys(tableData[0]).map(key => ({ headerName: key.charAt(0).toUpperCase() + key.slice(1).replace(/_/g, ' '), field: key, sortable: true, filter: true, resizable: true, minWidth: 150, width: 200, flex: 1, cellStyle: { textAlign: 'left', padding: '8px 12px' } })) : []",
+                              "$deps": ["tableData"]
+                            },
+                            "rowData": {
+                              "$bind": "tableData"
+                            },
+                            "style": {
+                              "width": "100%",
+                              "height": "600px"
+                            },
+                            "pagination": true,
+                            "paginationPageSize": 50,
+                            "domLayout": "normal",
+                            "defaultColDef": {
+                              "sortable": true,
+                              "filter": true,
+                              "resizable": true,
+                              "minWidth": 150,
+                              "flex": 1,
+                              "cellStyle": {
+                                "textAlign": "left",
+                                "padding": "8px 12px",
+                                "display": "flex",
+                                "alignItems": "center"
+                              }
+                            },
+                            "animateRows": true,
+                            "rowSelection": "multiple",
+                            "suppressRowClickSelection": true,
+                            "getRowStyle": {
+                              "$exp": "() => ({ background: '#ffffff' })"
+                            },
+                            "headerHeight": 48,
+                            "rowHeight": 40
+                          }
+                        }
+                      },
+                      {
+                        "id": "no-data",
+                        "type": "div",
+                        "if": {
+                          "$exp": "!isLoadingData && selectedTable && tableData.length === 0",
+                          "$deps": ["isLoadingData", "selectedTable", "tableData"]
+                        },
+                        "props": {
+                          "className": "text-center py-8"
+                        },
+                        "children": [
+                          {
+                            "id": "no-data-icon",
+                            "type": "COMP_ICONIFY_ICON",
+                            "props": {
+                              "icon": "mdi:table-remove",
+                              "width": 48,
+                              "height": 48,
+                              "color": "#9CA3AF",
+                              "className": "mx-auto mb-2"
+                            }
+                          },
+                          {
+                            "id": "no-data-text",
+                            "type": "p",
+                            "props": {
+                              "className": "text-gray-500"
+                            },
+                            "children": "No data found in this table."
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "query-interface",
+        "type": "div",
+        "props": {
+          "className": "bg-white rounded-lg shadow-sm p-6"
+        },
+        "children": [
+          {
+            "id": "query-header",
+            "type": "h3",
+            "props": {
+              "className": "text-lg font-semibold mb-4"
+            },
+            "children": "SQL Query Interface"
+          },
+          {
+            "id": "duckdb-interface",
+            "type": "COMP_DUCKDB_INTERFACE",
+            "props": {
+              "autoInit": true,
+              "showSampleData": false,
+              "initialQuery": "SELECT * FROM information_schema.tables WHERE table_catalog = 'ddb'",
+              "maxRows": 1000,
+              "className": "w-full"
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

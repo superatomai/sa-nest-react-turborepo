@@ -20,7 +20,7 @@ export class AppController {
       server: 'SuperAtom Runtime Backend',
       status: 'healthy',
       timestamp: new Date().toISOString(),
-      version: '0.0.5',
+      version: '0.0.6',
       endpoints: {
         system: {
           'GET /': 'System health and API documentation',
