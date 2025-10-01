@@ -1571,7 +1571,16 @@ const fullContext = {
 		try {
 			await fs.access(readmePath);
 		} catch {
-			const designSystemContent = `# Design System Guidelines
+			// Read the design system content from the template file
+			const templatePath = path.join(__dirname, 'design-system-readme.md');
+			let designSystemContent: string;
+
+			try {
+				designSystemContent = await fs.readFile(templatePath, 'utf-8');
+			} catch (error) {
+				console.error('Failed to read design-system-readme.md template:', error);
+				// Fallback to minimal content if template file is not found
+				designSystemContent = `# Design System Guidelines
 
 ## Overview
 This design system provides guidelines for creating consistent, accessible, and beautiful UI components.
@@ -1784,6 +1793,7 @@ This design system provides guidelines for creating consistent, accessible, and 
 4. **Maintainability**: Write clean, organized CSS
 5. **Documentation**: Document custom components and patterns
 `;
+			}
 
 			await fs.writeFile(readmePath, designSystemContent);
 		}

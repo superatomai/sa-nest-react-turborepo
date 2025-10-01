@@ -82,11 +82,11 @@ export class SSEService {
       if (isStreamClosed) return;
 
       sendMessage('complete', `🎉 ${message}`, data);
-      
+
       // Send end signal
       sendMessage('end', 'Stream completed successfully');
 
-      // Close after brief delay
+      // Close after longer delay to ensure all messages are transmitted
       setTimeout(() => {
         if (!isStreamClosed) {
           isStreamClosed = true;
@@ -96,7 +96,7 @@ export class SSEService {
             console.log('Error closing stream:', error);
           }
         }
-      }, 100);
+      }, 500); // Increased from 100ms to 500ms
     };
 
     const close = () => {

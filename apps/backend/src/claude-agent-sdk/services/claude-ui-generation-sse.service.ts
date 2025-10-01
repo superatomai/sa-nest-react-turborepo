@@ -150,6 +150,11 @@ export class ClaudeUIGenerationSSEService {
 			let claudeBuffer = '';
 			let lastSentLength = 0;
 			const streamCallback = (chunk: string, eventType?: string) => {
+				// Check if stream is still open before sending
+				if (sseController.isClosed()) {
+					return;
+				}
+
 				// If eventType is provided, it's a status/tool event
 				if (eventType === 'tool_use' || eventType === 'status') {
 					sseController.sendMessage(eventType, chunk);
@@ -171,20 +176,26 @@ export class ClaudeUIGenerationSSEService {
 				streamCallback
 			);
 
-			if (claudeBuffer.length > lastSentLength) {
+			if (!sseController.isClosed() && claudeBuffer.length > lastSentLength) {
 				sseController.sendMessage('claude_stream', `🤖 ${claudeBuffer.slice(lastSentLength)}`);
 			}
 
-			sseController.sendMessage('claude_complete', '✅ Claude Agent generation complete');
+			if (!sseController.isClosed()) {
+				sseController.sendMessage('claude_complete', '✅ Claude Agent generation complete');
+			}
 
 			if (!claudeResult.success) {
-				sseController.sendError('Failed to generate UI with Claude Agent', {
-					originalError: claudeResult.error
-				});
+				if (!sseController.isClosed()) {
+					sseController.sendError('Failed to generate UI with Claude Agent', {
+						originalError: claudeResult.error
+					});
+				}
 				return;
 			}
 
-			sseController.sendMessage('status', '✅ UI generated successfully');
+			if (!sseController.isClosed()) {
+				sseController.sendMessage('status', '✅ UI generated successfully');
+			}
 
 			const ui = { ...claudeResult.data! };
 			// if (!ui.query) {
@@ -195,7 +206,9 @@ export class ClaudeUIGenerationSSEService {
 			// 	};
 			// }
 
-			sseController.sendMessage('status', '📤 Response ready');
+			if (!sseController.isClosed()) {
+				sseController.sendMessage('status', '📤 Response ready');
+			}
 
 			const finalResponse: ClaudeGenerateUISSEResponse = {
 				success: true,
@@ -213,7 +226,10 @@ export class ClaudeUIGenerationSSEService {
 				}
 			};
 
-			sseController.sendComplete('UI successfully generated with Claude Agent!', finalResponse);
+			// Check if stream is still open before sending complete
+			if (!sseController.isClosed()) {
+				sseController.sendComplete('UI successfully generated with Claude Agent!', finalResponse);
+			}
 
 		} catch (error) {
 			console.error('Error in Claude UI generation SSE service:', error);
