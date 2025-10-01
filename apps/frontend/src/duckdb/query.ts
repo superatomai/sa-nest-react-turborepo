@@ -159,3 +159,9 @@ export class DuckDBQueryExecutor {
 }
 
 export const queryExecutor = DuckDBQueryExecutor.getInstance();
+
+// Initialize window.SA if it doesn't exist
+if (typeof window !== 'undefined') {
+  (window as any).SA = (window as any).SA || {};
+  (window as any).SA.queryExecutor = queryExecutor;
+}

@@ -116,18 +116,29 @@ class ExpressionEvaluator {
     private flattenDataToContext(obj: any, context: Record<string, any>, prefix = ''): void {
         if (!obj || typeof obj !== 'object') return;
 
+        // Skip flattening if this is a global object or function (avoid corrupting the context)
+        const skipKeys = ['Math', 'Date', 'String', 'Number', 'Boolean', 'Array', 'Object', 'JSON',
+                          'filter', 'map', 'reduce', 'find', 'some', 'every', 'sort', 'slice',
+                          'parseInt', 'parseFloat', 'isNaN', 'isFinite', 'console', 'window',
+                          'setState', 'states', 'props', 'data'];
+
         for (const [key, value] of Object.entries(obj)) {
+            // Skip global objects and special keys
+            if (!prefix && skipKeys.includes(key)) {
+                continue;
+            }
+
             const contextKey = prefix ? `${prefix}_${key}` : key;
 
-            // Add to context
+            // Always add to context first (this ensures loop variables like 'org', 'dept' are available)
             context[contextKey] = value;
 
-            // For direct access without prefix (if no conflict)
-            if (!prefix && !context.hasOwnProperty(key)) {
+            // For direct access without prefix (always add for root level)
+            if (!prefix) {
                 context[key] = value;
             }
 
-            // Recursively flatten objects (but not arrays)
+            // Recursively flatten objects (but not arrays) to provide nested access paths
             if (value && typeof value === 'object' && !Array.isArray(value) && !this.isDateOrSpecialObject(value)) {
                 this.flattenDataToContext(value, context, contextKey);
             }
@@ -486,7 +497,8 @@ export const UpdatedDSLRenderer: React.FC<UpdatedDSLRendererProps> = observer(({
                             Boolean,
                             Array,
                             Object,
-                            JSON
+                            JSON,
+                            window
                         });
 
                         // Parse the function string and create executable function
@@ -495,6 +507,7 @@ export const UpdatedDSLRenderer: React.FC<UpdatedDSLRendererProps> = observer(({
                         // Create the method function
                         handlers[methodName] = (...args: any[]) => {
                             try {
+                                console.log(`🎯 Executing method: ${methodName}`, args);
                                 const context = createMethodContext();
                                 const paramNames = Object.keys(context);
                                 const paramValues = Object.values(context);
@@ -508,9 +521,12 @@ export const UpdatedDSLRenderer: React.FC<UpdatedDSLRendererProps> = observer(({
                                     return (${fnString})(...args);
                                 `);
 
-                                return func(...paramValues);
+                                const result = func(...paramValues);
+                                console.log(`✅ Method ${methodName} executed successfully`);
+                                return result;
                             } catch (error) {
-                                console.error(`Error executing method ${methodName}:`, error);
+                                console.error(`❌ Error executing method ${methodName}:`, error);
+                                throw error;
                             }
                         };
                     } catch (error) {
@@ -523,7 +539,12 @@ export const UpdatedDSLRenderer: React.FC<UpdatedDSLRendererProps> = observer(({
         return handlers;
     }, [uiComponent.methods, uiComponent.data, uiComponent.props, componentStates, setState]);
 
-    // Handle effects
+    // Handle effects - use ref to avoid infinite loops
+    const methodHandlersRef = React.useRef(methodHandlers);
+    React.useEffect(() => {
+        methodHandlersRef.current = methodHandlers;
+    }, [methodHandlers]);
+
     React.useEffect(() => {
         if (uiComponent.effects) {
             for (const effect of uiComponent.effects) {
@@ -534,9 +555,11 @@ export const UpdatedDSLRenderer: React.FC<UpdatedDSLRendererProps> = observer(({
                         states: componentStates,
                         props: uiComponent.props || {},
                         setState,
+                        ...methodHandlersRef.current, // Use ref to avoid re-renders
                         console,
                         Math,
-                        Date
+                        Date,
+                        window
                     };
 
                     const paramNames = Object.keys(context);
@@ -553,7 +576,8 @@ export const UpdatedDSLRenderer: React.FC<UpdatedDSLRendererProps> = observer(({
                 }
             }
         }
-    }, [uiComponent.effects, componentStates, uiComponent.data, uiComponent.props, setState]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
 
     const renderElement = (
@@ -725,7 +749,7 @@ export const UpdatedDSLRenderer: React.FC<UpdatedDSLRendererProps> = observer(({
             }
         }
 
-        // Resolve props
+        // Resolve props with localContext that includes loop variables
         const resolvedProps = actualElement.props ?
             Object.entries(actualElement.props).reduce((acc, [key, value]) => {
                 acc[key] = resolver.resolveValue(value, localContext);
@@ -733,11 +757,15 @@ export const UpdatedDSLRenderer: React.FC<UpdatedDSLRendererProps> = observer(({
             }, {} as Record<string, any>) : {};
 
         // Handle event handlers - check methodHandlers first (from component.methods), then external handlers
-        if (resolvedProps.onClick && typeof resolvedProps.onClick === 'string') {
-            const handlerName = resolvedProps.onClick;
-            resolvedProps.onClick = methodHandlers[handlerName] || handlers[handlerName] || (() => {
-                console.warn(`Missing handler: ${handlerName}`);
-            });
+        const eventHandlers = ['onClick', 'onChange', 'onSubmit', 'onBlur', 'onFocus', 'onKeyDown', 'onKeyUp', 'onKeyPress'];
+
+        for (const eventName of eventHandlers) {
+            if (resolvedProps[eventName] && typeof resolvedProps[eventName] === 'string') {
+                const handlerName = resolvedProps[eventName];
+                resolvedProps[eventName] = methodHandlers[handlerName] || handlers[handlerName] || (() => {
+                    console.warn(`Missing handler: ${handlerName}`);
+                });
+            }
         }
 
         // Handle link-to property - add click/tap handler for navigation
@@ -1088,6 +1116,13 @@ export const UpdatedDSLRenderer: React.FC<UpdatedDSLRendererProps> = observer(({
 
             case 'g':
                 return <g key={resolvedKey} {...resolvedProps}>{renderChildren()}</g>;
+
+            case 'form':
+                return withConditionalAnimation(
+                    <form key={resolvedKey} {...resolvedProps}>{renderChildren()}</form>,
+                    actualElement.type,
+                    resolvedKey
+                );
 
             default:
                 // console.warn(`Unknown element type: ${actualElement.type}`);
