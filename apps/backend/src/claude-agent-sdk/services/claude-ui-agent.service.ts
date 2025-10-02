@@ -304,6 +304,20 @@ You are a specialized converter that transforms React TSX components into DSL JS
    - Use \`$bind\` for data bindings
    - Use \`$exp\` for expressions with \`$deps\` for dependencies
    - For loops should use the \`for\` directive with \`in\`, \`as\`, \`key\`, \`index\`
+   - **CRITICAL - Loop Styling Conversion Rules**:
+     - **Understanding Renderer Behavior**: The renderer creates the element with \`for\` directive as a CONTAINER, then renders loop items as children inside it
+     - **Grid Layouts**: For grid layouts, put the \`for\` directive on the grid container element itself
+       - TSX: \`<div className="grid gap-4">{items.map(item => <div className="card-style">...</div>)}</div>\`
+       - JSON: Put \`for\` on the grid div, card styling goes in \`children\`
+     - **Card/Item Styling**: Individual item styles (backgrounds, borders, shadows, padding) MUST go on the loop \`children\`, NOT on the element with \`for\` directive
+       - ✅ CORRECT: \`{"for": {...}, "props": {"className": "grid gap-4"}, "children": {"type": "div", "props": {"className": "bg-white rounded p-5"}}}\`
+       - ❌ WRONG: \`{"for": {...}, "props": {"className": "bg-white rounded p-5"}, "children": {...}}\` (creates one card containing all items)
+     - **Select/Option Elements**: For \`<select>\` with \`<option>\` elements, the \`for\` loop goes on the option element, NOT the select
+       - TSX: \`<select>{options.map(opt => <option key={opt.id} value={opt.value}>{opt.label}</option>)}</select>\`
+       - JSON: \`{"type": "select", "children": {"type": "option", "for": {...}, "props": {"value": {"$bind": "opt.value"}}, "children": {"$bind": "opt.label"}}}\`
+     - **List Items**: For \`<ul>\`/\`<li>\` structures, \`for\` goes on the \`li\` element
+       - TSX: \`<ul>{items.map(item => <li key={item.id}>{item.name}</li>)}</ul>\`
+       - JSON: \`{"type": "ul", "children": {"type": "li", "for": {...}, "children": {"$bind": "item.name"}}}\`
    - Conditional rendering should use \`if\`, \`elseIf\`, \`else\`
    - Native components (charts, tables, maps) should use \`COMP_\` prefix
    - Preserve Tailwind v4 CSS classes in the \`className\` prop
