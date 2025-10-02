@@ -26,9 +26,6 @@ const MemoizedNativeComponent = React.memo(({
     const renderCount = React.useRef(0);
     renderCount.current++;
 
-    if (process.env.NODE_ENV === 'development' && renderCount.current > 1) {
-        console.log(`🔄 Native component ${type} re-rendered ${renderCount.current} times`);
-    }
 
     return withConditionalErrorBoundary(
         <DynamicComponent
@@ -47,14 +44,6 @@ const MemoizedNativeComponent = React.memo(({
     const propsEqual = JSON.stringify(prevProps.props) === JSON.stringify(nextProps.props);
     const typeEqual = prevProps.type === nextProps.type;
     const keyEqual = prevProps.elementKey === nextProps.elementKey;
-
-    if (process.env.NODE_ENV === 'development' && (!propsEqual || !typeEqual || !keyEqual)) {
-        console.log(`🔄 Native component ${prevProps.type} will re-render`, {
-            propsEqual,
-            typeEqual,
-            keyEqual
-        });
-    }
 
     return propsEqual && typeEqual && keyEqual;
 });
@@ -117,10 +106,11 @@ class ExpressionEvaluator {
         if (!obj || typeof obj !== 'object') return;
 
         // Skip flattening if this is a global object or function (avoid corrupting the context)
+        // Note: We DO want to include 'states' and 'props' in the context for expression evaluation
         const skipKeys = ['Math', 'Date', 'String', 'Number', 'Boolean', 'Array', 'Object', 'JSON',
                           'filter', 'map', 'reduce', 'find', 'some', 'every', 'sort', 'slice',
                           'parseInt', 'parseFloat', 'isNaN', 'isFinite', 'console', 'window',
-                          'setState', 'states', 'props', 'data'];
+                          'setState', 'data'];
 
         for (const [key, value] of Object.entries(obj)) {
             // Skip global objects and special keys
@@ -256,8 +246,9 @@ class DataResolver {
         }
 
         // Apply transforms if any (simplified implementation)
+        //@:to-do - implement transforms properly
         if (transforms && Array.isArray(transforms)) {
-            console.log('Transforms not fully implemented yet:', transforms);
+            // console.log('Transforms not fully implemented yet:', transforms);
         }
 
         return value;
@@ -465,6 +456,12 @@ export const UpdatedDSLRenderer: React.FC<UpdatedDSLRendererProps> = observer(({
         return initialStates;
     });
 
+    // Create ref to track latest component states (for method handlers to avoid stale closures)
+    const componentStatesRef = React.useRef(componentStates);
+    React.useEffect(() => {
+        componentStatesRef.current = componentStates;
+    }, [componentStates]);
+
     // Create setState function for methods
     const setState = React.useCallback((key: string, value: any) => {
         setComponentStates(prev => ({
@@ -481,34 +478,51 @@ export const UpdatedDSLRenderer: React.FC<UpdatedDSLRendererProps> = observer(({
             for (const [methodName, methodDef] of Object.entries(uiComponent.methods)) {
                 if (methodDef.fn) {
                     try {
-                        // Create context for method execution
-                        const createMethodContext = () => ({
-                            ...uiComponent.data || {},
-                            ...componentStates,
-                            states: componentStates,
-                            props: uiComponent.props || {},
-                            setState,
-                            // Add common utilities
-                            console,
-                            Math,
-                            Date,
-                            String,
-                            Number,
-                            Boolean,
-                            Array,
-                            Object,
-                            JSON,
-                            window
-                        });
-
                         // Parse the function string and create executable function
-                        const fnString = methodDef.fn;
+                        // Strip TypeScript type annotations since JSON contains TS syntax from TSX conversion
+                        let fnString = methodDef.fn;
+
+                        // Unescape escaped quotes from JSON conversion: \\' -> ' and \\" -> "
+                        fnString = fnString.replace(/\\'/g, "'");
+                        fnString = fnString.replace(/\\"/g, '"');
+
+                        // Remove TypeScript type casting: (variable as Type) -> variable
+                        fnString = fnString.replace(/\(\s*(\w+)\s+as\s+\w+\s*\)/g, '$1');
+
+                        // Remove type annotations from variable declarations ONLY after var/let/const
+                        // Match: const/let/var name: Type = ... -> const/let/var name = ...
+                        // But DON'T match ternary operators: condition ? value : otherValue
+                        fnString = fnString.replace(/\b(const|let|var)\s+(\w+)\s*:\s*[\w<>[\]|&]+\s*=/g, '$1 $2 =');
 
                         // Create the method function
                         handlers[methodName] = (...args: any[]) => {
                             try {
-                                console.log(`🎯 Executing method: ${methodName}`, args);
-                                const context = createMethodContext();
+                                // IMPORTANT: Get CURRENT state on each call (not closure)
+                                // This ensures methods always work with latest state values
+                                const currentStates = componentStatesRef.current;
+
+                                // Create context FRESH on each call to get latest state
+                                const context = {
+                                    ...uiComponent.data || {},
+                                    ...currentStates,
+                                    states: currentStates,
+                                    props: uiComponent.props || {},
+                                    setState,
+                                    // Add all other methods so they can call each other
+                                    ...handlers,
+                                    // Add common utilities
+                                    console,
+                                    Math,
+                                    Date,
+                                    String,
+                                    Number,
+                                    Boolean,
+                                    Array,
+                                    Object,
+                                    JSON,
+                                    window
+                                };
+
                                 const paramNames = Object.keys(context);
                                 const paramValues = Object.values(context);
 
@@ -516,14 +530,18 @@ export const UpdatedDSLRenderer: React.FC<UpdatedDSLRendererProps> = observer(({
                                 paramNames.push('args');
                                 paramValues.push(args);
 
-                                const func = new Function(...paramNames, `
-                                    "use strict";
-                                    return (${fnString})(...args);
-                                `);
-
-                                const result = func(...paramValues);
-                                console.log(`✅ Method ${methodName} executed successfully`);
-                                return result;
+                                try {
+                                    const func = new Function(...paramNames, `
+                                        "use strict";
+                                        return (${fnString})(...args);
+                                    `);
+                                    const result = func(...paramValues);
+                                    return result;
+                                } catch (syntaxError) {
+                                    console.error(`❌ Syntax error in method ${methodName}:`, syntaxError);
+                                    console.error(`Function string:`, fnString);
+                                    throw new Error(`Invalid JavaScript in method ${methodName}: ${syntaxError.message}`);
+                                }
                             } catch (error) {
                                 console.error(`❌ Error executing method ${methodName}:`, error);
                                 throw error;
@@ -537,7 +555,7 @@ export const UpdatedDSLRenderer: React.FC<UpdatedDSLRendererProps> = observer(({
         }
 
         return handlers;
-    }, [uiComponent.methods, uiComponent.data, uiComponent.props, componentStates, setState]);
+    }, [uiComponent.methods, uiComponent.data, uiComponent.props, setState]);
 
     // Handle effects - use ref to avoid infinite loops
     const methodHandlersRef = React.useRef(methodHandlers);
@@ -549,6 +567,21 @@ export const UpdatedDSLRenderer: React.FC<UpdatedDSLRendererProps> = observer(({
         if (uiComponent.effects) {
             for (const effect of uiComponent.effects) {
                 try {
+                    // Strip TypeScript syntax from effect function string
+                    let effectFn = effect.fn;
+
+                    // Unescape escaped quotes from JSON conversion: \\' -> ' and \\" -> "
+                    effectFn = effectFn.replace(/\\'/g, "'");
+                    effectFn = effectFn.replace(/\\"/g, '"');
+
+                    // Remove TypeScript type casting: (variable as Type) -> variable
+                    effectFn = effectFn.replace(/\(\s*(\w+)\s+as\s+\w+\s*\)/g, '$1');
+
+                    // Remove type annotations from variable declarations ONLY after var/let/const
+                    // Match: const/let/var name: Type = ... -> const/let/var name = ...
+                    // But DON'T match ternary operators: condition ? value : otherValue
+                    effectFn = effectFn.replace(/\b(const|let|var)\s+(\w+)\s*:\s*[\w<>[\]|&]+\s*=/g, '$1 $2 =');
+
                     const context = {
                         ...uiComponent.data || {},
                         ...componentStates,
@@ -567,7 +600,7 @@ export const UpdatedDSLRenderer: React.FC<UpdatedDSLRendererProps> = observer(({
 
                     const func = new Function(...paramNames, `
                         "use strict";
-                        return (${effect.fn})();
+                        return (${effectFn})();
                     `);
 
                     func(...paramValues);
@@ -611,6 +644,13 @@ export const UpdatedDSLRenderer: React.FC<UpdatedDSLRendererProps> = observer(({
             // This is a UIElement
             elementData = element as UIElement;
             componentId = elementData.id;
+        }
+
+        // Resolve key before validation if it's an expression/binding
+        if (elementData.key && typeof elementData.key === 'object') {
+            const resolvedKey = resolver.resolveValue(elementData.key, localContext);
+            // Convert to string since schema expects string keys
+            elementData = { ...elementData, key: resolvedKey != null ? String(resolvedKey) : undefined };
         }
 
         // Validate element against schema
@@ -669,13 +709,23 @@ export const UpdatedDSLRenderer: React.FC<UpdatedDSLRendererProps> = observer(({
                         key = `${actualElement.id}-${index}`;
                     }
 
-                    // Create loop element with unique ID but same structure
-                    const loopElement = {
-                        ...actualElement,
-                        for: undefined,
-                        key: undefined,
-                        id: `${actualElement.id}-${index}`
-                    } as UIElement;
+                    // Create loop element - two cases:
+                    // 1. If children is a UIElement (has type), use it as template (e.g., user cards)
+                    // 2. If children is a binding/string, the element itself is the template (e.g., options)
+                    let loopElement: UIElement;
+
+                    if (actualElement.children && typeof actualElement.children === 'object' && (actualElement.children as any).type) {
+                        // Case 1: Children is a UIElement, use it as template
+                        loopElement = actualElement.children as UIElement;
+                    } else {
+                        // Case 2: Element itself is the template (children is just content/binding)
+                        loopElement = {
+                            ...actualElement,
+                            for: undefined,
+                            key: undefined,
+                            id: `${actualElement.id}-${index}`
+                        } as UIElement;
+                    }
 
                     const loopItemPath = [...componentPath, index];
 
@@ -689,6 +739,13 @@ export const UpdatedDSLRenderer: React.FC<UpdatedDSLRendererProps> = observer(({
                         </React.Fragment>
                     );
                 });
+
+                // For certain elements (like option), don't render a container - just return the loop items
+                // because wrapping them would create invalid HTML (e.g., <option><option>...</option></option>)
+                const noContainerElements = ['option'];
+                if (noContainerElements.includes(actualElement.type.toLowerCase())) {
+                    return <>{...loopItems}</>;
+                }
 
                 // Create container element with original props and classes
                 const containerElement = {
@@ -762,9 +819,23 @@ export const UpdatedDSLRenderer: React.FC<UpdatedDSLRendererProps> = observer(({
         for (const eventName of eventHandlers) {
             if (resolvedProps[eventName] && typeof resolvedProps[eventName] === 'string') {
                 const handlerName = resolvedProps[eventName];
-                resolvedProps[eventName] = methodHandlers[handlerName] || handlers[handlerName] || (() => {
-                    console.warn(`Missing handler: ${handlerName}`);
-                });
+                const handler = methodHandlers[handlerName] || handlers[handlerName];
+
+                if (handler) {
+                    // For form submissions, wrap to ensure preventDefault is called
+                    if (eventName === 'onSubmit') {
+                        resolvedProps[eventName] = (e: React.FormEvent) => {
+                            e.preventDefault();
+                            return handler(e);
+                        };
+                    } else {
+                        resolvedProps[eventName] = handler;
+                    }
+                } else {
+                    resolvedProps[eventName] = () => {
+                        console.warn(`Missing handler: ${handlerName}`);
+                    };
+                }
             }
         }
 
@@ -809,9 +880,6 @@ export const UpdatedDSLRenderer: React.FC<UpdatedDSLRendererProps> = observer(({
                         targetUI = String(linkToValue);
                     }
 
-                    if (process.env.NODE_ENV === 'development') {
-                        console.log('Navigation triggered:', { targetUI, params, localContext });
-                    }
 
                     onNavigate(targetUI, params);
                 };

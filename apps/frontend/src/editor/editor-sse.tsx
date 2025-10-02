@@ -50,7 +50,7 @@ const EditorSSE = () => {
 	const loadedUiIdRef = useRef<string | null>(null);
 
 	// Generation method state
-	const [generationMethod, setGenerationMethod] = useState<'regular' | 'claude-agent'>('regular');
+	const [generationMethod, setGenerationMethod] = useState<'regular' | 'claude-agent'>('claude-agent');
 
 	// Auto-scroll to bottom of messages
 	const scrollToBottom = () => {
@@ -971,6 +971,18 @@ const EditorSSE = () => {
 
 	return (
 		<div className="flex h-screen bg-white overflow-hidden">
+			{/* Home button - top left */}
+			<a
+				href={`/projects`}
+				className="absolute top-4 left-4 z-30 bg-white hover:bg-gray-50 text-gray-700 p-2 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 flex items-center gap-2"
+				title="Back to Projects"
+			>
+				{/* <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+				</svg> */}
+				Home
+			</a>
+
 			{/* Left Side - Generated React Component */}
 			<div
 				className={`${editorModeStore.isPreview ? 'w-full' : ''} bg-white bg-opacity-90 shadow-xl overflow-hidden relative`}
@@ -1052,7 +1064,7 @@ const EditorSSE = () => {
 								</button>
 
 								{/* Generation Method Toggle */}
-								<div className="flex items-center bg-white rounded-md border border-teal-300 overflow-hidden">
+								{/* <div className="flex items-center bg-white rounded-md border border-teal-300 overflow-hidden">
 									<button
 										onClick={() => setGenerationMethod('regular')}
 										className={`px-2 py-1.5 text-xs font-medium transition-all duration-200 ${
@@ -1073,7 +1085,7 @@ const EditorSSE = () => {
 									>
 										CLAUDE
 									</button>
-								</div>
+								</div> */}
 							</div>
 
 							<div className='flex justify-center gap-4 items-center'>
@@ -1217,7 +1229,7 @@ const EditorSSE = () => {
 														<span className="text-teal-500">
 															{event.timestamp.toLocaleTimeString()}
 														</span>
-														<span className={`ml-2 ${
+														<span className={`ml-2 truncate w-full${
 															event.type === 'error' ? 'text-red-600' :
 															event.type === 'complete' ? 'text-green-600 font-semibold' :
 															event.type === 'tool_use' ? 'text-purple-600' :
@@ -1328,9 +1340,9 @@ const EditorSSE = () => {
 						</div>
 						<div className="mt-2 text-xs text-teal-600">
 							Enter to send • Shift+Enter for new line • ↑/↓ for history •
-							<span className={`font-medium ${generationMethod === 'claude-agent' ? 'text-purple-600' : 'text-blue-600'}`}>
+							{/* <span className={`font-medium ${generationMethod === 'claude-agent' ? 'text-purple-600' : 'text-blue-600'}`}>
 								{generationMethod === 'claude-agent' ? 'Claude Agent Mode' : 'LLM Mode'}
-							</span>
+							</span> */}
 						</div>
 					</div>
 				</div>

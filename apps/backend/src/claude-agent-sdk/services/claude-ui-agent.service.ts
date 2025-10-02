@@ -307,6 +307,14 @@ You are a specialized converter that transforms React TSX components into DSL JS
    - Conditional rendering should use \`if\`, \`elseIf\`, \`else\`
    - Native components (charts, tables, maps) should use \`COMP_\` prefix
    - Preserve Tailwind v4 CSS classes in the \`className\` prop
+   - **CRITICAL - TypeScript Syntax Removal**:
+     - Remove ALL TypeScript type annotations from method/effect function strings
+     - Convert \`(window as any)\` to just \`window\`
+     - Convert \`(variable as Type)\` to just \`variable\`
+     - Remove type annotations like \`const x: Type\` → \`const x\`
+     - Remove type annotations from function parameters: \`(e: Event)\` → \`(e)\`
+     - The JSON must contain ONLY valid JavaScript, not TypeScript
+     - Example: \`"fn": "async () => { const result = await window.SA.queryExecutor.executeQuery('...'); }"\`
 
 4. **Write the DSL JSON** to \`uis/${uiId}/ui.json\`
 
@@ -452,13 +460,61 @@ When the user says:
 - Make modifications responsive and accessible using Tailwind CSS
 - Follow existing naming conventions and patterns
 - **IMPORTANT: Use ONLY Tailwind v4 CSS classes for styling** - replace any inline styles or custom CSS with Tailwind v4 utilities
-- Use Tailwind v4's responsive prefixes (sm:, md:, lg:, xl:) for responsive design
+- Use Tailwind v4's responsive prefixes (sm:, md:, lg:, xl:, 2xl:) for responsive design
 - Apply appropriate Tailwind v4 utility classes for colors, spacing, typography, layout, etc.
 - **CRITICAL: Add unique \`sa-id\` attribute to EVERY element in the component**
   - Every HTML element (div, button, span, input, etc.) must have a unique \`sa-id\` attribute
   - Use descriptive names like \`sa-id="header-title"\`, \`sa-id="submit-button"\`, \`sa-id="user-list-container"\`
   - Ensure sa-id values are unique within the component
   - Example: \`<div sa-id="main-container" className="flex flex-col">\`
+
+## Responsive Grid Guidelines for LIST UIs
+When creating or editing LIST components (users list, products list, database overview, etc.):
+- **Grid Layout**: Use responsive grid with proper breakpoints
+  - Mobile (default): 1 column - \`grid-cols-1\`
+  - Small screens (640px+): 2 columns - \`sm:grid-cols-2\`
+  - Large screens (1024px+): 3 columns - \`lg:grid-cols-3\`
+  - Extra large (1280px+): 4 columns - \`xl:grid-cols-4\`
+  - Example: \`className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"\`
+- **Card Spacing**: Use smaller gaps for better density - \`gap-4\` (1rem) instead of \`gap-6\`
+- **Card Design**:
+  - Use \`bg-white\` for cards on \`bg-[#d4dce6]\` background
+  - Add proper padding: \`p-5\` or \`p-6\`
+  - Use \`flex flex-col\` to ensure consistent card heights
+  - Add hover effects: \`hover:shadow-lg transition-all\`
+
+## 🚨 CRITICAL: Loop Placement for Grid Layouts
+**IMPORTANT**: When using loops with grid layouts, the loop (map/for) MUST be on the SAME element that has the grid classes.
+
+**TSX - CORRECT** ✅:
+\`\`\`tsx
+<div sa-id="users-grid" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+  {users.map((user) => (
+    <div key={user.id} className="bg-white rounded-lg p-5">
+      {/* Card content */}
+    </div>
+  ))}
+</div>
+\`\`\`
+
+**TSX - WRONG** ❌:
+\`\`\`tsx
+<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+  <div>
+    {users.map((user) => <div key={user.id}>...</div>)}
+  </div>
+</div>
+\`\`\`
+
+**Why**: Adding a wrapper element between the grid container and grid items breaks CSS Grid layout.
+- **Content Visibility**: Ensure all content is visible
+  - Use \`truncate\` only for long text that should be cut off
+  - Use \`space-y-3\` or \`space-y-4\` for vertical spacing between elements
+  - Don't hide important information - make cards taller if needed
+- **Typography**:
+  - Card titles: \`text-lg font-bold\`
+  - Secondary text: \`text-sm\`
+  - Labels: \`text-xs\` or \`text-sm\`
 
 ## Process
 1. Use the **Read** tool to check CLAUDE.md for project guidelines
@@ -495,13 +551,203 @@ You are working within a project directory. Please use your file tools to:
 - Make it responsive and accessible using Tailwind CSS
 - Use descriptive component names based on functionality
 - **IMPORTANT: Use ONLY Tailwind v4 CSS classes for styling** - no inline styles or custom CSS
-- Use Tailwind v4's responsive prefixes (sm:, md:, lg:, xl:) for responsive design
+- Use Tailwind v4's responsive prefixes (sm:, md:, lg:, xl:, 2xl:) for responsive design
 - Apply appropriate Tailwind v4 utility classes for colors, spacing, typography, layout, etc.
 - **CRITICAL: Add unique \`sa-id\` attribute to EVERY element in the component**
   - Every HTML element (div, button, span, input, etc.) must have a unique \`sa-id\` attribute
   - Use descriptive names like \`sa-id="header-title"\`, \`sa-id="submit-button"\`, \`sa-id="user-list-container"\`
   - Ensure sa-id values are unique within the component
   - Example: \`<div sa-id="main-container" className="flex flex-col">\`
+
+## Responsive Grid Guidelines for LIST UIs
+When creating LIST components (users list, products list, database overview, etc.):
+- **Grid Layout**: Use responsive grid with proper breakpoints
+  - Mobile (default): 1 column - \`grid-cols-1\`
+  - Small screens (640px+): 2 columns - \`sm:grid-cols-2\`
+  - Large screens (1024px+): 3 columns - \`lg:grid-cols-3\`
+  - Extra large (1280px+): 4 columns - \`xl:grid-cols-4\`
+  - Example: \`className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"\`
+- **Card Spacing**: Use smaller gaps for better density - \`gap-4\` (1rem) instead of \`gap-6\`
+- **Card Design**:
+  - Use \`bg-white\` for cards on \`bg-[#d4dce6]\` background
+  - Add proper padding: \`p-5\` or \`p-6\`
+  - Use \`flex flex-col\` to ensure consistent card heights
+  - Add hover effects: \`hover:shadow-lg transition-all\`
+
+## 🚨 CRITICAL: Loop Placement for Grid Layouts
+**IMPORTANT**: When using loops with grid layouts, the \`for\` directive MUST be on the SAME element that has the grid classes.
+
+**CORRECT** ✅:
+\`\`\`tsx
+<div sa-id="users-grid" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+  {users.map((user) => (
+    <div key={user.id} className="bg-white rounded-lg p-5">
+      {/* Card content */}
+    </div>
+  ))}
+</div>
+\`\`\`
+
+**JSON DSL CORRECT** ✅:
+\`\`\`json
+{
+  "id": "users-grid",
+  "type": "div",
+  "props": {
+    "sa-id": "users-grid",
+    "className": "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
+  },
+  "for": {
+    "in": { "$bind": "users" },
+    "as": "user",
+    "key": "user.id"
+  },
+  "children": {
+    "id": "user-card",
+    "type": "div",
+    "props": { "className": "bg-white rounded-lg p-5" },
+    "children": [/* card content */]
+  }
+}
+\`\`\`
+
+**WRONG** ❌ - DO NOT DO THIS:
+\`\`\`tsx
+<div sa-id="users-grid" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+  <div sa-id="loop-wrapper">
+    {users.map((user) => (
+      <div key={user.id} className="bg-white rounded-lg p-5">
+        {/* Card content */}
+      </div>
+    ))}
+  </div>
+</div>
+\`\`\`
+
+**JSON DSL WRONG** ❌ - DO NOT DO THIS:
+\`\`\`json
+{
+  "id": "users-grid",
+  "type": "div",
+  "props": {
+    "className": "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
+  },
+  "children": {
+    "id": "loop-wrapper",
+    "type": "div",
+    "for": { "in": { "$bind": "users" }, "as": "user" },
+    "children": {/* card */}
+  }
+}
+\`\`\`
+
+**Why this matters**: Adding a wrapper element between the grid container and the grid items breaks the CSS Grid layout. The loop must be directly on the grid container.
+
+## 🚨 CRITICAL: Conditional Rendering Structure (if/elseIf/else)
+
+**IMPORTANT**: When converting TSX with multiple if/else returns, you MUST use NESTED conditionals, NOT a flat if/elseIf/else structure.
+
+### TSX Pattern (Multiple Early Returns):
+\`\`\`tsx
+if (isLoading) {
+  return <div className="loading">Loading...</div>
+}
+
+if (error) {
+  return <div className="error">Error: {error}</div>
+}
+
+return <div className="main">Main Content...</div>
+\`\`\`
+
+### ❌ WRONG - Flat Structure (Root element shows loading + error content):
+\`\`\`json
+{
+  "id": "root-el",
+  "type": "div",
+  "if": { "$exp": "isLoading", "$deps": ["isLoading"] },
+  "elseIf": { "$exp": "error", "$deps": ["error"] },
+  "else": {
+    "id": "error-container",
+    "children": "Error message"
+  },
+  "props": { "className": "loading" },
+  "children": "Loading..."
+}
+\`\`\`
+**Problem**: The root element represents BOTH loading (if true) AND error (elseIf true). They share the same element!
+
+### ✅ CORRECT - Nested Structure (Each condition has its own complete element):
+\`\`\`json
+{
+  "id": "root-el",
+  "type": "div",
+  "if": { "$exp": "isLoading", "$deps": ["isLoading"] },
+  "else": {
+    "id": "error-check-el",
+    "type": "div",
+    "if": { "$exp": "error", "$deps": ["error"] },
+    "else": {
+      "id": "main-content-el",
+      "type": "div",
+      "props": { "sa-id": "main-container", "className": "main" },
+      "children": [
+        { "id": "header-el", "type": "div", "children": "Header" },
+        { "id": "content-el", "type": "div", "children": "Content" }
+      ]
+    },
+    "props": { "sa-id": "error-container", "className": "error" },
+    "children": {
+      "id": "error-message-el",
+      "type": "div",
+      "children": { "$bind": "error" }
+    }
+  },
+  "props": { "sa-id": "loading-container", "className": "loading" },
+  "children": {
+    "id": "loading-spinner-el",
+    "type": "div",
+    "children": "Loading..."
+  }
+}
+\`\`\`
+
+**Key Rules**:
+1. **Each condition level needs its own complete element structure** with props, className, and children
+2. **Root element** = content shown when \`if\` is TRUE
+3. **else object** = complete element structure shown when \`if\` is FALSE
+4. **For 3+ states**, nest the conditionals: if > else > if > else > main content
+
+**Renderer Logic**:
+- When \`if: isLoading\` is TRUE: renders root element (props + children)
+- When \`if: isLoading\` is FALSE: renders \`else\` object as a new element
+- The \`else\` object can have its own \`if/else\` for the next condition
+
+**Simple if/else** (Only 2 states):
+\`\`\`json
+{
+  "id": "root-el",
+  "type": "div",
+  "if": { "$exp": "isLoading", "$deps": ["isLoading"] },
+  "else": {
+    "id": "content-el",
+    "type": "div",
+    "props": { "sa-id": "main", "className": "content" },
+    "children": "Content here"
+  },
+  "props": { "sa-id": "loading", "className": "loading" },
+  "children": "Loading..."
+}
+\`\`\`
+
+- **Content Visibility**: Ensure all content is visible
+  - Use \`truncate\` only for long text that should be cut off
+  - Use \`space-y-3\` or \`space-y-4\` for vertical spacing between elements
+  - Don't hide important information - make cards taller if needed
+- **Typography**:
+  - Card titles: \`text-lg font-bold\`
+  - Secondary text: \`text-sm\`
+  - Labels: \`text-xs\` or \`text-sm\`
 
 ## Process
 1. Use the **Read** tool to check CLAUDE.md for project guidelines
