@@ -1,7 +1,14 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { Icon } from '@iconify/react'
 import toast from 'react-hot-toast'
 import { queryExecutor } from '../query'
+
+// Load ECharts from CDN
+declare global {
+  interface Window {
+    echarts: any;
+  }
+}
 
 interface DatabaseOverviewCardProps {
   theme?: string
@@ -21,6 +28,29 @@ const DatabaseOverviewCard: React.FC<DatabaseOverviewCardProps> = ({ theme = 'mo
   const [isLoading, setIsLoading] = useState<boolean>(true)
   const [error, setError] = useState<string | null>(null)
   const [totalRecords, setTotalRecords] = useState<number>(0)
+  const [echartsLoaded, setEchartsLoaded] = useState<boolean>(false)
+
+  // Chart refs
+  const pieChartRef = useRef<HTMLDivElement>(null)
+  const taskChartRef = useRef<HTMLDivElement>(null)
+
+  // Load ECharts from CDN
+  useEffect(() => {
+    if (window.echarts) {
+      setEchartsLoaded(true)
+      return
+    }
+
+    const script = document.createElement('script')
+    script.src = 'https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js'
+    script.async = true
+    script.onload = () => setEchartsLoaded(true)
+    document.body.appendChild(script)
+
+    return () => {
+      document.body.removeChild(script)
+    }
+  }, [])
 
   useEffect(() => {
     loadDatabaseStats()
@@ -105,6 +135,194 @@ const DatabaseOverviewCard: React.FC<DatabaseOverviewCardProps> = ({ theme = 'mo
     if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`
     if (num >= 1000) return `${(num / 1000).toFixed(1)}K`
     return num.toString()
+  }
+
+  // Render charts when data is loaded
+  useEffect(() => {
+    if (tableStats.length > 0 && !isLoading && echartsLoaded) {
+      renderPieChart()
+      renderTaskChart()
+    }
+  }, [tableStats, isLoading, echartsLoaded])
+
+  const renderPieChart = () => {
+    if (!pieChartRef.current || !window.echarts) return
+
+    const chart = window.echarts.init(pieChartRef.current)
+
+    const chartData = tableStats
+      .filter(t => t.count > 0)
+      .map(t => ({
+        value: t.count,
+        name: t.name,
+        itemStyle: { color: t.color }
+      }))
+
+    const option = {
+      tooltip: {
+        trigger: 'item',
+        formatter: '{b}: {c} ({d}%)',
+        backgroundColor: '#ffffff',
+        borderColor: '#e2e8f0',
+        borderWidth: 1,
+        textStyle: { color: '#2d3748' }
+      },
+      legend: {
+        type: 'scroll',
+        orient: 'horizontal',
+        top: 10,
+        left: 'center',
+        textStyle: {
+          color: '#4a5568',
+          fontSize: 11
+        },
+        itemWidth: 12,
+        itemHeight: 12,
+        itemGap: 12,
+        pageIconSize: 12
+      },
+      grid: {
+        top: 80
+      },
+      series: [
+        {
+          name: 'Records',
+          type: 'pie',
+          radius: ['50%', '75%'],
+          center: ['50%', '58%'],
+          avoidLabelOverlap: true,
+          itemStyle: {
+            borderRadius: 6,
+            borderColor: '#fff',
+            borderWidth: 2
+          },
+          label: {
+            show: false
+          },
+          emphasis: {
+            label: {
+              show: true,
+              fontSize: 14,
+              fontWeight: 'bold',
+              color: '#2d3748',
+              formatter: '{b}\n{c}'
+            },
+            itemStyle: {
+              shadowBlur: 10,
+              shadowOffsetX: 0,
+              shadowColor: 'rgba(0, 0, 0, 0.2)'
+            }
+          },
+          labelLine: {
+            show: false
+          },
+          data: chartData
+        }
+      ]
+    }
+
+    chart.setOption(option)
+
+    // Handle resize
+    const resizeObserver = new ResizeObserver(() => chart.resize())
+    resizeObserver.observe(pieChartRef.current)
+
+    return () => {
+      resizeObserver.disconnect()
+      chart.dispose()
+    }
+  }
+
+  const renderTaskChart = async () => {
+    if (!taskChartRef.current || !window.echarts) return
+
+    try {
+      // Query task status distribution
+      const result = await queryExecutor.executeQuery(`
+        SELECT status, COUNT(*) as count
+        FROM ddb.tasks
+        GROUP BY status
+        ORDER BY count DESC
+      `)
+
+      const chart = window.echarts.init(taskChartRef.current)
+
+      const statuses = result.data.map((row: any) => row.status || 'Unknown')
+      const counts = result.data.map((row: any) => Number(row.count))
+
+      const statusColors: Record<string, string> = {
+        'completed': '#48bb78',
+        'in_progress': '#6b8cce',
+        'pending': '#ffd93d',
+        'blocked': '#fc8181',
+        'on_hold': '#9b8cce'
+      }
+
+      const option = {
+        tooltip: {
+          trigger: 'axis',
+          axisPointer: { type: 'shadow' },
+          backgroundColor: '#ffffff',
+          borderColor: '#e2e8f0',
+          borderWidth: 1,
+          textStyle: { color: '#2d3748' }
+        },
+        grid: {
+          left: '3%',
+          right: '4%',
+          bottom: '3%',
+          top: '10%',
+          containLabel: true
+        },
+        xAxis: {
+          type: 'category',
+          data: statuses,
+          axisLabel: {
+            color: '#718096',
+            fontSize: 11,
+            rotate: 30
+          },
+          axisLine: { lineStyle: { color: '#e2e8f0' } }
+        },
+        yAxis: {
+          type: 'value',
+          axisLabel: { color: '#718096', fontSize: 11 },
+          splitLine: { lineStyle: { color: '#e2e8f0' } }
+        },
+        series: [
+          {
+            name: 'Tasks',
+            type: 'bar',
+            data: counts.map((count, idx) => ({
+              value: count,
+              itemStyle: {
+                color: statusColors[statuses[idx].toLowerCase()] || '#6b8cce',
+                borderRadius: [8, 8, 0, 0]
+              }
+            })),
+            barWidth: '50%',
+            emphasis: {
+              itemStyle: {
+                shadowBlur: 10,
+                shadowColor: 'rgba(0, 0, 0, 0.2)'
+              }
+            }
+          }
+        ]
+      }
+
+      chart.setOption(option)
+
+      const resizeObserver = new ResizeObserver(() => chart.resize())
+      resizeObserver.observe(taskChartRef.current)
+
+      return () => {
+        resizeObserver.disconnect()
+        chart.dispose()
+      }
+    } catch (e) {
+      console.error('Error rendering task chart:', e)
+    }
   }
 
   if (isLoading) {
@@ -263,6 +481,27 @@ const DatabaseOverviewCard: React.FC<DatabaseOverviewCardProps> = ({ theme = 'mo
               </div>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Analytics Charts */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        {/* Records Distribution Pie Chart */}
+        <div className="bg-white rounded-[16px] p-6 border border-[#e2e8f0]">
+          <h3 className="text-base font-semibold text-[#2d3748] mb-4 flex items-center gap-2">
+            <Icon icon="mdi:chart-pie" width={20} height={20} className="text-[#6b8cce]" />
+            Records Distribution
+          </h3>
+          <div ref={pieChartRef} style={{ width: '100%', height: '300px' }} />
+        </div>
+
+        {/* Task Status Chart */}
+        <div className="bg-white rounded-[16px] p-6 border border-[#e2e8f0]">
+          <h3 className="text-base font-semibold text-[#2d3748] mb-4 flex items-center gap-2">
+            <Icon icon="mdi:chart-bar" width={20} height={20} className="text-[#6bcf7f]" />
+            Task Status Overview
+          </h3>
+          <div ref={taskChartRef} style={{ width: '100%', height: '300px' }} />
         </div>
       </div>
 

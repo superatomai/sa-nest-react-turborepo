@@ -12,7 +12,6 @@ const getApiEndpoint = () => {
   if (isLocalHost) {
     apiUrl = vite_local_api_url;
   } else {
-    // Use VITE_API_URL set per environment in Cloudflare
     apiUrl = vite_api_url;
   }
 

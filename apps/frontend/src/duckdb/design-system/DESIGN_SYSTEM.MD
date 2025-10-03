@@ -381,6 +381,29 @@ box-shadow: 0 4px 16px rgba(255, 107, 157, 0.25);
 - 24px x 24px for small icons
 - Use brand colors with 100% opacity
 
+### IMPORTANT: Icon Color Contrast Rule
+**NEVER use the same color for both the background and the icon!**
+
+❌ **Wrong:**
+```html
+<div className="bg-[#6b8cce] bg-opacity-10">
+  <Icon className="text-[#6b8cce]" />
+</div>
+```
+
+✅ **Correct:**
+```html
+<div className="bg-[#6b8cce] bg-opacity-10">
+  <Icon className="text-[#2d3748]" />
+</div>
+```
+
+**Guidelines:**
+- If background is blue (`bg-[#6b8cce]`), use dark text (`text-[#2d3748]`) for the icon
+- If background is light/white, use colored icons
+- Always ensure sufficient contrast for visibility
+- Test icon visibility against its container background
+
 ---
 
 ## Layout Patterns
