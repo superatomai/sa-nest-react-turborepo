@@ -37,17 +37,25 @@ interface Team {
   lead_name: string
 }
 
-interface CollaborationData {
-  from_dept: string
-  to_dept: string
-  collaboration_count: number
+interface DepartmentWorkload {
+  department_name: string
+  total_tasks: number
+  total_estimated_hours: number
+  active_tasks: number
+}
+
+interface GrowthData {
+  month: string
+  department_name: string
+  user_count: number
 }
 
 const OrganizationOverview: React.FC<OrganizationOverviewProps> = ({ organizationId = 1 }) => {
   const [organization, setOrganization] = useState<Organization | null>(null)
   const [departments, setDepartments] = useState<Department[]>([])
   const [teams, setTeams] = useState<Team[]>([])
-  const [collaborationData, setCollaborationData] = useState<CollaborationData[]>([])
+  const [departmentWorkload, setDepartmentWorkload] = useState<DepartmentWorkload[]>([])
+  const [growthData, setGrowthData] = useState<GrowthData[]>([])
   const [isLoading, setIsLoading] = useState<boolean>(true)
   const [error, setError] = useState<string | null>(null)
   const [echartsLoaded, setEchartsLoaded] = useState<boolean>(false)
@@ -55,7 +63,8 @@ const OrganizationOverview: React.FC<OrganizationOverviewProps> = ({ organizatio
   // Chart refs
   const hierarchyChartRef = useRef<HTMLDivElement>(null)
   const teamSizeChartRef = useRef<HTMLDivElement>(null)
-  const collaborationChartRef = useRef<HTMLDivElement>(null)
+  const workloadChartRef = useRef<HTMLDivElement>(null)
+  const growthChartRef = useRef<HTMLDivElement>(null)
 
   // Load ECharts from CDN
   useEffect(() => {
@@ -86,10 +95,11 @@ const OrganizationOverview: React.FC<OrganizationOverviewProps> = ({ organizatio
       setTimeout(() => {
         if (departments.length > 0) renderHierarchyChart()
         if (teams.length > 0) renderTeamSizeChart()
-        if (collaborationData.length > 0) renderCollaborationChart()
+        if (departmentWorkload.length > 0) renderWorkloadChart()
+        if (growthData.length > 0) renderGrowthChart()
       }, 100)
     }
-  }, [departments, teams, collaborationData, echartsLoaded, isLoading])
+  }, [departments, teams, departmentWorkload, growthData, echartsLoaded, isLoading])
 
   const loadOrganizationData = async () => {
     setIsLoading(true)
@@ -168,29 +178,45 @@ const OrganizationOverview: React.FC<OrganizationOverviewProps> = ({ organizatio
         lead_name: row.lead_name || 'No lead assigned'
       })))
 
-      // Get cross-department collaboration (tasks assigned across departments)
-      const collabResult = await queryExecutor.executeQuery(`
+      // Get department workload (total tasks and hours)
+      const workloadResult = await queryExecutor.executeQuery(`
         SELECT
-          d1.name as from_dept,
-          d2.name as to_dept,
-          COUNT(*) as collaboration_count
-        FROM ddb.tasks t
-        JOIN ddb.users u1 ON t.assigned_by = u1.id
-        JOIN ddb.users u2 ON t.assigned_to = u2.id
-        JOIN ddb.departments d1 ON u1.department_id = d1.id
-        JOIN ddb.departments d2 ON u2.department_id = d2.id
-        WHERE d1.id != d2.id
-          AND d1.organization_id = ${organizationId}
-          AND d2.organization_id = ${organizationId}
-        GROUP BY d1.name, d2.name
-        HAVING COUNT(*) > 5
-        ORDER BY collaboration_count DESC
+          d.name as department_name,
+          COUNT(DISTINCT t.id) as total_tasks,
+          COALESCE(SUM(t.estimated_hours), 0) as total_estimated_hours,
+          COUNT(DISTINCT CASE WHEN t.status IN ('todo', 'in_progress', 'blocked', 'in_review') THEN t.id END) as active_tasks
+        FROM ddb.departments d
+        LEFT JOIN ddb.users u ON d.id = u.department_id
+        LEFT JOIN ddb.tasks t ON u.id = t.assigned_to
+        WHERE d.organization_id = ${organizationId}
+        GROUP BY d.id, d.name
+        ORDER BY total_estimated_hours DESC
       `)
 
-      setCollaborationData(collabResult.data.map((row: any) => ({
-        from_dept: row.from_dept,
-        to_dept: row.to_dept,
-        collaboration_count: Number(row.collaboration_count)
+      setDepartmentWorkload(workloadResult.data.map((row: any) => ({
+        department_name: row.department_name,
+        total_tasks: Number(row.total_tasks),
+        total_estimated_hours: Number(row.total_estimated_hours),
+        active_tasks: Number(row.active_tasks)
+      })))
+
+      // Get growth data (users added over time - simulated monthly data based on created_at)
+      const growthResult = await queryExecutor.executeQuery(`
+        SELECT
+          strftime(u.created_at, '%Y-%m') as month,
+          d.name as department_name,
+          COUNT(*) as user_count
+        FROM ddb.users u
+        JOIN ddb.departments d ON u.department_id = d.id
+        WHERE d.organization_id = ${organizationId}
+        GROUP BY strftime(u.created_at, '%Y-%m'), d.name
+        ORDER BY month ASC
+      `)
+
+      setGrowthData(growthResult.data.map((row: any) => ({
+        month: row.month,
+        department_name: row.department_name,
+        user_count: Number(row.user_count)
       })))
 
       setIsLoading(false)
@@ -265,95 +291,299 @@ const OrganizationOverview: React.FC<OrganizationOverviewProps> = ({ organizatio
     chart.setOption({
       tooltip: {
         trigger: 'axis',
-        axisPointer: { type: 'shadow' }
+        axisPointer: { type: 'shadow' },
+        backgroundColor: '#ffffff',
+        borderColor: '#e2e8f0',
+        borderWidth: 1,
+        textStyle: { color: '#2d3748' }
       },
-      grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+      grid: {
+        left: '3%',
+        right: '4%',
+        bottom: '10%',
+        top: '3%',
+        containLabel: true
+      },
       xAxis: {
         type: 'value',
-        name: 'Members'
+        name: 'Members',
+        nameLocation: 'middle',
+        nameGap: 30,
+        nameTextStyle: {
+          color: '#718096',
+          fontSize: 11,
+          fontWeight: 500
+        },
+        axisLabel: {
+          color: '#718096',
+          fontSize: 10
+        },
+        axisLine: { lineStyle: { color: '#e2e8f0' } },
+        splitLine: { lineStyle: { color: '#e2e8f0' } }
       },
       yAxis: {
         type: 'category',
         data: teamNames,
         axisLabel: {
           interval: 0,
-          fontSize: 10
-        }
+          fontSize: 10,
+          color: '#718096'
+        },
+        axisLine: { lineStyle: { color: '#e2e8f0' } }
       },
       series: [{
         name: 'Team Size',
         type: 'bar',
         data: memberCounts,
         itemStyle: {
-          color: '#6b8cce'
+          color: '#6b8cce',
+          borderRadius: [0, 6, 6, 0]
         },
         label: {
           show: true,
           position: 'right',
-          formatter: '{c}'
+          formatter: '{c}',
+          color: '#2d3748',
+          fontSize: 10,
+          fontWeight: 600
         }
       }]
     })
+
+    const resizeObserver = new ResizeObserver(() => chart.resize())
+    resizeObserver.observe(teamSizeChartRef.current)
+
+    return () => {
+      resizeObserver.disconnect()
+      chart.dispose()
+    }
   }
 
-  const renderCollaborationChart = () => {
-    if (!collaborationChartRef.current || !window.echarts) return
+  const renderWorkloadChart = () => {
+    if (!workloadChartRef.current || !window.echarts) return
 
-    const chart = window.echarts.init(collaborationChartRef.current)
+    const chart = window.echarts.init(workloadChartRef.current)
 
-    // Build nodes and links for graph
-    const nodes = Array.from(new Set([
-      ...collaborationData.map(c => c.from_dept),
-      ...collaborationData.map(c => c.to_dept)
-    ])).map(dept => ({
-      name: dept,
-      symbolSize: 50,
-      itemStyle: {
-        color: '#6b8cce'
-      }
-    }))
-
-    const links = collaborationData.map(c => ({
-      source: c.from_dept,
-      target: c.to_dept,
-      value: c.collaboration_count,
-      lineStyle: {
-        width: Math.max(1, c.collaboration_count / 5)
-      }
-    }))
+    const deptNames = departmentWorkload.map(w => w.department_name)
+    const totalHours = departmentWorkload.map(w => w.total_estimated_hours)
+    const activeTasks = departmentWorkload.map(w => w.active_tasks)
 
     chart.setOption({
       tooltip: {
-        formatter: (params: any) => {
-          if (params.dataType === 'edge') {
-            return `${params.data.source} → ${params.data.target}<br/>${params.data.value} collaborations`
-          }
-          return params.name
-        }
+        trigger: 'axis',
+        axisPointer: { type: 'shadow' },
+        backgroundColor: '#ffffff',
+        borderColor: '#e2e8f0',
+        borderWidth: 1,
+        textStyle: { color: '#2d3748' }
       },
-      series: [{
-        type: 'graph',
-        layout: 'force',
-        data: nodes,
-        links: links,
-        roam: true,
-        label: {
-          show: true,
+      legend: {
+        data: ['Estimated Hours', 'Active Tasks'],
+        top: '0%',
+        textStyle: { color: '#718096', fontSize: 11 }
+      },
+      grid: {
+        left: '3%',
+        right: '4%',
+        bottom: '3%',
+        top: '15%',
+        containLabel: true
+      },
+      xAxis: {
+        type: 'category',
+        data: deptNames,
+        axisLabel: {
+          color: '#718096',
+          fontSize: 10,
+          rotate: 30
+        },
+        axisLine: { lineStyle: { color: '#e2e8f0' } }
+      },
+      yAxis: [
+        {
+          type: 'value',
+          name: 'Hours',
+          position: 'left',
+          axisLabel: { color: '#718096', fontSize: 10 },
+          splitLine: { lineStyle: { color: '#e2e8f0' } },
+          nameTextStyle: { color: '#718096', fontSize: 10 }
+        },
+        {
+          type: 'value',
+          name: 'Tasks',
           position: 'right',
-          fontSize: 10
-        },
-        force: {
-          repulsion: 100,
-          edgeLength: 100
-        },
-        emphasis: {
-          focus: 'adjacency',
-          lineStyle: {
-            width: 4
-          }
+          axisLabel: { color: '#718096', fontSize: 10 },
+          splitLine: { show: false },
+          nameTextStyle: { color: '#718096', fontSize: 10 }
         }
-      }]
+      ],
+      series: [
+        {
+          name: 'Estimated Hours',
+          type: 'bar',
+          data: totalHours,
+          itemStyle: {
+            color: '#6b8cce',
+            borderRadius: [6, 6, 0, 0]
+          }
+        },
+        {
+          name: 'Active Tasks',
+          type: 'line',
+          yAxisIndex: 1,
+          data: activeTasks,
+          itemStyle: { color: '#6bcf7f' },
+          lineStyle: { width: 3 },
+          symbol: 'circle',
+          symbolSize: 8
+        }
+      ]
     })
+
+    const resizeObserver = new ResizeObserver(() => chart.resize())
+    resizeObserver.observe(workloadChartRef.current)
+
+    return () => {
+      resizeObserver.disconnect()
+      chart.dispose()
+    }
+  }
+
+  const renderGrowthChart = () => {
+    if (!growthChartRef.current || !window.echarts) return
+
+    const chart = window.echarts.init(growthChartRef.current)
+
+    // Group data by department
+    const departmentMap = new Map<string, { months: string[], counts: number[] }>()
+
+    growthData.forEach(item => {
+      if (!departmentMap.has(item.department_name)) {
+        departmentMap.set(item.department_name, { months: [], counts: [] })
+      }
+      const dept = departmentMap.get(item.department_name)!
+      dept.months.push(item.month)
+      dept.counts.push(item.user_count)
+    })
+
+    // Get all unique months sorted
+    const allMonths = Array.from(new Set(growthData.map(d => d.month))).sort()
+
+    // Create series for each department
+    const series = Array.from(departmentMap.entries()).map(([deptName, data], index) => {
+      const colors = ['#6b8cce', '#6bcf7f', '#ffd93d', '#9b8cce', '#fc8181', '#f6ad55', '#5ba3d0']
+      return {
+        name: deptName,
+        type: 'line',
+        data: data.counts,
+        smooth: true,
+        itemStyle: { color: colors[index % colors.length] },
+        lineStyle: { width: 2 },
+        symbol: 'circle',
+        symbolSize: 6
+      }
+    })
+
+    chart.setOption({
+      tooltip: {
+        trigger: 'axis',
+        backgroundColor: '#ffffff',
+        borderColor: '#e2e8f0',
+        borderWidth: 1,
+        textStyle: { color: '#2d3748' }
+      },
+      legend: {
+        data: Array.from(departmentMap.keys()),
+        top: '0%',
+        textStyle: { color: '#718096', fontSize: 10 }
+      },
+      grid: {
+        left: '3%',
+        right: '4%',
+        bottom: '10%',
+        top: '15%',
+        containLabel: true
+      },
+      xAxis: {
+        type: 'category',
+        data: allMonths,
+        axisLabel: {
+          color: '#718096',
+          fontSize: 10,
+          rotate: 30
+        },
+        axisLine: { lineStyle: { color: '#e2e8f0' } }
+      },
+      yAxis: {
+        type: 'value',
+        name: 'Users Added',
+        nameLocation: 'middle',
+        nameGap: 40,
+        nameTextStyle: { color: '#718096', fontSize: 11 },
+        axisLabel: { color: '#718096', fontSize: 10 },
+        splitLine: { lineStyle: { color: '#e2e8f0' } }
+      },
+      series: series
+    })
+
+    const resizeObserver = new ResizeObserver(() => chart.resize())
+    resizeObserver.observe(growthChartRef.current)
+
+    return () => {
+      resizeObserver.disconnect()
+      chart.dispose()
+    }
+  }
+
+  const addNewDepartment = async () => {
+    const deptName = prompt('Enter new department name:')
+    if (!deptName || !deptName.trim()) {
+      toast.error('Department name is required')
+      return
+    }
+
+    const deptType = prompt(
+      'Enter department type:\n\n' +
+      'Options: engineering, design, product, sales, operations, finance, compliance, hr, marketing, legal'
+    )
+    if (!deptType || !deptType.trim()) {
+      toast.error('Department type is required')
+      return
+    }
+
+    const validTypes = ['engineering', 'design', 'product', 'sales', 'operations', 'finance', 'compliance', 'hr', 'marketing', 'legal']
+    const normalizedType = deptType.toLowerCase().trim()
+
+    if (!validTypes.includes(normalizedType)) {
+      toast.error(`Invalid type. Must be one of: ${validTypes.join(', ')}`)
+      return
+    }
+
+    try {
+      // Get the next ID
+      const maxIdResult = await queryExecutor.executeQuery(`
+        SELECT COALESCE(MAX(id), 0) + 1 as next_id FROM ddb.departments
+      `)
+      const nextId = maxIdResult.data[0].next_id
+
+      // Insert new department
+      await queryExecutor.executeQuery(`
+        INSERT INTO ddb.departments (id, organization_id, name, type)
+        VALUES (${nextId}, ${organizationId}, '${deptName.trim()}', '${normalizedType}')
+      `)
+
+      toast.success(`Department "${deptName}" created successfully!`, {
+        duration: 3000,
+        position: 'top-center',
+        icon: '🏢',
+      })
+
+      // Reload data
+      setTimeout(() => loadOrganizationData(), 500)
+    } catch (e) {
+      console.error('Error creating department:', e)
+      toast.error('Failed to create department')
+    }
   }
 
   const getDepartmentColor = (type: string) => {
@@ -364,7 +594,10 @@ const OrganizationOverview: React.FC<OrganizationOverviewProps> = ({ organizatio
       'sales': '#ffd93d',
       'operations': '#f6ad55',
       'finance': '#fc8181',
-      'compliance': '#e57373'
+      'compliance': '#e57373',
+      'hr': '#5ba3d0',
+      'marketing': '#ff6b9d',
+      'legal': '#8574b8'
     }
     return colors[type] || '#718096'
   }
@@ -394,7 +627,7 @@ const OrganizationOverview: React.FC<OrganizationOverviewProps> = ({ organizatio
   const totalUsers = departments.reduce((sum, d) => sum + d.user_count, 0)
   const totalTeams = teams.length
   const totalDepartments = departments.length
-  const totalCollaborations = collaborationData.reduce((sum, c) => sum + c.collaboration_count, 0)
+  const totalWorkload = departmentWorkload.reduce((sum, w) => sum + w.total_estimated_hours, 0)
 
   return (
     <div className="bg-white rounded-[20px] shadow-[0_2px_8px_rgba(0,0,0,0.08)] p-8 max-w-7xl mx-auto">
@@ -419,6 +652,13 @@ const OrganizationOverview: React.FC<OrganizationOverviewProps> = ({ organizatio
         </h3>
 
         <div className="flex flex-wrap gap-2">
+          <button
+            onClick={addNewDepartment}
+            className="px-3 py-1.5 bg-[#48bb78] text-white rounded-[8px] text-xs font-medium hover:bg-[#38a169] transition-all duration-200 flex items-center gap-1"
+          >
+            <Icon icon="mdi:plus-circle" width={14} height={14} />
+            Add New Department
+          </button>
           <button
             onClick={() => {
               const largestDept = departments.reduce((max, d) => d.user_count > max.user_count ? d : max, departments[0])
@@ -537,11 +777,11 @@ const OrganizationOverview: React.FC<OrganizationOverviewProps> = ({ organizatio
 
         <div className="bg-gradient-to-br from-[#9b8cce] to-[#8574b8] rounded-[16px] p-5">
           <div className="flex items-center gap-3 mb-2">
-            <Icon icon="mdi:lan" width={24} height={24} className="text-white opacity-90" />
-            <div className="text-sm text-white opacity-90">Collaborations</div>
+            <Icon icon="mdi:briefcase-clock" width={24} height={24} className="text-white opacity-90" />
+            <div className="text-sm text-white opacity-90">Total Workload</div>
           </div>
-          <div className="font-bold text-3xl text-white">{totalCollaborations}</div>
-          <div className="text-xs text-white opacity-75 mt-1">Cross-department tasks</div>
+          <div className="font-bold text-3xl text-white">{Math.round(totalWorkload).toLocaleString()}</div>
+          <div className="text-xs text-white opacity-75 mt-1">Estimated hours</div>
         </div>
       </div>
 
@@ -566,16 +806,26 @@ const OrganizationOverview: React.FC<OrganizationOverviewProps> = ({ organizatio
         </div>
       </div>
 
-      {/* Cross-Department Collaboration Network */}
-      {collaborationData.length > 0 && (
-        <div className="bg-[#f8f9fb] rounded-[16px] p-5 border border-[#e2e8f0] mb-6">
+      {/* Department Workload & Growth Charts */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        {/* Department Workload Overview */}
+        <div className="bg-[#f8f9fb] rounded-[16px] p-5 border border-[#e2e8f0]">
           <h3 className="text-base font-semibold text-[#2d3748] mb-4 flex items-center gap-2">
-            <Icon icon="mdi:graph" width={18} height={18} className="text-[#2d3748]" />
-            Cross-Department Collaboration Network
+            <Icon icon="mdi:briefcase-outline" width={18} height={18} className="text-[#2d3748]" />
+            Department Workload Overview
           </h3>
-          <div ref={collaborationChartRef} style={{ width: '100%', height: '400px' }}></div>
+          <div ref={workloadChartRef} style={{ width: '100%', height: '350px' }}></div>
         </div>
-      )}
+
+        {/* Department Growth Timeline */}
+        <div className="bg-[#f8f9fb] rounded-[16px] p-5 border border-[#e2e8f0]">
+          <h3 className="text-base font-semibold text-[#2d3748] mb-4 flex items-center gap-2">
+            <Icon icon="mdi:chart-line" width={18} height={18} className="text-[#2d3748]" />
+            Department Growth Timeline
+          </h3>
+          <div ref={growthChartRef} style={{ width: '100%', height: '350px' }}></div>
+        </div>
+      </div>
 
       {/* Department Details */}
       <div className="bg-[#f8f9fb] rounded-[16px] p-5 border border-[#e2e8f0]">

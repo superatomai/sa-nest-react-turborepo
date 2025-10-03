@@ -11,7 +11,7 @@ declare global {
 }
 
 interface TaskAnalyticsDashboardProps {
-  taskId: number
+  taskId?: number
 }
 
 interface Task {
@@ -52,7 +52,7 @@ interface Comment {
   user_name?: string
 }
 
-const TaskAnalyticsDashboard: React.FC<TaskAnalyticsDashboardProps> = ({ taskId }) => {
+const TaskAnalyticsDashboard: React.FC<TaskAnalyticsDashboardProps> = ({ taskId = 4 }) => {
   const [task, setTask] = useState<Task | null>(null)
   const [workLogs, setWorkLogs] = useState<WorkLog[]>([])
   const [comments, setComments] = useState<Comment[]>([])
@@ -242,7 +242,7 @@ const TaskAnalyticsDashboard: React.FC<TaskAnalyticsDashboardProps> = ({ taskId 
           },
           label: {
             show: true,
-            formatter: '{b}: {c}h',
+            formatter: (params: any) => `${params.name}: ${Number(params.value).toFixed(2)}h`,
             fontSize: 11,
             color: '#4a5568'
           }
@@ -285,7 +285,7 @@ const TaskAnalyticsDashboard: React.FC<TaskAnalyticsDashboardProps> = ({ taskId 
             day: 'numeric',
             year: 'numeric'
           })
-          return `${formattedDate}<br/>Hours: ${log.hours_logged}<br/>By: ${log.user_name || 'Unknown'}`
+          return `${formattedDate}<br/>Hours: ${Number(log.hours_logged).toFixed(2)}<br/>By: ${log.user_name || 'Unknown'}`
         }
       },
       grid: {
@@ -487,7 +487,7 @@ const TaskAnalyticsDashboard: React.FC<TaskAnalyticsDashboardProps> = ({ taskId 
             <Icon icon="mdi:clock-outline" width={24} height={24} className="text-white opacity-90" />
             <div className="text-sm text-white opacity-90">Estimated</div>
           </div>
-          <div className="font-bold text-3xl text-white">{task.estimated_hours}h</div>
+          <div className="font-bold text-3xl text-white">{Number(task.estimated_hours).toFixed(2)}h</div>
         </div>
 
         <div className="bg-gradient-to-br from-[#6bcf7f] to-[#48bb78] rounded-[16px] p-5">
@@ -495,7 +495,7 @@ const TaskAnalyticsDashboard: React.FC<TaskAnalyticsDashboardProps> = ({ taskId 
             <Icon icon="mdi:timer" width={24} height={24} className="text-white opacity-90" />
             <div className="text-sm text-white opacity-90">Actual</div>
           </div>
-          <div className="font-bold text-3xl text-white">{task.actual_hours}h</div>
+          <div className="font-bold text-3xl text-white">{Number(task.actual_hours).toFixed(2)}h</div>
         </div>
 
         <div className="bg-gradient-to-br from-[#ffd93d] to-[#f6ad55] rounded-[16px] p-5">
@@ -697,7 +697,7 @@ const TaskAnalyticsDashboard: React.FC<TaskAnalyticsDashboardProps> = ({ taskId 
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-[#718096]">{log.description || 'No description'}</span>
-                    <span className="text-sm font-bold text-[#6b8cce]">{log.hours_logged}h</span>
+                    <span className="text-sm font-bold text-[#6b8cce]">{Number(log.hours_logged).toFixed(2)}h</span>
                   </div>
                 </div>
               ))

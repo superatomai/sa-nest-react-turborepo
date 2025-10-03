@@ -194,7 +194,7 @@ const ProjectPerformanceDashboard: React.FC = () => {
             fontWeight: 'bold',
             offsetCenter: [0, '-10%']
           },
-          data: [{ value: percentage.toFixed(1) }]
+          data: [{ value: percentage.toFixed(2) }]
         }
       ]
     }
