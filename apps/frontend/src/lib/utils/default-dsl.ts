@@ -272,6 +272,6 @@ export const getDefaultDSLWithData = (useMinimal: boolean = false) => {
 }
 
 // Default export for backward compatibility
-export const default_dsl = getDefaultDSLWithData()
+export const default_dsl = createDefaultDSL()
 
 export default createDefaultDSL
