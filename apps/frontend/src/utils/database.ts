@@ -262,16 +262,6 @@ export const parseDSLFromVersion = (dslString: string): UIComponent | null => {
 	try {
 		const parsedDSL = JSON.parse(dslString)
 
-		// Check if it's the old format {ui, data} and migrate
-		if (parsedDSL.ui && typeof parsedDSL.ui === 'object') {
-			console.warn('⚠️ Found old format DSL, migrating to new format')
-			const migratedComponent: UIComponent = {
-				...parsedDSL.ui,
-				data: parsedDSL.data || parsedDSL.ui.data || {}
-			}
-			return migratedComponent
-		}
-
 		// New format - direct UIComponent
 		if (parsedDSL.id && parsedDSL.render) {
 			return parsedDSL as UIComponent

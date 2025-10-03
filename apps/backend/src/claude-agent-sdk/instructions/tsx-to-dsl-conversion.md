@@ -13,14 +13,18 @@ Complete guide for converting React TSX components to DSL JSON format.
 
 ---
 
-## 1. Remove TypeScript (First Step)
+## 1. Remove TypeScript and Imports (First Step)
 
-Remove ALL TypeScript before conversion:
+Remove ALL TypeScript and imports before conversion:
 
 - **Interfaces/Types**: Delete `interface Task { ... }`, `type User = ...`
 - **Type annotations**: `const x: string` → `const x`, `(e: React.FormEvent)` → `(e)`
 - **Type casts**: `(window as any)` → `window`, `user as User` → `user`
 - **Generic types**: `useState<Task[]>([])` → `useState([])`
+- **Imports**: Remove ALL import statements including:
+  - `import React, { useState, useEffect } from 'react'`
+  - `import { EChart } from '../native/EChart'`
+  - Any other imports - DSL doesn't use imports
 
 ---
 
@@ -425,7 +429,7 @@ className={`btn ${loading ? 'disabled' : ''}`}
 
 **TSX:**
 ```tsx
-const result = await (window as any).SA.queryExecutor.executeQuery(`
+const result = await window.SA.queryExecutor.executeQuery(`
   SELECT * FROM ddb.users
 `)
 setUsers(result.data)
@@ -435,9 +439,36 @@ setUsers(result.data)
 ```json
 "methods": {
   "loadUsers": {
-    "fn": "async () => { const result = await window.SA.queryExecutor.executeQuery('SELECT * FROM ddb.users'); setState('users', result.data); }"
+    "fn": "async () => { const result = await window.SA.queryExecutor.executeQuery(`SELECT * FROM ddb.users`); setState('users', result.data); }"
   }
 }
+```
+
+**CRITICAL:** Keep backticks in SQL queries when converting to DSL. Do NOT convert backticks to single quotes.
+
+**Example with complex SQL (INTERVAL, CASE, etc.):**
+
+**TSX:**
+```tsx
+const result = await window.SA.queryExecutor.executeQuery(`
+  SELECT COUNT(*) as total,
+         COUNT(CASE WHEN created_at >= CURRENT_DATE - INTERVAL '30 days' THEN 1 END) as recent
+  FROM ddb.users
+`)
+```
+
+**DSL:**
+```json
+"methods": {
+  "loadMetrics": {
+    "fn": "async () => { const result = await window.SA.queryExecutor.executeQuery(`SELECT COUNT(*) as total, COUNT(CASE WHEN created_at >= CURRENT_DATE - INTERVAL '30 days' THEN 1 END) as recent FROM ddb.users`); setState('metrics', result.data[0]); }"
+  }
+}
+```
+
+**❌ WRONG - Don't escape backticks to single quotes:**
+```json
+"fn": "async () => { const result = await window.SA.queryExecutor.executeQuery('SELECT ... INTERVAL \\'30 days\\' ...'); }"
 ```
 
 ### BigInt conversion
@@ -481,6 +512,215 @@ const nextId = typeof result.data[0]?.next_id === 'bigint'
 
 ---
 
+## 11. Native Components (Charts, Tables, Maps)
+
+### ECharts Conversion
+
+**TSX (with EChart component and option variable):**
+```tsx
+// Chart option defined earlier in component
+const barChartOption = {
+  title: { text: 'Sales Trends' },
+  xAxis: {
+    type: 'category',
+    data: chartCategories
+  },
+  yAxis: { type: 'value' },
+  series: [{
+    data: chartValues,
+    type: 'bar'
+  }]
+}
+
+// EChart component in JSX
+<EChart
+  sa-id="sales-chart"
+  option={barChartOption}
+  style={{ width: '100%', height: '400px' }}
+/>
+```
+
+**DSL (COMP_ECHART):**
+```json
+{
+  "id": "sales-chart",
+  "type": "COMP_ECHART",
+  "props": {
+    "sa-id": "sales-chart",
+    "option": {
+      "$exp": "{ title: { text: 'Sales Trends' }, xAxis: { type: 'category', data: chartCategories }, yAxis: { type: 'value' }, series: [{ data: chartValues, type: 'bar' }] }",
+      "$deps": ["chartCategories", "chartValues"]
+    },
+    "style": {
+      "width": "100%",
+      "height": "400px"
+    }
+  }
+}
+```
+
+**CRITICAL:**
+- `<EChart>` JSX tag → `"type": "COMP_ECHART"`
+- Chart option variable → Inline the object into `$exp` with all state dependencies
+- Extract state variables used in the option (chartCategories, chartValues) into `$deps` array
+- Remove the `import { EChart } from '../native/EChart'` statement (not needed in DSL)
+
+### Dynamic Chart with Expression
+
+**TSX:**
+```tsx
+const chartOption = {
+  title: { text: chartTitle },
+  xAxis: { type: 'category', data: categories },
+  yAxis: { type: 'value' },
+  series: [{ data: salesData, type: 'line' }]
+}
+// ...render
+<div sa-id="dynamic-chart" style={{ width: '100%', height: '300px' }} />
+```
+
+**DSL:**
+```json
+{
+  "id": "dynamic-chart",
+  "type": "COMP_ECHART",
+  "props": {
+    "option": {
+      "$exp": "{ title: { text: chartTitle }, xAxis: { type: 'category', data: categories }, yAxis: { type: 'value' }, series: [{ data: salesData, type: 'line' }] }",
+      "$deps": ["chartTitle", "categories", "salesData"]
+    },
+    "style": {
+      "width": "100%",
+      "height": "300px"
+    }
+  }
+}
+```
+
+### AG Grid (Data Table)
+
+**TSX:**
+```tsx
+<div sa-id="users-grid" style={{ width: '100%', height: '400px' }}>
+  {/* AG Grid placeholder */}
+</div>
+```
+
+**DSL:**
+```json
+{
+  "id": "users-grid",
+  "type": "COMP_AGGRID",
+  "props": {
+    "columnDefs": [
+      { "headerName": "Name", "field": "name", "sortable": true, "filter": true },
+      { "headerName": "Email", "field": "email", "sortable": true, "filter": true }
+    ],
+    "rowData": { "$bind": "users" },
+    "style": {
+      "width": "100%",
+      "height": "400px"
+    }
+  }
+}
+```
+
+### Vis Network (Graph Visualization)
+
+**TSX:**
+```tsx
+<div sa-id="org-chart" style={{ width: '100%', height: '400px' }}>
+  {/* Network graph placeholder */}
+</div>
+```
+
+**DSL:**
+```json
+{
+  "id": "org-chart",
+  "type": "COMP_VIS_NETWORK",
+  "props": {
+    "nodes": { "$bind": "employees" },
+    "edges": { "$bind": "relationships" },
+    "options": {
+      "layout": {
+        "hierarchical": {
+          "direction": "UD"
+        }
+      }
+    },
+    "style": {
+      "width": "100%",
+      "height": "400px"
+    }
+  }
+}
+```
+
+### Iconify Icons
+
+**TSX:**
+```tsx
+<span sa-id="save-icon" className="inline-block">
+  {/* Icon placeholder */}
+</span>
+```
+
+**DSL:**
+```json
+{
+  "id": "save-icon",
+  "type": "COMP_ICONIFY_ICON",
+  "props": {
+    "icon": "mdi:content-save",
+    "width": 24,
+    "height": 24,
+    "color": "#2196F3"
+  }
+}
+```
+
+### Leaflet Map
+
+**TSX:**
+```tsx
+<div sa-id="location-map" style={{ width: '100%', height: '400px' }}>
+  {/* Map placeholder */}
+</div>
+```
+
+**DSL:**
+```json
+{
+  "id": "location-map",
+  "type": "COMP_LEAFLET",
+  "props": {
+    "center": { "$bind": "mapCenter" },
+    "zoom": 13,
+    "markers": { "$bind": "mapMarkers" },
+    "style": {
+      "width": "100%",
+      "height": "400px"
+    }
+  }
+}
+```
+
+### Native Component Guidelines
+
+1. **Identify placeholders** - Look for comments like `{/* Chart will be rendered */}` or empty divs with size styling
+2. **Match component type** - Based on context:
+   - Analytics/Charts → `COMP_ECHART`
+   - Data tables → `COMP_AGGRID`
+   - Network/graphs → `COMP_VIS_NETWORK`
+   - Maps → `COMP_LEAFLET` or `COMP_MAPBOX`
+   - Icons → `COMP_ICONIFY_ICON`
+3. **Bind data appropriately** - Use `$bind` for state variables, `$exp` for computed values
+4. **Preserve styling** - Convert inline styles to `style` prop
+5. **Reference documentation** - Check `dsl/native.md` for complete component API
+
+---
+
 ## Important Notes
 
 1. **All inline functions** → Extract to methods
@@ -491,3 +731,4 @@ const nextId = typeof result.data[0]?.next_id === 'bigint'
 6. **All `setState/setX`** → `setState('x', value)`
 7. **Preserve all `sa-id` attributes** from TSX
 8. **Valid JSON only** - no trailing commas, proper string escaping
+9. **SQL queries MUST use backticks** - Keep backticks from TSX, never convert to single quotes (causes parsing errors with SQL keywords like INTERVAL '30 days')

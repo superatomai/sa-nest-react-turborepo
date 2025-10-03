@@ -13,7 +13,7 @@ import { useState, useEffect } from 'react'
 import { Input } from '../../ui/input'
 import { Textarea } from '../../ui/textarea'
 import { trpc } from '@/utils'
-import { nanoid, customAlphabet } from 'nanoid'
+import { getApiKeyNanoid } from '../../../utils/nanoid'
 import toast from 'react-hot-toast'
 import { projectKeysStore } from '@/stores/mobx_project_keys_store'
 
@@ -65,13 +65,11 @@ const AddNewProjectKeyModal = ({ showModal, setShowModal, projectId, setShowSucc
     }
   })
 
-  // Generate unique API key with nanoid (36 characters)
+  // Generate unique API key with lowercase alphanumeric characters
   const generateApiKey = () => {
-    const nanoidLowercase = customAlphabet('abcdefghijklmnopqrstuvwxyz0123456789', 28)
-
     const prefix = newKeyForm.environment === 'production' ? 'sa_prod_' :
                   newKeyForm.environment === 'staging' ? 'sa_stag_' : 'sa_dev_'
-    const randomPart = nanoidLowercase(28)
+    const randomPart = getApiKeyNanoid()
     return `${prefix}${randomPart}`
   }
 

@@ -4,7 +4,7 @@ import { UisService } from '../uis/uis.service';
 import { VersionsService } from '../uis/versions.service';
 import { DesignSystemService } from '../design_system/design_system.service';
 import { COMPLEX_DSL } from '../utils/complex-dsl';
-import { nanoid } from 'nanoid';
+import { getNanoid } from '../utils/nanoid';
 
 @Injectable()
 export class WebhooksService {
@@ -100,7 +100,7 @@ Feel free to customize this documentation for your brand and design requirements
       this.logger.log(`Created demo design system for project: ${projectId}`);
 
       // Generate a unique UI ID
-      const uiId = "ui_" + nanoid(6);
+      const uiId = "ui" + getNanoid();
 
       // 1. Create version FIRST (following frontend pattern)
       const demoVersion = await this.versionsService.createVersion({

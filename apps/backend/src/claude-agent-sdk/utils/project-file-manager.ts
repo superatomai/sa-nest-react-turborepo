@@ -1,6 +1,6 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { nanoid } from 'nanoid';
+import { getNanoid } from '../../utils/nanoid';
 
 export interface ProjectStructure {
 	projectPath: string;
@@ -101,6 +101,199 @@ export class ProjectFileManager {
 			uiJsonPath,
 			uiJsxPath
 		};
+	}
+
+	private async createClaudeMd(claudeMdPath: string, projectId: string): Promise<void> {
+		const claudeMdContentPath = path.join(process.cwd(), '/src/claude-agent-sdk/docs/claude.md');
+		let claudeMdContent;
+
+		try {
+			claudeMdContent = await fs.readFile(claudeMdContentPath, 'utf-8');
+		} catch (error) {
+			console.error('Failed to read claude.md template:', error);
+			claudeMdContent = '# Claude AI Documentation\n\nNo content available.';
+		}
+
+		await fs.writeFile(claudeMdPath, claudeMdContent);
+	}
+
+	private async ensureClaudeConfig(claudeConfigPath: string, projectId: string): Promise<void> {
+		// Create .claude/settings.json
+		const settingsPath = path.join(claudeConfigPath, 'settings.json');
+		try {
+			await fs.access(settingsPath);
+		} catch {
+			const settings = {
+				workingDirectory: ".",
+				permissions: {
+					fileOperations: "allow",
+					codeExecution: "allow",
+					webAccess: "deny"
+				},
+				model: "claude-sonnet-4-5",
+				projectId: projectId
+			};
+			await fs.writeFile(settingsPath, JSON.stringify(settings, null, 2));
+		}
+
+		// Create .claude/agents/ directory for subagents
+		const agentsPath = path.join(claudeConfigPath, 'agents');
+		try {
+			await fs.access(agentsPath);
+		} catch {
+			await fs.mkdir(agentsPath, { recursive: true });
+
+			// Create a UI generation subagent
+			const uiAgentContent = {
+				description: "Specialized agent for React UI component generation",
+				tools: ["file_read", "file_write", "file_list"],
+				prompt: "You are a React UI component specialist. Focus on creating clean, accessible, and responsive components."
+			};
+			await fs.writeFile(
+				path.join(agentsPath, 'ui-generator.json'),
+				JSON.stringify(uiAgentContent, null, 2)
+			);
+		}
+	}
+
+	private async createDSLFiles(dslPath: string): Promise<void> {
+		await this.createDSLDocFile(dslPath);
+		await this.createDSLNativeFile(dslPath);
+		await this.createDSLSchemaFile(dslPath);
+	}
+
+	private async createDSLNativeFile(dslPath: string): Promise<void> {
+		const nativePath = path.join(dslPath, 'native.md');
+		try {
+			await fs.access(nativePath);
+		} catch {
+			const templatePath = path.join(process.cwd(), '/src/claude-agent-sdk/docs/dsl-native.md');
+			let nativeContent: string;
+
+			try {
+				nativeContent = await fs.readFile(templatePath, 'utf-8');
+			} catch (error) {
+				console.error('Failed to read dsl-native.md template:', error);
+				nativeContent = '# Native Components Documentation\n\nNo content available.';
+			}
+
+			await fs.writeFile(nativePath, nativeContent);
+		}
+	}
+
+	private async createDSLSchemaFile(dslPath: string): Promise<void> {
+		const schemaPath = path.join(dslPath, 'schema.ts');
+		try {
+			await fs.access(schemaPath);
+		} catch {
+			const templatePath = path.join(process.cwd(), '/src/claude-agent-sdk/docs/dsl-schema.ts');
+			let schemaContent: string;
+
+			try {
+				schemaContent = await fs.readFile(templatePath, 'utf-8');
+			} catch (error) {
+				console.error('Failed to read dsl-schema.ts template:', error);
+				schemaContent = `NO CONTENT AVAILABLE.`;
+			}
+
+			await fs.writeFile(schemaPath, schemaContent);
+		}
+	}
+
+	private async createDSLDocFile(dslPath: string): Promise<void> {
+		const docPath = path.join(dslPath, 'doc.md');
+		try {
+			await fs.access(docPath);
+		} catch {
+			const templatePath = path.join(process.cwd(), '/src/claude-agent-sdk/docs/dsl-doc.md');
+			let docContent: string;
+
+			try {
+				docContent = await fs.readFile(templatePath, 'utf-8');
+			} catch (error) {
+				console.error('Failed to read dsl-doc.md template:', error);
+				docContent = `NO CONTENT AVAILABLE.`;
+			}
+
+			await fs.writeFile(docPath, docContent);
+		}
+	}
+
+	private async createDesignSystemReadme(designPath: string): Promise<void> {
+		const readmePath = path.join(designPath, 'README.md');
+		try {
+			await fs.access(readmePath);
+		} catch {
+			// Read the design system content from the template file
+			// Use process.cwd() to get project root, then navigate to source files
+			const templatePath = path.join(process.cwd(), '/src/claude-agent-sdk/docs/design-system-readme.md');
+			let designSystemContent: string;
+
+			try {
+				designSystemContent = await fs.readFile(templatePath, 'utf-8');
+			} catch (error) {
+				console.error('Failed to read design-system-readme.md template:', error);
+				designSystemContent = `NO CONTENT AVAILABLE.`;
+			}
+
+			await fs.writeFile(readmePath, designSystemContent);
+		}
+	}
+
+	private async createOpenAPISpec(apiPath: string): Promise<void> {
+		const openApiPath = path.join(apiPath, 'openapi.yaml');
+		try {
+			await fs.access(openApiPath);
+		} catch {
+			const templatePath = path.join(process.cwd(), '/src/claude-agent-sdk/docs/openapi.yaml');
+			let openApiContent: string;
+
+			try {
+				openApiContent = await fs.readFile(templatePath, 'utf-8');
+			} catch (error) {
+				console.error('Failed to read openapi.yaml template:', error);
+				openApiContent = `No content available.`;
+			}
+
+			await fs.writeFile(openApiPath, openApiContent);
+		}
+	}
+
+	private async createDatabaseSchema(databasePath: string): Promise<void> {
+		const schemaPath = path.join(databasePath, 'schema.md');
+		try {
+			await fs.access(schemaPath);
+		} catch {
+			// Read the database schema content from the template file
+			// Use process.cwd() to get project root, then navigate to source files
+			const templatePath = path.join(process.cwd(), '/src/claude-agent-sdk/docs/database-schema.md');
+			let schemaContent: string;
+
+			try {
+				schemaContent = await fs.readFile(templatePath, 'utf-8');
+			} catch (error) {
+				console.error('Failed to read database-schema.md template:', error);
+				schemaContent = `# Database Schema Documentation \n\nNo content available.`;
+			}
+
+			await fs.writeFile(schemaPath, schemaContent);
+		}
+	}
+
+	async updateClaudeMd(projectId: string, additionalContext: string): Promise<void> {
+		const projectStructure = await this.ensureProjectStructure(projectId);
+		const currentContent = await fs.readFile(projectStructure.claudeMdPath, 'utf-8');
+
+		const updatedContent = `${currentContent}
+
+## Additional Context
+${additionalContext}
+
+## Last Updated
+${new Date().toISOString()}
+`;
+
+		await fs.writeFile(projectStructure.claudeMdPath, updatedContent);
 	}
 
 	async saveUIToFile(projectId: string, uiId: string, uiData: any): Promise<string> {
@@ -216,184 +409,7 @@ export class ProjectFileManager {
 	}
 
 	generateUIId(): string {
-		return nanoid(8);
-	}
-
-	private async createClaudeMd(claudeMdPath: string, projectId: string): Promise<void> {
-		const claudeMdContentPath = path.join(process.cwd(), '/src/claude-agent-sdk/docs/claude.md');
-		// await fs.writeFile(claudeMdPath, claudeMdContent);
-    let claudeMdContent;
-
-    try {
-			claudeMdContent = await fs.readFile(claudeMdContentPath, 'utf-8');
-		} catch (error) {
-			console.error('Failed to read claude.md template:', error);
-			claudeMdContent = '# Claude AI Documentation\n\nNo content available.';
-		}
-
-		await fs.writeFile(claudeMdPath, claudeMdContent);
-	}
-
-	private async ensureClaudeConfig(claudeConfigPath: string, projectId: string): Promise<void> {
-		// Create .claude/settings.json
-		const settingsPath = path.join(claudeConfigPath, 'settings.json');
-		try {
-			await fs.access(settingsPath);
-		} catch {
-			const settings = {
-				workingDirectory: ".",
-				permissions: {
-					fileOperations: "allow",
-					codeExecution: "allow",
-					webAccess: "deny"
-				},
-				model: "claude-3-5-sonnet-20241022",
-				projectId: projectId
-			};
-			await fs.writeFile(settingsPath, JSON.stringify(settings, null, 2));
-		}
-
-		// Create .claude/agents/ directory for subagents
-		const agentsPath = path.join(claudeConfigPath, 'agents');
-		try {
-			await fs.access(agentsPath);
-		} catch {
-			await fs.mkdir(agentsPath, { recursive: true });
-
-			// Create a UI generation subagent
-			const uiAgentContent = {
-				description: "Specialized agent for React UI component generation",
-				tools: ["file_read", "file_write", "file_list"],
-				prompt: "You are a React UI component specialist. Focus on creating clean, accessible, and responsive components."
-			};
-			await fs.writeFile(
-				path.join(agentsPath, 'ui-generator.json'),
-				JSON.stringify(uiAgentContent, null, 2)
-			);
-		}
-	}
-
-	private async createDSLFiles(dslPath: string): Promise<void> {
-		await this.createDSLDocFile(dslPath);
-		await this.createDSLNativeFile(dslPath);
-		await this.createDSLSchemaFile(dslPath);
-	}
-
-	private async createDSLNativeFile(dslPath: string): Promise<void> {
-		const nativePath = path.join(dslPath, 'native.md');
-		try {
-			await fs.access(nativePath);
-		} catch {
-			const templatePath = path.join(process.cwd(), '/src/claude-agent-sdk/docs/dsl-native.md');
-			let nativeContent: string;
-
-			try {
-				nativeContent = await fs.readFile(templatePath, 'utf-8');
-			} catch (error) {
-				console.error('Failed to read dsl-native.md template:', error);
-				nativeContent = '# Native Components Documentation\n\nNo content available.';
-			}
-
-			await fs.writeFile(nativePath, nativeContent);
-		}
-	}
-
-	private async createDSLSchemaFile(dslPath: string): Promise<void> {
-		const schemaPath = path.join(dslPath, 'schema.ts');
-		try {
-			await fs.access(schemaPath);
-		} catch {
-			const templatePath = path.join(process.cwd(), '/src/claude-agent-sdk/docs/dsl-schema.ts');
-			let schemaContent: string;
-
-			try {
-				schemaContent = await fs.readFile(templatePath, 'utf-8');
-			} catch (error) {
-				console.error('Failed to read dsl-schema.ts template:', error);
-				schemaContent = `NO CONTENT AVAILABLE.`;
-			}
-
-			await fs.writeFile(schemaPath, schemaContent);
-		}
-	}
-
-
-
-	private async createDSLDocFile(dslPath: string): Promise<void> {
-		const docPath = path.join(dslPath, 'doc.md');
-		try {
-			await fs.access(docPath);
-		} catch {
-			const templatePath = path.join(process.cwd(), '/src/claude-agent-sdk/docs/dsl-doc.md');
-			let docContent: string;
-
-			try {
-				docContent = await fs.readFile(templatePath, 'utf-8');
-			} catch (error) {
-				console.error('Failed to read dsl-doc.md template:', error);
-				docContent = `NO CONTENT AVAILABLE.`;
-			}
-
-			await fs.writeFile(docPath, docContent);
-		}
-	}
-
-	
-
-	private async createDesignSystemReadme(designPath: string): Promise<void> {
-		const readmePath = path.join(designPath, 'README.md');
-		try {
-			await fs.access(readmePath);
-		} catch {
-			// Read the design system content from the template file
-			// Use process.cwd() to get project root, then navigate to source files
-			const templatePath = path.join(process.cwd(), '/src/claude-agent-sdk/docs/design-system-readme.md');
-			let designSystemContent: string;
-
-			try {
-				designSystemContent = await fs.readFile(templatePath, 'utf-8');
-			} catch (error) {
-				console.error('Failed to read design-system-readme.md template:', error);
-				designSystemContent = `NO CONTENT AVAILABLE.`;
-			}
-
-			await fs.writeFile(readmePath, designSystemContent);
-		}
-	}
-
-	private async createOpenAPISpec(apiPath: string): Promise<void> {
-		const openApiPath = path.join(apiPath, 'openapi.yaml');
-		try {
-			await fs.access(openApiPath);
-		} catch {
-			const templatePath = path.join(process.cwd(), '/src/claude-agent-sdk/docs/openapi.yaml');
-			let openApiContent: string;
-
-			try {
-				openApiContent = await fs.readFile(templatePath, 'utf-8');
-			} catch (error) {
-				console.error('Failed to read openapi.yaml template:', error);
-				openApiContent = `No content available.`;
-			}
-
-			await fs.writeFile(openApiPath, openApiContent);
-		}
-	}
-
-	async updateClaudeMd(projectId: string, additionalContext: string): Promise<void> {
-		const projectStructure = await this.ensureProjectStructure(projectId);
-		const currentContent = await fs.readFile(projectStructure.claudeMdPath, 'utf-8');
-
-		const updatedContent = `${currentContent}
-
-## Additional Context
-${additionalContext}
-
-## Last Updated
-${new Date().toISOString()}
-`;
-
-		await fs.writeFile(projectStructure.claudeMdPath, updatedContent);
+		return getNanoid();
 	}
 
 	async deleteUI(projectId: string, uiId: string): Promise<boolean> {
@@ -444,24 +460,5 @@ ${new Date().toISOString()}
 		}
 	}
 
-	private async createDatabaseSchema(databasePath: string): Promise<void> {
-		const schemaPath = path.join(databasePath, 'schema.md');
-		try {
-			await fs.access(schemaPath);
-		} catch {
-			// Read the database schema content from the template file
-			// Use process.cwd() to get project root, then navigate to source files
-			const templatePath = path.join(process.cwd(), '/src/claude-agent-sdk/docs/database-schema.md');
-			let schemaContent: string;
-
-			try {
-				schemaContent = await fs.readFile(templatePath, 'utf-8');
-			} catch (error) {
-				console.error('Failed to read database-schema.md template:', error);
-				schemaContent = `# Database Schema Documentation \n\nNo content available.`;
-			}
-
-			await fs.writeFile(schemaPath, schemaContent);
-		}
-	}
+	
 }

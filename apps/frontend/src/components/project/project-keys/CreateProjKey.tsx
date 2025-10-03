@@ -16,7 +16,7 @@ import { Button } from '../../ui/button'
 import { Input } from '../../ui/input'
 import { Textarea } from '../../ui/textarea'
 import { trpc } from '@/utils'
-import { nanoid } from 'nanoid'
+import { getApiKeyNanoid } from '../../../utils/nanoid'
 import { useParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
 
@@ -49,11 +49,11 @@ const CreateProjKey = ({ onKeyCreated }: CreateProjKeyProps) => {
 
       let generatedKeyValue = '';
 
-      // Generate unique API key with nanoid (36 characters)
+      // Generate unique API key with lowercase alphanumeric characters
       const generateApiKey = () => {
         const prefix = newKeyForm.environment === 'production' ? 'sa_prod_' :
                       newKeyForm.environment === 'staging' ? 'sa_stag_' : 'sa_dev_'
-        const randomPart = nanoid(28)
+        const randomPart = getApiKeyNanoid()
         return `${prefix}${randomPart}`
       }
 

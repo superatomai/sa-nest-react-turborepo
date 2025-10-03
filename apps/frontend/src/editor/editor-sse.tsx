@@ -4,7 +4,9 @@ import { trpc } from '../utils/trpc'
 import { observer } from 'mobx-react-lite'
 import { useParams } from 'react-router-dom'
 import SelectableUIRenderer from './renderer/SelectableUIRenderer'
-import { DatabaseUtils, parseDSLFromVersion } from '../utils/database'
+import { DatabaseUtils } from '../utils/database'
+import { fetchDSL } from '../utils/dsl-fetcher'
+import { fetchConversations } from '../utils/conversation-fetcher'
 import { createDefaultDSL } from '../lib/utils/default-dsl'
 import NodeEditor from './renderer/NodeEditor'
 import { findNodeById, updateNodeById } from './utils/node-operations'
@@ -123,7 +125,7 @@ const EditorSSE = () => {
 	// Load existing UI DSL on component mount
 	useEffect(() => {
 		const loadExistingUI = async () => {
-			if (!uiId || !uidata?.ui) return;
+			if (!uiId || !uidata?.ui || !projectId) return;
 
 			// Prevent re-loading if we've already loaded this UI
 			if (loadedUiIdRef.current === uiId) {
@@ -135,78 +137,33 @@ const EditorSSE = () => {
 				console.log('Loading existing UI for projectId:', projectId, 'uiId:', uiId);
 				loadedUiIdRef.current = uiId; // Mark as loaded
 
-				if (uidata && uidata.ui) {
-					const ui_version = uidata.ui.uiVersion;
+				// Load DSL and conversations in parallel using Promise.all
+				const [dslResult, conversationResult] = await Promise.all([
+					fetchDSL({
+						projectId: projectId,
+						uiId: uiId,
+						uiVersion: uidata.ui.uiVersion,
+						getCurrentVersionDSLQuery: getCurrentVersionDSLQuery
+					}),
+					fetchConversations({
+						getVersionQuery: getVersionQuery,
+						conversationsPerPage: CONVERSATIONS_PER_PAGE
+					})
+				]);
 
-					let dslToUse = null;
+				// Set DSL
+				if (dslResult.dsl) {
+					console.log(`✅ DSL loaded from ${dslResult.source}`);
+					setCurrentSchema(dslResult.dsl);
+				} else {
+					console.error('❌ No DSL found for this UI:', dslResult.error);
+				}
 
-					try {
-						// Load conversations from first page
-						const conversationResult = await getVersionQuery.refetch();
-						if (conversationResult.data && conversationResult.data.versions) {
-							const versions = conversationResult.data.versions;
-
-							// Load conversations from first page (already sorted by orderBy in query)
-							const conversations: Array<{ role: string, content: string }> = [];
-
-							if (Array.isArray(versions)) {
-								versions.forEach((version: any) => {
-									if (version.prompt && version.prompt.trim()) {
-										// Add user message (the prompt)
-										conversations.push({
-											role: 'user',
-											content: version.prompt
-										});
-										// Add assistant response
-										conversations.push({
-											role: 'assistant',
-											content: 'UI generated successfully!'
-										});
-									}
-								});
-							}
-
-							// Set initial conversations and pagination state
-							if (conversations.length > 0) {
-								setMessages(conversations);
-								setConversationPage(0); // Reset to first page
-								// Check if there are more conversations to load
-								setHasMoreConversations(versions.length === CONVERSATIONS_PER_PAGE);
-							}
-						}
-
-						// Load DSL from current UI version (separate query to get all versions)
-						const dslResult = await getCurrentVersionDSLQuery.refetch();
-						if (dslResult.data && dslResult.data.versions) {
-							const allVersions = dslResult.data.versions;
-							// Find the current version's DSL
-							const versionData = Array.isArray(allVersions) ?
-								allVersions.find((v: any) => v.id === ui_version) : null;
-							if (versionData && versionData.dsl) {
-								dslToUse = versionData.dsl;
-							}
-						}
-					} catch (versionError) {
-						console.error('Failed to fetch version data:', versionError);
-					}
-
-					// console.log('dsl to use', dslToUse);
-						// Parse and set the DSL if we found it using new utilities
-					if (dslToUse) {
-						try {
-							const uiComponent = parseDSLFromVersion(dslToUse);
-
-							if (uiComponent) {
-								console.log('Setting current schema from DSL:', uiComponent);
-								setCurrentSchema(uiComponent);
-							}
-
-						} catch (parseError) {
-							console.error('Failed to parse DSL:', parseError);
-						}
-					} else {
-						console.error('No DSL found for this UI');
-					}
+				// Set conversations
+				if (conversationResult.conversations.length > 0) {
+					setMessages(conversationResult.conversations);
+					setConversationPage(0); // Reset to first page
+					setHasMoreConversations(conversationResult.hasMore);
 				}
 			} catch (error) {
 				console.error('Failed to load existing UI:', error);
@@ -215,7 +172,7 @@ const EditorSSE = () => {
 			}
 		};
 		loadExistingUI();
-	}, [uiId, uidata]); // Run when uiId or uidata changes
+	}, [uiId, uidata, projectId]); // Run when uiId, uidata, or projectId changes
 
 	// Auto-scroll when messages or SSE events change
 	useEffect(() => {
@@ -1229,7 +1186,7 @@ const EditorSSE = () => {
 														<span className="text-teal-500 flex-shrink-0">
 															{event.timestamp.toLocaleTimeString()}
 														</span>
-														<span className={`ml-2 break-words flex-1 ${
+														<span className={`ml-2 break-all flex-1 ${
 															event.type === 'error' ? 'text-red-600' :
 															event.type === 'complete' ? 'text-green-600 font-semibold' :
 															event.type === 'tool_use' ? 'text-purple-600' :
@@ -1241,7 +1198,7 @@ const EditorSSE = () => {
 														{shouldShowAccordion && (
 															<button
 																onClick={() => setIsLlmAccordionOpen(!isLlmAccordionOpen)}
-																className="ml-2 text-blue-500 hover:text-blue-700 transition-colors"
+																className="ml-2 flex-shrink-0 text-blue-500 hover:text-blue-700 transition-colors"
 															>
 																{isLlmAccordionOpen ? '▼' : '▶'}
 															</button>
