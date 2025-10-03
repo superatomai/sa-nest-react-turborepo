@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { X, Loader2 } from "lucide-react";
-import { nanoid } from "nanoid";
+import { getNanoid } from "../../utils/nanoid";
 import { default_dsl } from "@/lib/utils/default-dsl";
 import toast from "react-hot-toast";
 
@@ -73,7 +73,7 @@ const AddNewUiModal = ({ setShowAddUiModal, projectId }: Props) => {
 
     try {
 
-        const ui_id = "ui_" + nanoid(6)
+        const ui_id = "ui" + getNanoid()
 
       // 1. Create version first
       const version : any = await createVersionMutation.mutateAsync({

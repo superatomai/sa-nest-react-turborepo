@@ -284,6 +284,373 @@ Based on LIST operation:
 
 ---
 
+## ANALYTICS/DASHBOARD Operations
+
+### Keywords
+**Keywords:** "analytics", "dashboard", "metrics", "statistics", "charts", "graphs", "reports", "insights", "trends", "visualize", "visualization"
+
+### What to generate
+- **Charts and graphs** using native components (COMP_ECHART)
+- **Data grids/tables** for detailed data (COMP_AGGRID)
+- **Key metrics cards** with summary statistics
+- **Interactive visualizations** with dynamic data binding
+
+### Requirements
+1. **Use Native Components** - Reference `dsl/native.md` for available chart/visualization components
+2. **Dynamic Data Binding** - Load data from database and bind to chart components
+3. **Responsive Layout** - Use grid system for organizing multiple charts
+4. **Loading States** - Show loading indicators while data is being fetched
+5. **Multiple Chart Types** - Choose appropriate chart type based on data:
+   - **Bar charts** for comparisons
+   - **Line charts** for trends over time
+   - **Pie/Donut charts** for proportions
+   - **Network graphs** for relationships
+   - **Data grids** for tabular data with sorting/filtering
+
+### Available Visualization Components
+Read `dsl/native.md` for complete documentation. Key components:
+
+#### COMP_ECHART (Primary charting library)
+- Bar charts, line charts, pie charts, scatter plots
+- Supports dynamic data binding with `$bind` and `$exp`
+- Fully customizable with ECharts options
+
+#### COMP_AGGRID (Data tables)
+- Enterprise-grade data grid
+- Sorting, filtering, pagination
+- Best for detailed tabular data
+
+#### COMP_VIS_NETWORK (Network graphs)
+- Interactive network/graph visualization
+- Nodes and edges
+- Useful for relationship mapping
+
+### Component Structure for Analytics
+```tsx
+import React, { useState, useEffect } from 'react'
+import { EChart } from '../native/EChart'
+
+const AnalyticsDashboard: React.FC = () => {
+  const [chartData, setChartData] = useState({ categories: [], values: [] })
+  const [metrics, setMetrics] = useState(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const loadAnalytics = async () => {
+      try {
+        // Query 1: Aggregated data for charts
+        const chartResult = await window.SA.queryExecutor.executeQuery(`
+          SELECT
+            date_column,
+            COUNT(*) as count,
+            SUM(amount) as total
+          FROM ddb.table_name
+          GROUP BY date_column
+          ORDER BY date_column
+        `)
+
+        // Query 2: Summary metrics
+        const metricsResult = await window.SA.queryExecutor.executeQuery(`
+          SELECT
+            COUNT(*) as total_count,
+            AVG(amount) as average,
+            MAX(amount) as max_value
+          FROM ddb.table_name
+        `)
+
+        // Transform data for charts - ALWAYS convert BigInt to Number
+        const categories = chartResult.data.map(d => d.date_column)
+        const values = chartResult.data.map(d =>
+          typeof d.count === 'bigint' ? Number(d.count) : d.count
+        )
+
+        setChartData({ categories, values })
+        setMetrics(metricsResult.data[0])
+      } catch (e) {
+        console.error('Analytics error:', e)
+      }
+      setLoading(false)
+    }
+    loadAnalytics()
+  }, [])
+
+  if (loading) {
+    return <div sa-id="loading">Loading analytics...</div>
+  }
+
+  // ECharts option for bar chart
+  const barChartOption = {
+    title: { text: 'Trends Over Time' },
+    tooltip: { trigger: 'axis' },
+    xAxis: {
+      type: 'category',
+      data: chartData.categories
+    },
+    yAxis: { type: 'value' },
+    series: [{
+      data: chartData.values,
+      type: 'bar',
+      itemStyle: { color: '#3b82f6' }
+    }]
+  }
+
+  // ECharts option for line chart
+  const lineChartOption = {
+    title: { text: 'Growth Trend' },
+    tooltip: { trigger: 'axis' },
+    xAxis: {
+      type: 'category',
+      data: chartData.categories
+    },
+    yAxis: { type: 'value' },
+    series: [{
+      data: chartData.values,
+      type: 'line',
+      smooth: true,
+      itemStyle: { color: '#10b981' }
+    }]
+  }
+
+  return (
+    <div sa-id="analytics-container" className="min-h-screen bg-[#d4dce6] p-6">
+      {/* Header */}
+      <div sa-id="header" className="mb-6">
+        <h1 sa-id="title" className="text-[32px] font-bold text-[#2d3748]">
+          Analytics Dashboard
+        </h1>
+      </div>
+
+      {/* Metrics Cards */}
+      <div sa-id="metrics-grid" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+        <div sa-id="metric-card-1" className="bg-[#ffffff] rounded-[16px] p-5 shadow-[0_2px_8px_rgba(0,0,0,0.08)]">
+          <div sa-id="metric-label-1" className="text-[14px] text-[#718096] mb-2">
+            Total Count
+          </div>
+          <div sa-id="metric-value-1" className="text-[32px] font-bold text-[#2d3748]">
+            {metrics?.total_count?.toLocaleString()}
+          </div>
+        </div>
+        {/* More metric cards */}
+      </div>
+
+      {/* Charts Grid */}
+      <div sa-id="charts-grid" className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Bar Chart */}
+        <div sa-id="chart-container-1" className="bg-[#ffffff] rounded-[16px] p-5 shadow-[0_2px_8px_rgba(0,0,0,0.08)]">
+          <EChart
+            sa-id="bar-chart"
+            option={barChartOption}
+            style={{ width: '100%', height: '300px' }}
+          />
+        </div>
+
+        {/* Line Chart */}
+        <div sa-id="chart-container-2" className="bg-[#ffffff] rounded-[16px] p-5 shadow-[0_2px_8px_rgba(0,0,0,0.08)]">
+          <EChart
+            sa-id="line-chart"
+            option={lineChartOption}
+            style={{ width: '100%', height: '300px' }}
+          />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export default AnalyticsDashboard
+```
+
+**CRITICAL IMPORT:**
+```tsx
+import { EChart } from '../native/EChart'
+```
+This import is required at the top of every component that uses charts.
+
+### Converting Charts to DSL
+**IMPORTANT:** When Claude Code converts the TSX to DSL format, `<EChart>` components become native COMP_ECHART components.
+
+**TSX with EChart component:**
+```tsx
+// Chart option defined in component
+const barChartOption = {
+  title: { text: 'Sales Trends' },
+  xAxis: {
+    type: 'category',
+    data: chartCategories
+  },
+  yAxis: { type: 'value' },
+  series: [{
+    data: chartValues,
+    type: 'bar'
+  }]
+}
+
+// Used in JSX
+<EChart
+  sa-id="sales-chart"
+  option={barChartOption}
+  style={{ width: '100%', height: '400px' }}
+/>
+```
+
+**Converts to DSL as:**
+```json
+{
+  "id": "sales-chart",
+  "type": "COMP_ECHART",
+  "props": {
+    "sa-id": "sales-chart",
+    "option": {
+      "$exp": "{ title: { text: 'Sales Trends' }, xAxis: { type: 'category', data: chartCategories }, yAxis: { type: 'value' }, series: [{ data: chartValues, type: 'bar' }] }",
+      "$deps": ["chartCategories", "chartValues"]
+    },
+    "style": {
+      "width": "100%",
+      "height": "400px"
+    }
+  }
+}
+```
+
+**Key conversion rules:**
+1. `<EChart>` → `"type": "COMP_ECHART"`
+2. `option={variableOrObject}` → Use `$exp` with all state dependencies in `$deps`
+3. Preserve all `sa-id` and `style` props
+4. Chart option can reference state variables (chartData, categories, values, etc.)
+
+### Data Transformation Best Practices
+1. **Handle BigInt:** Always convert BigInt to Number for chart data
+   ```tsx
+   const value = typeof dbValue === 'bigint' ? Number(dbValue) : dbValue
+   ```
+
+2. **Date Formatting:** Format dates for chart labels
+   ```tsx
+   const formattedDate = new Date(date).toLocaleDateString()
+   ```
+
+3. **Null Handling:** Filter out null/undefined values
+   ```tsx
+   const cleanData = data.filter(d => d.value != null)
+   ```
+
+4. **Aggregation:** Perform aggregation in SQL when possible
+   ```sql
+   SELECT
+     DATE_TRUNC('month', created_at) as month,
+     COUNT(*) as count
+   FROM ddb.table_name
+   GROUP BY month
+   ORDER BY month
+   ```
+
+5. **SQL Query String Formatting:** Use backticks (template literals) for multi-line queries to avoid quote escaping issues
+   ```tsx
+   // ✅ CORRECT - Use backticks for SQL queries
+   const result = await window.SA.queryExecutor.executeQuery(`
+     SELECT COUNT(*) as total,
+            COUNT(CASE WHEN created_at >= CURRENT_DATE - INTERVAL '30 days' THEN 1 END) as recent
+     FROM ddb.table_name
+   `)
+
+   // ❌ WRONG - Don't use single quotes (causes parsing errors in DSL)
+   const result = await window.SA.queryExecutor.executeQuery('SELECT ... INTERVAL \'30 days\' ...')
+   ```
+
+### Chart Type Selection Guide
+- **User asks for trends/over time** → Line chart (type: 'line')
+- **User asks for comparison** → Bar chart (type: 'bar')
+- **User asks for distribution/breakdown** → Pie chart (type: 'pie')
+- **User asks for relationships/connections** → Network graph (COMP_VIS_NETWORK)
+- **User asks for detailed data/table** → Data grid (COMP_AGGRID)
+
+### Common Chart Examples
+
+**Pie Chart:**
+```tsx
+const pieChartOption = {
+  title: { text: 'Distribution by Category' },
+  tooltip: { trigger: 'item' },
+  series: [{
+    type: 'pie',
+    radius: '50%',
+    data: distributionData.map(d => ({
+      name: d.category,
+      value: d.count
+    })),
+    emphasis: {
+      itemStyle: {
+        shadowBlur: 10,
+        shadowOffsetX: 0,
+        shadowColor: 'rgba(0, 0, 0, 0.5)'
+      }
+    }
+  }]
+}
+
+<EChart
+  sa-id="pie-chart"
+  option={pieChartOption}
+  style={{ width: '100%', height: '300px' }}
+/>
+```
+
+**Stacked Bar Chart:**
+```tsx
+const stackedBarOption = {
+  title: { text: 'Comparison by Category' },
+  tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+  legend: { data: ['Category A', 'Category B'] },
+  xAxis: { type: 'category', data: months },
+  yAxis: { type: 'value' },
+  series: [
+    {
+      name: 'Category A',
+      type: 'bar',
+      stack: 'total',
+      data: categoryAData
+    },
+    {
+      name: 'Category B',
+      type: 'bar',
+      stack: 'total',
+      data: categoryBData
+    }
+  ]
+}
+
+<EChart
+  sa-id="stacked-bar"
+  option={stackedBarOption}
+  style={{ width: '100%', height: '350px' }}
+/>
+```
+
+**Area Chart (for cumulative data):**
+```tsx
+const areaChartOption = {
+  title: { text: 'Cumulative Growth' },
+  tooltip: { trigger: 'axis' },
+  xAxis: { type: 'category', data: dates },
+  yAxis: { type: 'value' },
+  series: [{
+    type: 'line',
+    data: cumulativeValues,
+    areaStyle: {},
+    smooth: true,
+    itemStyle: { color: '#8b5cf6' }
+  }]
+}
+
+<EChart
+  sa-id="area-chart"
+  option={areaChartOption}
+  style={{ width: '100%', height: '300px' }}
+/>
+```
+
+---
+
 ## General Requirements
 
 ### TypeScript

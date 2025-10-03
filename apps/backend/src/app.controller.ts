@@ -7,10 +7,13 @@ import { ClaudeUIGenerationSSEService } from './claude-agent-sdk/services/claude
 import { ClaudeUIAgentService } from './claude-agent-sdk/services/claude-ui-agent.service';
 import { SSEService } from './services/sse.service';
 import { JSXToDSLService } from './services/jsx-to-dsl.service';
+import { ProjectFileManager } from './claude-agent-sdk/utils/project-file-manager';
 import { Response } from 'express';
 
 @Controller()
 export class AppController {
+	private readonly projectFileManager: ProjectFileManager;
+
 	constructor(
 		private readonly appService: AppService,
 		private readonly webSocketManagerService: WebSocketManagerService,
@@ -20,7 +23,9 @@ export class AppController {
 		private readonly claudeUIAgentService: ClaudeUIAgentService,
 		private readonly sseService: SSEService,
 		private readonly jsxToDSLService: JSXToDSLService
-	) { }
+	) {
+		this.projectFileManager = new ProjectFileManager();
+	}
 
   @Get()
   getSystemHealth(): any {
@@ -45,7 +50,8 @@ export class AppController {
           'POST /generate-ui-sse': 'Generate UI with Server-Sent Events streaming',
           'POST /test-provider-fallback': 'Test provider fallback system with forced failures',
           'POST /init-ui': 'Generate UI suggestions from docs',
-          'POST /init-ui/from-project': 'Generate UI suggestions from project ID'
+          'POST /init-ui/from-project': 'Generate UI suggestions from project ID',
+          'GET /projects/:projectId/uis/:uiId/dsl': 'Fetch DSL from project files'
         },
         deployment: {
           'GET /deployment/pull-reload': 'Pull latest code and reload PM2 process'
@@ -498,6 +504,44 @@ export class AppController {
 			console.error('Error checking JSX to DSL health:', error);
 			throw new HttpException(
 				error instanceof Error ? error.message : 'Failed to check JSX to DSL health',
+				HttpStatus.INTERNAL_SERVER_ERROR
+			);
+		}
+	}
+
+	@Get('projects/:projectId/uis/:uiId/dsl')
+	async getDSLFromProjectFiles(
+		@Param('projectId') projectId: string,
+		@Param('uiId') uiId: string
+	) {
+		try {
+			console.log(`📂 Fetching DSL from project files for projectId: ${projectId}, uiId: ${uiId}`);
+
+			// Try to get DSL from project files
+			const dslData = await this.projectFileManager.getUIFromFile(projectId, uiId);
+
+			if (dslData) {
+				return {
+					success: true,
+					data: dslData,
+					source: 'file',
+					timestamp: new Date().toISOString()
+				};
+			}
+
+			// If not found, return 404
+			throw new HttpException(
+				'DSL not found in project files',
+				HttpStatus.NOT_FOUND
+			);
+		} catch (error) {
+			if (error instanceof HttpException) {
+				throw error;
+			}
+
+			console.error('Error fetching DSL from project files:', error);
+			throw new HttpException(
+				error instanceof Error ? error.message : 'Failed to fetch DSL from project files',
 				HttpStatus.INTERNAL_SERVER_ERROR
 			);
 		}

@@ -3,7 +3,7 @@ import { LlmService } from './llm.service';
 import { WebSocketManagerService } from './websocket-manager.service';
 import { ProjectSchemaCacheService } from './project-schema-cache.service';
 import { SSEService, SSEController } from './sse.service';
-import { nanoid } from 'nanoid';
+import { getNanoid } from '../utils/nanoid';
 import { T_LLM_PROVIDER, UIComponent, UIElement } from 'src/types/dsl';
 
 export interface GenerateUISSERequest {
@@ -73,7 +73,7 @@ export class UiGenerationSSEService {
 			let variables: Record<string, any> = {};
 			let data: any = {};
 			let exec_query: any = {
-				key: nanoid(6),
+				key: getNanoid(),
 				graphql: "",
 			};
 			// Check if there's an active data agent connection for the project
@@ -144,7 +144,7 @@ export class UiGenerationSSEService {
 
 				if (query) {
 					exec_query = {
-						id: nanoid(6),
+						id: getNanoid(),
 						graphql: query,
 						vars: variables
 					};
@@ -214,7 +214,7 @@ export class UiGenerationSSEService {
 			const ui = schema;
 			// Update the query in the UIComponent schema format
 			ui.query = {
-				key: nanoid(6),
+				key: getNanoid(),
 				graphql: exec_query.graphql,
 				variables: exec_query.vars
 			};

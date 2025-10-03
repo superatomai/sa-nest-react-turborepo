@@ -3,7 +3,7 @@ import { ClaudeUIAgentService } from './claude-ui-agent.service';
 import { WebSocketManagerService } from '../../services/websocket-manager.service';
 import { ProjectSchemaCacheService } from '../../services/project-schema-cache.service';
 import { SSEController } from '../../services/sse.service';
-import { nanoid } from 'nanoid';
+import { getNanoid } from '../../utils/nanoid';
 import { UIComponent } from 'src/types/dsl';
 
 export interface ClaudeGenerateUISSERequest {
@@ -71,7 +71,7 @@ export class ClaudeUIGenerationSSEService {
 			let variables: Record<string, any> = {};
 			let data: any = {};
 			let exec_query: any = {
-				key: nanoid(6),
+				key: getNanoid(),
 				graphql: "",
 			};
 

@@ -290,38 +290,44 @@ export class ClaudeUIAgentService {
 			// Build the conversion prompt
 			const conversionPrompt = `# Convert TSX to DSL JSON
 
-## Task
-1. Read DSL docs: \`dsl/schema.ts\`, \`dsl/doc.md\`, \`dsl/native.md\`
-2. Read TSX: \`uis/${uiId}/ui.tsx\`
-3. Read conversion guide below for detailed patterns and examples
-4. Convert to DSL JSON and write to \`uis/${uiId}/ui.json\`
+			## Task
+			1. Read DSL docs: \`dsl/schema.ts\`, \`dsl/doc.md\`, \`dsl/native.md\`
+			2. Read TSX: \`uis/${uiId}/ui.tsx\`
+			3. Read conversion guide below for detailed patterns and examples
+			4. Convert to DSL JSON and write to \`uis/${uiId}/ui.json\`
 
----
+			---
 
-${conversionInstructions}
+			${conversionInstructions}
 
----
+			---
 
-## Final Output Structure
-\`\`\`json
-{
-  "id": "${uiId}",
-  "name": "ComponentName",
-  "props": {},
-  "states": {},
-  "methods": {},
-  "effects": [],
-  "data": {},
-  "render": {
-    "id": "root-el",
-    "type": "div",
-    "props": {"sa-id": "main-container", "className": "..."},
-    "children": [...]
-  }
-}
-\`\`\`
+			## CRITICAL RULES
+			1. **SQL queries MUST use backticks** - Keep backticks from TSX in method functions
+			2. **NEVER convert backticks to single quotes** in SQL queries (causes parsing errors)
+			3. **Chart placeholders** → Convert to COMP_ECHART with proper data binding
+			4. **All methods must be valid JavaScript** - Test complex queries for quote escaping
 
-Start conversion now. Write the complete DSL JSON to \`uis/${uiId}/ui.json\`.`;
+			## Final Output Structure
+			\`\`\`json
+			{
+			"id": "${uiId}",
+			"name": "ComponentName",
+			"props": {},
+			"states": {},
+			"methods": {},
+			"effects": [],
+			"data": {},
+			"render": {
+				"id": "root-el",
+				"type": "div",
+				"props": {"sa-id": "main-container", "className": "..."},
+				"children": [...]
+			}
+			}
+			\`\`\`
+
+			Start conversion now. Write the complete DSL JSON to \`uis/${uiId}/ui.json\`.`;
 
 			// Configure Claude Agent SDK for conversion
 			const options: Options = {
@@ -400,54 +406,62 @@ Start conversion now. Write the complete DSL JSON to \`uis/${uiId}/ui.json\`.`;
 		if (mode === 'edit') {
 			return `# Edit React Component
 
-## User Request
-${prompt}
+			## User Request
+			${prompt}
 
-## Task
-1. Read \`CLAUDE.md\` for project guidelines
-2. Read existing component at \`uis/${uiId}/ui.tsx\`
-3. **Use Edit tool (NOT Write)** to modify the component
-4. **PRESERVE all existing elements** unless explicitly asked to remove them
+			## Task
+			1. Read \`CLAUDE.md\` for project guidelines
+			2. Read \`dsl/native.md\` for available native components (charts, graphs, tables, maps)
+			3. Read existing component at \`uis/${uiId}/ui.tsx\`
+			4. **Use Edit tool (NOT Write)** to modify the component
+			5. **PRESERVE all existing elements** unless explicitly asked to remove them
 
-## Editing Behavior
-- **Default: ADD, not REPLACE** - Keep all existing JSX, state, and hooks
-- "add X to the component" → Insert X while preserving everything else
-- "modify Y" → Only change Y, keep the rest
-- "replace with Z" → Only then replace entire component
+			## Editing Behavior
+			- **Default: ADD, not REPLACE** - Keep all existing JSX, state, and hooks
+			- "add X to the component" → Insert X while preserving everything else
+			- "modify Y" → Only change Y, keep the rest
+			- "replace with Z" → Only then replace entire component
 
-## TSX Requirements
-1. **Unique \`sa-id\` on EVERY element** - Use descriptive names like \`sa-id="header-title"\`
-2. **Tailwind v4 CSS only** - Use classes like \`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4\`
-3. **Grid layouts: Loop on grid container** - \`{items.map(...)}\` must be directly inside the element with \`grid\` class
-4. **Functional component with hooks** - Keep default export
+			## Analytics & Visualization
+			- **If user requests analytics, charts, or graphs** → Use chart placeholders (will be converted to COMP_ECHART in DSL)
+			- **For data tables** → Use table placeholders (will be converted to COMP_AGGRID in DSL)
+			- Reference \`dsl/native.md\` for available visualization components
 
-Start by reading the files, then use Edit tool to make changes.`;
+			## TSX Requirements
+			1. **Unique \`sa-id\` on EVERY element** - Use descriptive names like \`sa-id="header-title"\`
+			2. **Tailwind v4 CSS only** - Use classes like \`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4\`
+			3. **Grid layouts: Loop on grid container** - \`{items.map(...)}\` must be directly inside the element with \`grid\` class
+			4. **Functional component with hooks** - Keep default export
+
+			Start by reading the files, then use Edit tool to make changes.`;
 		} else {
 			return `# Create React Component
 
-## User Request
-${prompt}
+			## User Request
+			${prompt}
 
-## Task
-Read the comprehensive guide below, then follow the steps to create the component.
+			## Task
+			Read the comprehensive guide below, then follow the steps to create the component.
 
----
+			---
 
-${tsxInstructions}
+			${tsxInstructions}
 
----
+			---
 
-## Your Steps
-1. Read \`CLAUDE.md\`, \`database/schema.md\`, and \`design/README.md\`
-2. Identify the CRUD operation from the user request (CREATE, LIST, UPDATE, or DELETE)
-3. Follow the appropriate pattern from the guide above
-4. Create component at \`uis/${uiId}/ui.tsx\`
+			## Your Steps
+			1. Read \`CLAUDE.md\`, \`database/schema.md\`, and \`design/README.md\`
+			2. Read \`dsl/native.md\` for available native components (CRITICAL for analytics/charts/graphs)
+			3. Identify the operation type from the user request (CREATE, LIST, UPDATE, DELETE, or ANALYTICS)
+			4. Follow the appropriate pattern from the guide above
+			5. Create component at \`uis/${uiId}/ui.tsx\`
 
-**CRITICAL:**
-- "create [entity]" = CREATE operation = Generate FORM ONLY (no list!)
-- "list [entities]" = LIST operation = Generate grid of cards (no form!)
+			**CRITICAL:**
+			- "create [entity]" = CREATE operation = Generate FORM ONLY (no list!)
+			- "list [entities]" = LIST operation = Generate grid of cards (no form!)
+			- "analytics", "dashboard", "charts", "graphs" = ANALYTICS operation = Generate dashboard with chart placeholders and data visualizations (refer to ANALYTICS section in guide and \`dsl/native.md\`)
 
-Start by reading the project files, then create the component.`;
+			Start by reading the project files, then create the component.`;
 		}
 	}
 
