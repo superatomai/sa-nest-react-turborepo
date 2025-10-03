@@ -208,7 +208,7 @@ const extractRenderData = (component: UIComponent) => {
 /**
  * Evaluate conditional expressions (if/elseIf)
  */
-const evaluateCondition = (condition: Expression | undefined, data: any, bindingResolver: DataBindingResolver): boolean => {
+const evaluateCondition = (condition: Expression | Binding |  undefined, data: any, bindingResolver: DataBindingResolver): boolean => {
     if (!condition) return true
 
     if (typeof condition === 'object' && '$exp' in condition) {
