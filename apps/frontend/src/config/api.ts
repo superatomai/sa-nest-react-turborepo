@@ -1,6 +1,6 @@
 const getApiEndpoint = () => {
   const vite_local_api_url = import.meta.env.VITE_LOCAL_API_URL;
-  const vite_dev_api_url = import.meta.env.VITE_API_URL;
+  const vite_dev_api_url = import.meta.env.VITE_DEV_API_URL;
   const vite_prod_api_url = import.meta.env.VITE_PROD_API_URL;
 
   const branch = import.meta.env.VITE_CF_PAGES_BRANCH;
