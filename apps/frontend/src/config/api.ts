@@ -5,23 +5,25 @@ const getApiEndpoint = () => {
 
   const branch = import.meta.env.VITE_CF_PAGES_BRANCH;
 
-  let apiUrl = vite_prod_api_url;
-
   const isLocalHost =
     window.location.hostname === "localhost" ||
     window.location.hostname === "127.0.0.1";
 
+  let apiUrl;
+
   // for local dev
   if (isLocalHost) {
     apiUrl = vite_local_api_url;
-  }
-
-  if (branch === "main") {
+  } else if (branch === "main") {
     apiUrl = vite_prod_api_url;
   } else if (branch === "dev") {
     apiUrl = vite_dev_api_url;
+  } else {
+    // fallback to prod if branch is unknown
+    apiUrl = vite_prod_api_url;
   }
 
+  console.log("Branch:", branch);
   console.log("Using API URL:", apiUrl);
 
   return apiUrl;
