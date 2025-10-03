@@ -19,10 +19,11 @@ import {
   TaskAnalyticsDashboard,
   UserAnalyticsDashboard,
   ProjectAnalyticsDashboard,
-  SmartRecommendationsEngine
+  SmartRecommendationsEngine,
+  OrganizationOverview
 } from '../duckdb/tsx'
 
-type TabType = 'viewer' | 'taskForm' | 'userForm' | 'projectForm' | 'reassignTask' | 'taskReassignCard' | 'taskDeadlineCard' | 'taskStatusCard' | 'dbOverview' | 'taskList' | 'projectList' | 'userList' | 'schemaExplorer' | 'taskDependencyChecker' | 'projectPerformance' | 'taskAnalytics' | 'userAnalytics' | 'projectAnalytics' | 'smartRecommendations'
+type TabType = 'viewer' | 'taskForm' | 'userForm' | 'projectForm' | 'reassignTask' | 'taskReassignCard' | 'taskDeadlineCard' | 'taskStatusCard' | 'dbOverview' | 'taskList' | 'projectList' | 'userList' | 'schemaExplorer' | 'taskDependencyChecker' | 'projectPerformance' | 'taskAnalytics' | 'userAnalytics' | 'projectAnalytics' | 'smartRecommendations' | 'organizationOverview'
 
 const DslShowcase: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('viewer')
@@ -69,6 +70,12 @@ const DslShowcase: React.FC = () => {
       label: 'Smart Recommendations',
       icon: 'mdi:lightbulb-on',
       description: 'AI-powered insights and recommendations'
+    },
+    {
+      id: 'organizationOverview',
+      label: 'Organization Overview',
+      icon: 'mdi:sitemap',
+      description: 'Organization structure and hierarchy'
     },
     {
       id: 'taskForm',
@@ -180,6 +187,12 @@ const DslShowcase: React.FC = () => {
         return (
           <div className="p-8">
             <SmartRecommendationsEngine />
+          </div>
+        )
+      case 'organizationOverview':
+        return (
+          <div className="p-8">
+            <OrganizationOverview organizationId={1} />
           </div>
         )
       case 'viewer':

@@ -1,0 +1,623 @@
+import React, { useState, useEffect, useRef } from 'react'
+import { Icon } from '@iconify/react'
+import toast from 'react-hot-toast'
+import { queryExecutor } from '../query'
+
+// Load ECharts from CDN
+declare global {
+  interface Window {
+    echarts: any;
+  }
+}
+
+interface OrganizationOverviewProps {
+  organizationId: number
+}
+
+interface Organization {
+  id: number
+  name: string
+  created_at: string
+}
+
+interface Department {
+  id: number
+  name: string
+  type: string
+  user_count: number
+  team_count: number
+  project_count: number
+}
+
+interface Team {
+  id: number
+  name: string
+  department_name: string
+  member_count: number
+  lead_name: string
+}
+
+interface CollaborationData {
+  from_dept: string
+  to_dept: string
+  collaboration_count: number
+}
+
+const OrganizationOverview: React.FC<OrganizationOverviewProps> = ({ organizationId = 1 }) => {
+  const [organization, setOrganization] = useState<Organization | null>(null)
+  const [departments, setDepartments] = useState<Department[]>([])
+  const [teams, setTeams] = useState<Team[]>([])
+  const [collaborationData, setCollaborationData] = useState<CollaborationData[]>([])
+  const [isLoading, setIsLoading] = useState<boolean>(true)
+  const [error, setError] = useState<string | null>(null)
+  const [echartsLoaded, setEchartsLoaded] = useState<boolean>(false)
+
+  // Chart refs
+  const hierarchyChartRef = useRef<HTMLDivElement>(null)
+  const teamSizeChartRef = useRef<HTMLDivElement>(null)
+  const collaborationChartRef = useRef<HTMLDivElement>(null)
+
+  // Load ECharts from CDN
+  useEffect(() => {
+    if (window.echarts) {
+      setEchartsLoaded(true)
+      return
+    }
+
+    const script = document.createElement('script')
+    script.src = 'https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js'
+    script.async = true
+    script.onload = () => setEchartsLoaded(true)
+    document.body.appendChild(script)
+
+    return () => {
+      if (document.body.contains(script)) {
+        document.body.removeChild(script)
+      }
+    }
+  }, [])
+
+  useEffect(() => {
+    loadOrganizationData()
+  }, [organizationId])
+
+  useEffect(() => {
+    if (echartsLoaded && !isLoading) {
+      setTimeout(() => {
+        if (departments.length > 0) renderHierarchyChart()
+        if (teams.length > 0) renderTeamSizeChart()
+        if (collaborationData.length > 0) renderCollaborationChart()
+      }, 100)
+    }
+  }, [departments, teams, collaborationData, echartsLoaded, isLoading])
+
+  const loadOrganizationData = async () => {
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      // Get organization info
+      const orgResult = await queryExecutor.executeQuery(`
+        SELECT * FROM ddb.organizations WHERE id = ${organizationId}
+      `)
+
+      if (!orgResult || !orgResult.data || orgResult.data.length === 0) {
+        setError('Organization not found')
+        setIsLoading(false)
+        return
+      }
+
+      setOrganization(orgResult.data[0])
+
+      // Get departments with counts
+      const deptResult = await queryExecutor.executeQuery(`
+        SELECT
+          d.id,
+          d.name,
+          d.type,
+          COUNT(DISTINCT u.id) as user_count,
+          COUNT(DISTINCT t.id) as team_count,
+          COALESCE((
+            SELECT COUNT(DISTINCT p.id)
+            FROM ddb.projects p
+            JOIN ddb.milestones m ON p.id = m.project_id
+            JOIN ddb.tasks tk ON m.id = tk.milestone_id
+            JOIN ddb.users u2 ON tk.assigned_to = u2.id
+            WHERE u2.department_id = d.id
+              AND tk.assigned_to IS NOT NULL
+          ), 0) as project_count
+        FROM ddb.departments d
+        LEFT JOIN ddb.users u ON d.id = u.department_id
+        LEFT JOIN ddb.teams t ON d.id = t.department_id
+        WHERE d.organization_id = ${organizationId}
+        GROUP BY d.id, d.name, d.type
+        ORDER BY user_count DESC
+      `)
+
+      setDepartments(deptResult.data.map((row: any) => ({
+        id: Number(row.id),
+        name: row.name,
+        type: row.type,
+        user_count: Number(row.user_count),
+        team_count: Number(row.team_count),
+        project_count: Number(row.project_count)
+      })))
+
+      // Get teams with member counts
+      const teamResult = await queryExecutor.executeQuery(`
+        SELECT
+          t.id,
+          t.name,
+          d.name as department_name,
+          COUNT(DISTINCT tm.user_id) as member_count,
+          u.full_name as lead_name
+        FROM ddb.teams t
+        LEFT JOIN ddb.departments d ON t.department_id = d.id
+        LEFT JOIN ddb.team_members tm ON t.id = tm.team_id
+        LEFT JOIN ddb.users u ON t.lead_user_id = u.id
+        WHERE d.organization_id = ${organizationId}
+        GROUP BY t.id, t.name, d.name, u.full_name
+        ORDER BY member_count DESC
+      `)
+
+      setTeams(teamResult.data.map((row: any) => ({
+        id: Number(row.id),
+        name: row.name,
+        department_name: row.department_name,
+        member_count: Number(row.member_count),
+        lead_name: row.lead_name || 'No lead assigned'
+      })))
+
+      // Get cross-department collaboration (tasks assigned across departments)
+      const collabResult = await queryExecutor.executeQuery(`
+        SELECT
+          d1.name as from_dept,
+          d2.name as to_dept,
+          COUNT(*) as collaboration_count
+        FROM ddb.tasks t
+        JOIN ddb.users u1 ON t.assigned_by = u1.id
+        JOIN ddb.users u2 ON t.assigned_to = u2.id
+        JOIN ddb.departments d1 ON u1.department_id = d1.id
+        JOIN ddb.departments d2 ON u2.department_id = d2.id
+        WHERE d1.id != d2.id
+          AND d1.organization_id = ${organizationId}
+          AND d2.organization_id = ${organizationId}
+        GROUP BY d1.name, d2.name
+        HAVING COUNT(*) > 5
+        ORDER BY collaboration_count DESC
+      `)
+
+      setCollaborationData(collabResult.data.map((row: any) => ({
+        from_dept: row.from_dept,
+        to_dept: row.to_dept,
+        collaboration_count: Number(row.collaboration_count)
+      })))
+
+      setIsLoading(false)
+    } catch (e) {
+      console.error('Error loading organization data:', e)
+      setError('Failed to load organization data')
+      setIsLoading(false)
+    }
+  }
+
+  const renderHierarchyChart = () => {
+    if (!hierarchyChartRef.current || !window.echarts) return
+
+    const chart = window.echarts.init(hierarchyChartRef.current)
+
+    // Build hierarchy tree data
+    const treeData = {
+      name: organization?.name || 'Organization',
+      children: departments.map(dept => ({
+        name: `${dept.name}\n(${dept.user_count} users)`,
+        value: dept.user_count,
+        itemStyle: {
+          color: getDepartmentColor(dept.type)
+        }
+      }))
+    }
+
+    chart.setOption({
+      tooltip: {
+        trigger: 'item',
+        formatter: '{b}: {c} users'
+      },
+      series: [{
+        type: 'tree',
+        data: [treeData],
+        top: '5%',
+        left: '20%',
+        bottom: '5%',
+        right: '20%',
+        symbolSize: 12,
+        label: {
+          position: 'left',
+          verticalAlign: 'middle',
+          align: 'right',
+          fontSize: 11
+        },
+        leaves: {
+          label: {
+            position: 'right',
+            verticalAlign: 'middle',
+            align: 'left'
+          }
+        },
+        emphasis: {
+          focus: 'descendant'
+        },
+        expandAndCollapse: true,
+        animationDuration: 550,
+        animationDurationUpdate: 750
+      }]
+    })
+  }
+
+  const renderTeamSizeChart = () => {
+    if (!teamSizeChartRef.current || !window.echarts) return
+
+    const chart = window.echarts.init(teamSizeChartRef.current)
+
+    const teamNames = teams.map(t => t.name)
+    const memberCounts = teams.map(t => t.member_count)
+
+    chart.setOption({
+      tooltip: {
+        trigger: 'axis',
+        axisPointer: { type: 'shadow' }
+      },
+      grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+      xAxis: {
+        type: 'value',
+        name: 'Members'
+      },
+      yAxis: {
+        type: 'category',
+        data: teamNames,
+        axisLabel: {
+          interval: 0,
+          fontSize: 10
+        }
+      },
+      series: [{
+        name: 'Team Size',
+        type: 'bar',
+        data: memberCounts,
+        itemStyle: {
+          color: '#6b8cce'
+        },
+        label: {
+          show: true,
+          position: 'right',
+          formatter: '{c}'
+        }
+      }]
+    })
+  }
+
+  const renderCollaborationChart = () => {
+    if (!collaborationChartRef.current || !window.echarts) return
+
+    const chart = window.echarts.init(collaborationChartRef.current)
+
+    // Build nodes and links for graph
+    const nodes = Array.from(new Set([
+      ...collaborationData.map(c => c.from_dept),
+      ...collaborationData.map(c => c.to_dept)
+    ])).map(dept => ({
+      name: dept,
+      symbolSize: 50,
+      itemStyle: {
+        color: '#6b8cce'
+      }
+    }))
+
+    const links = collaborationData.map(c => ({
+      source: c.from_dept,
+      target: c.to_dept,
+      value: c.collaboration_count,
+      lineStyle: {
+        width: Math.max(1, c.collaboration_count / 5)
+      }
+    }))
+
+    chart.setOption({
+      tooltip: {
+        formatter: (params: any) => {
+          if (params.dataType === 'edge') {
+            return `${params.data.source} → ${params.data.target}<br/>${params.data.value} collaborations`
+          }
+          return params.name
+        }
+      },
+      series: [{
+        type: 'graph',
+        layout: 'force',
+        data: nodes,
+        links: links,
+        roam: true,
+        label: {
+          show: true,
+          position: 'right',
+          fontSize: 10
+        },
+        force: {
+          repulsion: 100,
+          edgeLength: 100
+        },
+        emphasis: {
+          focus: 'adjacency',
+          lineStyle: {
+            width: 4
+          }
+        }
+      }]
+    })
+  }
+
+  const getDepartmentColor = (type: string) => {
+    const colors: { [key: string]: string } = {
+      'engineering': '#6b8cce',
+      'design': '#9b8cce',
+      'product': '#6bcf7f',
+      'sales': '#ffd93d',
+      'operations': '#f6ad55',
+      'finance': '#fc8181',
+      'compliance': '#e57373'
+    }
+    return colors[type] || '#718096'
+  }
+
+  if (isLoading) {
+    return (
+      <div className="bg-white rounded-[20px] shadow-[0_2px_8px_rgba(0,0,0,0.08)] p-8 max-w-7xl mx-auto">
+        <div className="flex items-center justify-center gap-3 py-12">
+          <div className="w-6 h-6 border-2 border-[#6b8cce] border-t-transparent rounded-full animate-spin" />
+          <span className="text-[#718096]">Loading organization data...</span>
+        </div>
+      </div>
+    )
+  }
+
+  if (error || !organization) {
+    return (
+      <div className="bg-white rounded-[20px] shadow-[0_2px_8px_rgba(0,0,0,0.08)] p-8 max-w-7xl mx-auto">
+        <div className="text-center py-12">
+          <Icon icon="mdi:alert-circle" width={48} height={48} className="text-[#fc8181] mx-auto mb-4" />
+          <p className="text-[#fc8181] font-medium">{error || 'Organization not found'}</p>
+        </div>
+      </div>
+    )
+  }
+
+  const totalUsers = departments.reduce((sum, d) => sum + d.user_count, 0)
+  const totalTeams = teams.length
+  const totalDepartments = departments.length
+  const totalCollaborations = collaborationData.reduce((sum, c) => sum + c.collaboration_count, 0)
+
+  return (
+    <div className="bg-white rounded-[20px] shadow-[0_2px_8px_rgba(0,0,0,0.08)] p-8 max-w-7xl mx-auto">
+      {/* Header */}
+      <div className="mb-6">
+        <div className="flex items-start gap-4 mb-6">
+          <div className="w-16 h-16 bg-[#6b8cce] bg-opacity-10 rounded-[16px] flex items-center justify-center">
+            <Icon icon="mdi:office-building" width={32} height={32} className="text-[#2d3748]" />
+          </div>
+          <div>
+            <h2 className="text-2xl font-bold text-[#2d3748] mb-1">{organization.name}</h2>
+            <p className="text-sm text-[#718096]">Organization Overview & Structure</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Quick Actions */}
+      <div className="bg-[#f8f9fb] rounded-[16px] p-5 border border-[#e2e8f0] mb-6">
+        <h3 className="text-base font-semibold text-[#2d3748] mb-4 flex items-center gap-2">
+          <Icon icon="mdi:lightning-bolt" width={18} height={18} className="text-[#2d3748]" />
+          Organization Actions
+        </h3>
+
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => {
+              const largestDept = departments.reduce((max, d) => d.user_count > max.user_count ? d : max, departments[0])
+              toast.success(`Largest department: ${largestDept?.name} (${largestDept?.user_count} users)`, {
+                duration: 4000,
+                position: 'top-center',
+                icon: '📊',
+              })
+            }}
+            className="px-3 py-1.5 bg-[#6b8cce] text-white rounded-[8px] text-xs font-medium hover:bg-[#5a7ab8] transition-all duration-200 flex items-center gap-1"
+          >
+            <Icon icon="mdi:chart-bar" width={14} height={14} />
+            View Largest Department
+          </button>
+          <button
+            onClick={() => {
+              const smallestTeam = teams.reduce((min, t) => t.member_count < min.member_count ? t : min, teams[0])
+              toast.success(`Smallest team: ${smallestTeam?.name} (${smallestTeam?.member_count} members)`, {
+                duration: 4000,
+                position: 'top-center',
+                icon: '👥',
+              })
+            }}
+            className="px-3 py-1.5 bg-[#6bcf7f] text-white rounded-[8px] text-xs font-medium hover:bg-[#48bb78] transition-all duration-200 flex items-center gap-1"
+          >
+            <Icon icon="mdi:account-group" width={14} height={14} />
+            Find Smallest Team
+          </button>
+          <button
+            onClick={() => {
+              const avgTeamSize = teams.length > 0 ? Math.round(teams.reduce((sum, t) => sum + t.member_count, 0) / teams.length) : 0
+              toast.success(`Average team size: ${avgTeamSize} members`, {
+                duration: 4000,
+                position: 'top-center',
+                icon: '📈',
+              })
+            }}
+            className="px-3 py-1.5 bg-[#ffd93d] text-[#2d3748] rounded-[8px] text-xs font-medium hover:bg-[#f6ad55] transition-all duration-200 flex items-center gap-1"
+          >
+            <Icon icon="mdi:calculator" width={14} height={14} />
+            Calculate Avg Team Size
+          </button>
+          <button
+            onClick={() => {
+              const summary = departments.map(d => `${d.name}: ${d.user_count} users, ${d.team_count} teams`).join('\n')
+              toast.success(`Department Summary:\n\n${summary}`, {
+                duration: 6000,
+                position: 'top-center',
+                icon: '📋',
+              })
+            }}
+            className="px-3 py-1.5 bg-[#9b8cce] text-white rounded-[8px] text-xs font-medium hover:bg-[#8574b8] transition-all duration-200 flex items-center gap-1"
+          >
+            <Icon icon="mdi:file-document" width={14} height={14} />
+            View Org Summary
+          </button>
+          <button
+            onClick={async () => {
+              // Find imbalanced departments - those with user count > 2x average
+              const avgUsers = totalUsers / totalDepartments
+              const threshold = avgUsers * 2
+              const largeDepts = departments.filter(d => d.user_count > threshold)
+
+              if (largeDepts.length === 0) {
+                toast.success('All departments are balanced!', {
+                  duration: 3000,
+                  position: 'top-center',
+                  icon: '✅',
+                })
+                return
+              }
+
+              const msg = largeDepts.map(d => `${d.name}: ${d.user_count} users (${Math.round(d.user_count / avgUsers * 100)}% of avg)`).join('\n')
+              toast.success(`Departments to rebalance:\n\n${msg}\n\nAvg per dept: ${Math.round(avgUsers)} users`, {
+                duration: 6000,
+                position: 'top-center',
+                icon: '⚖️',
+              })
+            }}
+            className="px-3 py-1.5 bg-[#fc8181] text-white rounded-[8px] text-xs font-medium hover:bg-[#f56565] transition-all duration-200 flex items-center gap-1"
+          >
+            <Icon icon="mdi:scale-balance" width={14} height={14} />
+            Check Balance
+          </button>
+        </div>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div className="bg-gradient-to-br from-[#6b8cce] to-[#5a7ab8] rounded-[16px] p-5">
+          <div className="flex items-center gap-3 mb-2">
+            <Icon icon="mdi:account-group" width={24} height={24} className="text-white opacity-90" />
+            <div className="text-sm text-white opacity-90">Total Users</div>
+          </div>
+          <div className="font-bold text-3xl text-white">{totalUsers}</div>
+          <div className="text-xs text-white opacity-75 mt-1">Across all departments</div>
+        </div>
+
+        <div className="bg-gradient-to-br from-[#6bcf7f] to-[#48bb78] rounded-[16px] p-5">
+          <div className="flex items-center gap-3 mb-2">
+            <Icon icon="mdi:office-building" width={24} height={24} className="text-white opacity-90" />
+            <div className="text-sm text-white opacity-90">Departments</div>
+          </div>
+          <div className="font-bold text-3xl text-white">{totalDepartments}</div>
+          <div className="text-xs text-white opacity-75 mt-1">Active departments</div>
+        </div>
+
+        <div className="bg-gradient-to-br from-[#ffd93d] to-[#f6ad55] rounded-[16px] p-5">
+          <div className="flex items-center gap-3 mb-2">
+            <Icon icon="mdi:account-multiple" width={24} height={24} className="text-white opacity-90" />
+            <div className="text-sm text-white opacity-90">Teams</div>
+          </div>
+          <div className="font-bold text-3xl text-white">{totalTeams}</div>
+          <div className="text-xs text-white opacity-75 mt-1">Cross-functional teams</div>
+        </div>
+
+        <div className="bg-gradient-to-br from-[#9b8cce] to-[#8574b8] rounded-[16px] p-5">
+          <div className="flex items-center gap-3 mb-2">
+            <Icon icon="mdi:lan" width={24} height={24} className="text-white opacity-90" />
+            <div className="text-sm text-white opacity-90">Collaborations</div>
+          </div>
+          <div className="font-bold text-3xl text-white">{totalCollaborations}</div>
+          <div className="text-xs text-white opacity-75 mt-1">Cross-department tasks</div>
+        </div>
+      </div>
+
+      {/* Charts Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        {/* Department Hierarchy */}
+        <div className="bg-[#f8f9fb] rounded-[16px] p-5 border border-[#e2e8f0]">
+          <h3 className="text-base font-semibold text-[#2d3748] mb-4 flex items-center gap-2">
+            <Icon icon="mdi:file-tree" width={18} height={18} className="text-[#2d3748]" />
+            Department Hierarchy
+          </h3>
+          <div ref={hierarchyChartRef} style={{ width: '100%', height: '350px' }}></div>
+        </div>
+
+        {/* Team Size Comparison */}
+        <div className="bg-[#f8f9fb] rounded-[16px] p-5 border border-[#e2e8f0]">
+          <h3 className="text-base font-semibold text-[#2d3748] mb-4 flex items-center gap-2">
+            <Icon icon="mdi:chart-bar" width={18} height={18} className="text-[#2d3748]" />
+            Team Size Comparison
+          </h3>
+          <div ref={teamSizeChartRef} style={{ width: '100%', height: '350px' }}></div>
+        </div>
+      </div>
+
+      {/* Cross-Department Collaboration Network */}
+      {collaborationData.length > 0 && (
+        <div className="bg-[#f8f9fb] rounded-[16px] p-5 border border-[#e2e8f0] mb-6">
+          <h3 className="text-base font-semibold text-[#2d3748] mb-4 flex items-center gap-2">
+            <Icon icon="mdi:graph" width={18} height={18} className="text-[#2d3748]" />
+            Cross-Department Collaboration Network
+          </h3>
+          <div ref={collaborationChartRef} style={{ width: '100%', height: '400px' }}></div>
+        </div>
+      )}
+
+      {/* Department Details */}
+      <div className="bg-[#f8f9fb] rounded-[16px] p-5 border border-[#e2e8f0]">
+        <h3 className="text-base font-semibold text-[#2d3748] mb-4 flex items-center gap-2">
+          <Icon icon="mdi:view-list" width={18} height={18} className="text-[#2d3748]" />
+          Department Details
+        </h3>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {departments.map((dept) => (
+            <div key={dept.id} className="bg-white rounded-[12px] p-4 border border-[#e2e8f0]">
+              <div className="flex items-start justify-between mb-3">
+                <div>
+                  <h4 className="font-semibold text-[#2d3748] mb-1">{dept.name}</h4>
+                  <p className="text-xs text-[#718096] capitalize">{dept.type}</p>
+                </div>
+                <div className={`w-10 h-10 rounded-[10px] flex items-center justify-center`}
+                     style={{ backgroundColor: `${getDepartmentColor(dept.type)}20` }}>
+                  <Icon icon="mdi:office-building" width={20} height={20}
+                        style={{ color: getDepartmentColor(dept.type) }} />
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-2 text-xs">
+                <div>
+                  <span className="text-[#718096]">Users:</span>
+                  <span className="ml-1 font-medium text-[#2d3748]">{dept.user_count}</span>
+                </div>
+                <div>
+                  <span className="text-[#718096]">Teams:</span>
+                  <span className="ml-1 font-medium text-[#2d3748]">{dept.team_count}</span>
+                </div>
+                <div>
+                  <span className="text-[#718096]">Projects:</span>
+                  <span className="ml-1 font-medium text-[#2d3748]">{dept.project_count}</span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export default OrganizationOverview
