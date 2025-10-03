@@ -44,7 +44,7 @@ export const UIElementSchema = z.object({
     // Query specification for data fetching
     query: QuerySpecSchema.optional(),
 
-    // Conditionals
+    // Conditionals - can be either expression or binding
     if: z.union([ExpressionSchema, BindingSchema]).optional(),
     elseIf: z.union([ExpressionSchema, BindingSchema]).optional(),
 
@@ -101,11 +101,11 @@ export const UIElementSchema = z.object({
 
 
 export const UIComponentSchema = z.object({
-	id: z.string(),
-	name: z.string().optional(),
+    id: z.string(),
+    name: z.string().optional(),
 
     // Component props
-	props: z.record(z.string(), z.any()).optional(),
+    props: z.record(z.string(), z.any()).optional(),
 
     // Component states
     states: z.record(z.string(), z.any()).optional(),
@@ -129,7 +129,7 @@ export const UIComponentSchema = z.object({
     render:UIElementSchema,
 
     // Query specification for data fetching
-	query: QuerySpecSchema.optional()
+    query: QuerySpecSchema.optional()
 })
 
 // Infer TypeScript types from Zod schemas
@@ -139,17 +139,3 @@ export type ForDirective = z.infer<typeof ForDirectiveSchema>;
 export type QuerySpec = z.infer<typeof QuerySpecSchema>;
 export type UIElement = z.infer<typeof UIElementSchema>;
 export type UIComponent = z.infer<typeof UIComponentSchema>;
-
-// DSL Renderer Props schema
-export const DSLRendererPropsSchema = z.object({
-    dsl: UIElementSchema,
-    data: z.record(z.string(), z.any()).optional(),
-    context: z.record(z.string(), z.any()).optional(),
-});
-
-export type DSLRendererProps = z.infer<typeof DSLRendererPropsSchema>;
-
-// Validation helper
-export const validateDSL = (dsl: unknown): UIElement => {
-    return UIElementSchema.parse(dsl);
-};

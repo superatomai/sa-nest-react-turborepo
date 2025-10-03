@@ -1,9 +1,9 @@
 import React from 'react'
-// import FLOWUIRenderer2 from './ui-renderer-2' // Replaced with UpdatedDSLRenderer
 import { NodeSelectionProvider } from '../hooks/useNodeSelection'
 import { useKeyboardInteractions } from '../hooks/useKeyboardInteractions'
 import { UIComponent } from '../../types/dsl'
-import UpdatedDSLRenderer from './updatedDSLRenderer'
+// import UpdatedDSLRenderer from './updatedDSLRenderer'
+import UpdatedDSLRenderer from './updatedDSLRenderer.new'
 import { observer } from 'mobx-react-lite'
 import { editorModeStore } from '../../stores/mobx_editor_mode_store'
 
@@ -52,7 +52,6 @@ const SelectableUIRendererInner: React.FC<{
 })
 
 /**
- * A wrapper around FLOWUIRenderer2 that optionally adds node selection functionality
  * Use this when you want to enable/disable selection as a modular feature
  */
 const SelectableUIRenderer: React.FC<SelectableUIRendererProps> = observer(({

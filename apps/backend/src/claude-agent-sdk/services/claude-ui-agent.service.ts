@@ -2,6 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { query, type Options } from '@anthropic-ai/claude-agent-sdk';
 import { ProjectFileManager } from '../utils/project-file-manager';
 import { UIComponent } from 'src/types/dsl';
+import * as fs from 'fs/promises';
+import * as path from 'path';
 
 export interface ClaudeUIGenerationRequest {
 	prompt: string;
@@ -83,7 +85,7 @@ export class ClaudeUIAgentService {
 			const mode = existingJSX ? 'edit' : 'create';
 
 			// Build the Claude Code prompt that lets Claude work with actual files
-			const claudePrompt = this.buildClaudeCodePrompt(prompt, uiId, mode);
+			const claudePrompt = await this.buildClaudeCodePrompt(prompt, uiId, mode);
 
 			// Configure Claude Agent SDK with proper working directory and tools
 			const options: Options = {
@@ -275,64 +277,32 @@ export class ClaudeUIAgentService {
 
 			const projectStructure = await this.projectFileManager.ensureProjectStructure(projectId);
 
+			// Load conversion instructions from file
+			const instructionsPath = path.join(process.cwd(), 'src', 'claude-agent-sdk', 'instructions', 'tsx-to-dsl-conversion.md');
+			let conversionInstructions = '';
+			try {
+				conversionInstructions = await fs.readFile(instructionsPath, 'utf-8');
+			} catch (error) {
+				console.warn('Could not load conversion instructions file, using fallback');
+				conversionInstructions = 'Follow DSL documentation to convert TSX to DSL JSON format.';
+			}
+
 			// Build the conversion prompt
-			const conversionPrompt = `# TSX to DSL Conversion Task
+			const conversionPrompt = `# Convert TSX to DSL JSON
 
-## Your Task
-You are a specialized converter that transforms React TSX components into DSL JSON format.
+## Task
+1. Read DSL docs: \`dsl/schema.ts\`, \`dsl/doc.md\`, \`dsl/native.md\`
+2. Read TSX: \`uis/${uiId}/ui.tsx\`
+3. Read conversion guide below for detailed patterns and examples
+4. Convert to DSL JSON and write to \`uis/${uiId}/ui.json\`
 
-## Instructions
-1. **Read the DSL documentation files** in the \`dsl/\` folder:
-   - \`dsl/schema.ts\` - Understanding the DSL schema structure
-   - \`dsl/doc.md\` - Learning DSL patterns and examples
-   - \`dsl/native.md\` - Understanding native components (COMP_ECHART, COMP_AGGRID, etc.)
+---
 
-2. **Read the TSX file** at \`uis/${uiId}/ui.tsx\`
+${conversionInstructions}
 
-3. **Convert the TSX to DSL JSON** following these rules:
-   - Map React components to DSL UIComponent structure
-   - Extract component props into the DSL props field
-   - Convert state variables to the \`states\` object
-   - Convert event handlers to \`methods\` object
-   - Convert useEffect hooks to \`effects\` array
-   - Map JSX elements to DSL render tree
-   - **CRITICAL**: Each element must have BOTH \`id\` field AND \`sa-id\` in props:
-     - The \`id\` field is required by DSL schema for element identification
-     - The \`sa-id\` must be preserved in the \`props\` object from the TSX
-     - Both must be unique within the component
-     - Example: \`{"id": "main-container-el", "type": "div", "props": {"sa-id": "main-container", "className": "..."}}\`
-   - Use \`$bind\` for data bindings
-   - Use \`$exp\` for expressions with \`$deps\` for dependencies
-   - For loops should use the \`for\` directive with \`in\`, \`as\`, \`key\`, \`index\`
-   - **CRITICAL - Loop Styling Conversion Rules**:
-     - **Understanding Renderer Behavior**: The renderer creates the element with \`for\` directive as a CONTAINER, then renders loop items as children inside it
-     - **Grid Layouts**: For grid layouts, put the \`for\` directive on the grid container element itself
-       - TSX: \`<div className="grid gap-4">{items.map(item => <div className="card-style">...</div>)}</div>\`
-       - JSON: Put \`for\` on the grid div, card styling goes in \`children\`
-     - **Card/Item Styling**: Individual item styles (backgrounds, borders, shadows, padding) MUST go on the loop \`children\`, NOT on the element with \`for\` directive
-       - ✅ CORRECT: \`{"for": {...}, "props": {"className": "grid gap-4"}, "children": {"type": "div", "props": {"className": "bg-white rounded p-5"}}}\`
-       - ❌ WRONG: \`{"for": {...}, "props": {"className": "bg-white rounded p-5"}, "children": {...}}\` (creates one card containing all items)
-     - **Select/Option Elements**: For \`<select>\` with \`<option>\` elements, the \`for\` loop goes on the option element, NOT the select
-       - TSX: \`<select>{options.map(opt => <option key={opt.id} value={opt.value}>{opt.label}</option>)}</select>\`
-       - JSON: \`{"type": "select", "children": {"type": "option", "for": {...}, "props": {"value": {"$bind": "opt.value"}}, "children": {"$bind": "opt.label"}}}\`
-     - **List Items**: For \`<ul>\`/\`<li>\` structures, \`for\` goes on the \`li\` element
-       - TSX: \`<ul>{items.map(item => <li key={item.id}>{item.name}</li>)}</ul>\`
-       - JSON: \`{"type": "ul", "children": {"type": "li", "for": {...}, "children": {"$bind": "item.name"}}}\`
-   - Conditional rendering should use \`if\`, \`elseIf\`, \`else\`
-   - Native components (charts, tables, maps) should use \`COMP_\` prefix
-   - Preserve Tailwind v4 CSS classes in the \`className\` prop
-   - **CRITICAL - TypeScript Syntax Removal**:
-     - Remove ALL TypeScript type annotations from method/effect function strings
-     - Convert \`(window as any)\` to just \`window\`
-     - Convert \`(variable as Type)\` to just \`variable\`
-     - Remove type annotations like \`const x: Type\` → \`const x\`
-     - Remove type annotations from function parameters: \`(e: Event)\` → \`(e)\`
-     - The JSON must contain ONLY valid JavaScript, not TypeScript
-     - Example: \`"fn": "async () => { const result = await window.SA.queryExecutor.executeQuery('...'); }"\`
+---
 
-4. **Write the DSL JSON** to \`uis/${uiId}/ui.json\`
-
-5. **Important**: The JSON must have this exact structure:
+## Final Output Structure
 \`\`\`json
 {
   "id": "${uiId}",
@@ -343,38 +313,15 @@ You are a specialized converter that transforms React TSX components into DSL JS
   "effects": [],
   "data": {},
   "render": {
-    "id": "root-element",
+    "id": "root-el",
     "type": "div",
-    "props": {
-      "sa-id": "main-container",
-      "className": "..."
-    },
-    "children": [
-      {
-        "id": "child-element",
-        "type": "div",
-        "props": {
-          "sa-id": "child-container",
-          "className": "..."
-        }
-      }
-    ]
+    "props": {"sa-id": "main-container", "className": "..."},
+    "children": [...]
   }
 }
 \`\`\`
 
-**Note**: Every element has:
-- \`id\` field (DSL requirement) - unique identifier for DSL
-- \`sa-id\` in props (from TSX) - unique identifier for UI elements
-
-## Process
-1. Use **Read** tool to read \`dsl/schema.ts\`, \`dsl/doc.md\`, and \`dsl/native.md\`
-2. Use **Read** tool to read the TSX file at \`uis/${uiId}/ui.tsx\`
-3. Analyze the TSX structure and convert to DSL format
-4. Use **Write** tool to save the DSL JSON to \`uis/${uiId}/ui.json\`
-5. Ensure the JSON is valid and follows the schema exactly
-
-Start the conversion now.`;
+Start conversion now. Write the complete DSL JSON to \`uis/${uiId}/ui.json\`.`;
 
 			// Configure Claude Agent SDK for conversion
 			const options: Options = {
@@ -440,342 +387,67 @@ Start the conversion now.`;
 		}
 	}
 
-	private buildClaudeCodePrompt(prompt: string, uiId: string, mode: 'create' | 'edit' = 'create'): string {
+	private async buildClaudeCodePrompt(prompt: string, uiId: string, mode: 'create' | 'edit' = 'create'): Promise<string> {
+		// Load TSX generation instructions
+		const instructionsPath = path.join(process.cwd(), 'src', 'claude-agent-sdk', 'instructions', 'tsx-generation-guide.md');
+		let tsxInstructions = '';
+		try {
+			tsxInstructions = await fs.readFile(instructionsPath, 'utf-8');
+		} catch (error) {
+			console.warn('Could not load TSX generation instructions file');
+		}
+
 		if (mode === 'edit') {
-			return `# React Component Editing Task
+			return `# Edit React Component
 
 ## User Request
 ${prompt}
 
-## Your Task
-You are working within a project directory. The user wants to **ADD TO** or **MODIFY** an existing React component.
+## Task
+1. Read \`CLAUDE.md\` for project guidelines
+2. Read existing component at \`uis/${uiId}/ui.tsx\`
+3. **Use Edit tool (NOT Write)** to modify the component
+4. **PRESERVE all existing elements** unless explicitly asked to remove them
 
-**🚨 CRITICAL: DO NOT REPLACE THE ENTIRE COMPONENT! You must PRESERVE all existing elements and ADD new ones.**
+## Editing Behavior
+- **Default: ADD, not REPLACE** - Keep all existing JSX, state, and hooks
+- "add X to the component" → Insert X while preserving everything else
+- "modify Y" → Only change Y, keep the rest
+- "replace with Z" → Only then replace entire component
 
-1. **First, read the CLAUDE.md file** to understand the project structure and guidelines
-2. **Read the existing component** at the path: \`uis/${uiId}/ui.tsx\`
-3. **Understand the current component structure** and implementation
-4. **Add or modify** according to the user's request while **keeping all existing elements**
+## TSX Requirements
+1. **Unique \`sa-id\` on EVERY element** - Use descriptive names like \`sa-id="header-title"\`
+2. **Tailwind v4 CSS only** - Use classes like \`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4\`
+3. **Grid layouts: Loop on grid container** - \`{items.map(...)}\` must be directly inside the element with \`grid\` class
+4. **Functional component with hooks** - Keep default export
 
-## Editing Guidelines
-When the user says:
-- "add a login form **to this component**" → Add the login form AS PART OF the existing component, keeping all existing elements
-- "add X to the component" → Insert X into the existing structure, preserving everything else
-- "modify the button" → Only change the button, keep everything else
-- "replace the component with X" → Only then replace the entire component
-
-**Default behavior: ADDITIVE, not REPLACEMENT**
-
-## Component Requirements
-- **PRESERVE ALL EXISTING ELEMENTS** - Keep all existing JSX, state, hooks, and logic unless explicitly asked to remove them
-- When adding new elements, integrate them into the existing component structure
-- Maintain React functional component structure with hooks
-- Keep the default export
-- Make modifications responsive and accessible using Tailwind CSS
-- Follow existing naming conventions and patterns
-- **IMPORTANT: Use ONLY Tailwind v4 CSS classes for styling** - replace any inline styles or custom CSS with Tailwind v4 utilities
-- Use Tailwind v4's responsive prefixes (sm:, md:, lg:, xl:, 2xl:) for responsive design
-- Apply appropriate Tailwind v4 utility classes for colors, spacing, typography, layout, etc.
-- **CRITICAL: Add unique \`sa-id\` attribute to EVERY element in the component**
-  - Every HTML element (div, button, span, input, etc.) must have a unique \`sa-id\` attribute
-  - Use descriptive names like \`sa-id="header-title"\`, \`sa-id="submit-button"\`, \`sa-id="user-list-container"\`
-  - Ensure sa-id values are unique within the component
-  - Example: \`<div sa-id="main-container" className="flex flex-col">\`
-
-## Responsive Grid Guidelines for LIST UIs
-When creating or editing LIST components (users list, products list, database overview, etc.):
-- **Grid Layout**: Use responsive grid with proper breakpoints
-  - Mobile (default): 1 column - \`grid-cols-1\`
-  - Small screens (640px+): 2 columns - \`sm:grid-cols-2\`
-  - Large screens (1024px+): 3 columns - \`lg:grid-cols-3\`
-  - Extra large (1280px+): 4 columns - \`xl:grid-cols-4\`
-  - Example: \`className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"\`
-- **Card Spacing**: Use smaller gaps for better density - \`gap-4\` (1rem) instead of \`gap-6\`
-- **Card Design**:
-  - Use \`bg-white\` for cards on \`bg-[#d4dce6]\` background
-  - Add proper padding: \`p-5\` or \`p-6\`
-  - Use \`flex flex-col\` to ensure consistent card heights
-  - Add hover effects: \`hover:shadow-lg transition-all\`
-
-## 🚨 CRITICAL: Loop Placement for Grid Layouts
-**IMPORTANT**: When using loops with grid layouts, the loop (map/for) MUST be on the SAME element that has the grid classes.
-
-**TSX - CORRECT** ✅:
-\`\`\`tsx
-<div sa-id="users-grid" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-  {users.map((user) => (
-    <div key={user.id} className="bg-white rounded-lg p-5">
-      {/* Card content */}
-    </div>
-  ))}
-</div>
-\`\`\`
-
-**TSX - WRONG** ❌:
-\`\`\`tsx
-<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-  <div>
-    {users.map((user) => <div key={user.id}>...</div>)}
-  </div>
-</div>
-\`\`\`
-
-**Why**: Adding a wrapper element between the grid container and grid items breaks CSS Grid layout.
-- **Content Visibility**: Ensure all content is visible
-  - Use \`truncate\` only for long text that should be cut off
-  - Use \`space-y-3\` or \`space-y-4\` for vertical spacing between elements
-  - Don't hide important information - make cards taller if needed
-- **Typography**:
-  - Card titles: \`text-lg font-bold\`
-  - Secondary text: \`text-sm\`
-  - Labels: \`text-xs\` or \`text-sm\`
-
-## Process
-1. Use the **Read** tool to check CLAUDE.md for project guidelines
-2. Use the **Read** tool to examine the existing component at \`uis/${uiId}/ui.tsx\`
-3. **IMPORTANT**: Use the **Edit** tool (NOT Write) to modify specific parts of the TSX file
-4. If adding new elements, use Edit to insert them while preserving existing code
-5. Ensure modifications follow the project's established patterns
-
-## Important
-- Work within the current directory (the project root)
-- Use your file manipulation tools (Read, Write, Edit, Glob, Grep)
-- **USE EDIT TOOL, NOT WRITE TOOL** - Edit preserves existing code, Write replaces everything
-- The file path is relative: \`uis/${uiId}/ui.tsx\`
-- **When in doubt, ADD rather than REPLACE**
-
-Start by reading the CLAUDE.md file and the existing component, then make the requested modifications using the Edit tool.`;
+Start by reading the files, then use Edit tool to make changes.`;
 		} else {
-			return `# React Component Generation Task
+			return `# Create React Component
 
 ## User Request
 ${prompt}
 
-## Your Task
-You are working within a project directory. Please use your file tools to:
+## Task
+Read the comprehensive guide below, then follow the steps to create the component.
 
-1. **First, read the CLAUDE.md file** to understand the project structure and guidelines
-2. **Check if there are existing components** by listing the uis/ directory to see patterns
-3. **Create a React component** at the path: \`uis/${uiId}/ui.tsx\`
+---
 
-## Component Requirements
-- Use modern React functional components with hooks
-- Export the component as default
-- Include proper imports (React, hooks, etc.)
-- Make it responsive and accessible using Tailwind CSS
-- Use descriptive component names based on functionality
-- **IMPORTANT: Use ONLY Tailwind v4 CSS classes for styling** - no inline styles or custom CSS
-- Use Tailwind v4's responsive prefixes (sm:, md:, lg:, xl:, 2xl:) for responsive design
-- Apply appropriate Tailwind v4 utility classes for colors, spacing, typography, layout, etc.
-- **CRITICAL: Add unique \`sa-id\` attribute to EVERY element in the component**
-  - Every HTML element (div, button, span, input, etc.) must have a unique \`sa-id\` attribute
-  - Use descriptive names like \`sa-id="header-title"\`, \`sa-id="submit-button"\`, \`sa-id="user-list-container"\`
-  - Ensure sa-id values are unique within the component
-  - Example: \`<div sa-id="main-container" className="flex flex-col">\`
+${tsxInstructions}
 
-## Responsive Grid Guidelines for LIST UIs
-When creating LIST components (users list, products list, database overview, etc.):
-- **Grid Layout**: Use responsive grid with proper breakpoints
-  - Mobile (default): 1 column - \`grid-cols-1\`
-  - Small screens (640px+): 2 columns - \`sm:grid-cols-2\`
-  - Large screens (1024px+): 3 columns - \`lg:grid-cols-3\`
-  - Extra large (1280px+): 4 columns - \`xl:grid-cols-4\`
-  - Example: \`className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"\`
-- **Card Spacing**: Use smaller gaps for better density - \`gap-4\` (1rem) instead of \`gap-6\`
-- **Card Design**:
-  - Use \`bg-white\` for cards on \`bg-[#d4dce6]\` background
-  - Add proper padding: \`p-5\` or \`p-6\`
-  - Use \`flex flex-col\` to ensure consistent card heights
-  - Add hover effects: \`hover:shadow-lg transition-all\`
+---
 
-## 🚨 CRITICAL: Loop Placement for Grid Layouts
-**IMPORTANT**: When using loops with grid layouts, the \`for\` directive MUST be on the SAME element that has the grid classes.
+## Your Steps
+1. Read \`CLAUDE.md\`, \`database/schema.md\`, and \`design/README.md\`
+2. Identify the CRUD operation from the user request (CREATE, LIST, UPDATE, or DELETE)
+3. Follow the appropriate pattern from the guide above
+4. Create component at \`uis/${uiId}/ui.tsx\`
 
-**CORRECT** ✅:
-\`\`\`tsx
-<div sa-id="users-grid" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-  {users.map((user) => (
-    <div key={user.id} className="bg-white rounded-lg p-5">
-      {/* Card content */}
-    </div>
-  ))}
-</div>
-\`\`\`
+**CRITICAL:**
+- "create [entity]" = CREATE operation = Generate FORM ONLY (no list!)
+- "list [entities]" = LIST operation = Generate grid of cards (no form!)
 
-**JSON DSL CORRECT** ✅:
-\`\`\`json
-{
-  "id": "users-grid",
-  "type": "div",
-  "props": {
-    "sa-id": "users-grid",
-    "className": "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
-  },
-  "for": {
-    "in": { "$bind": "users" },
-    "as": "user",
-    "key": "user.id"
-  },
-  "children": {
-    "id": "user-card",
-    "type": "div",
-    "props": { "className": "bg-white rounded-lg p-5" },
-    "children": [/* card content */]
-  }
-}
-\`\`\`
-
-**WRONG** ❌ - DO NOT DO THIS:
-\`\`\`tsx
-<div sa-id="users-grid" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-  <div sa-id="loop-wrapper">
-    {users.map((user) => (
-      <div key={user.id} className="bg-white rounded-lg p-5">
-        {/* Card content */}
-      </div>
-    ))}
-  </div>
-</div>
-\`\`\`
-
-**JSON DSL WRONG** ❌ - DO NOT DO THIS:
-\`\`\`json
-{
-  "id": "users-grid",
-  "type": "div",
-  "props": {
-    "className": "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
-  },
-  "children": {
-    "id": "loop-wrapper",
-    "type": "div",
-    "for": { "in": { "$bind": "users" }, "as": "user" },
-    "children": {/* card */}
-  }
-}
-\`\`\`
-
-**Why this matters**: Adding a wrapper element between the grid container and the grid items breaks the CSS Grid layout. The loop must be directly on the grid container.
-
-## 🚨 CRITICAL: Conditional Rendering Structure (if/elseIf/else)
-
-**IMPORTANT**: When converting TSX with multiple if/else returns, you MUST use NESTED conditionals, NOT a flat if/elseIf/else structure.
-
-### TSX Pattern (Multiple Early Returns):
-\`\`\`tsx
-if (isLoading) {
-  return <div className="loading">Loading...</div>
-}
-
-if (error) {
-  return <div className="error">Error: {error}</div>
-}
-
-return <div className="main">Main Content...</div>
-\`\`\`
-
-### ❌ WRONG - Flat Structure (Root element shows loading + error content):
-\`\`\`json
-{
-  "id": "root-el",
-  "type": "div",
-  "if": { "$exp": "isLoading", "$deps": ["isLoading"] },
-  "elseIf": { "$exp": "error", "$deps": ["error"] },
-  "else": {
-    "id": "error-container",
-    "children": "Error message"
-  },
-  "props": { "className": "loading" },
-  "children": "Loading..."
-}
-\`\`\`
-**Problem**: The root element represents BOTH loading (if true) AND error (elseIf true). They share the same element!
-
-### ✅ CORRECT - Nested Structure (Each condition has its own complete element):
-\`\`\`json
-{
-  "id": "root-el",
-  "type": "div",
-  "if": { "$exp": "isLoading", "$deps": ["isLoading"] },
-  "else": {
-    "id": "error-check-el",
-    "type": "div",
-    "if": { "$exp": "error", "$deps": ["error"] },
-    "else": {
-      "id": "main-content-el",
-      "type": "div",
-      "props": { "sa-id": "main-container", "className": "main" },
-      "children": [
-        { "id": "header-el", "type": "div", "children": "Header" },
-        { "id": "content-el", "type": "div", "children": "Content" }
-      ]
-    },
-    "props": { "sa-id": "error-container", "className": "error" },
-    "children": {
-      "id": "error-message-el",
-      "type": "div",
-      "children": { "$bind": "error" }
-    }
-  },
-  "props": { "sa-id": "loading-container", "className": "loading" },
-  "children": {
-    "id": "loading-spinner-el",
-    "type": "div",
-    "children": "Loading..."
-  }
-}
-\`\`\`
-
-**Key Rules**:
-1. **Each condition level needs its own complete element structure** with props, className, and children
-2. **Root element** = content shown when \`if\` is TRUE
-3. **else object** = complete element structure shown when \`if\` is FALSE
-4. **For 3+ states**, nest the conditionals: if > else > if > else > main content
-
-**Renderer Logic**:
-- When \`if: isLoading\` is TRUE: renders root element (props + children)
-- When \`if: isLoading\` is FALSE: renders \`else\` object as a new element
-- The \`else\` object can have its own \`if/else\` for the next condition
-
-**Simple if/else** (Only 2 states):
-\`\`\`json
-{
-  "id": "root-el",
-  "type": "div",
-  "if": { "$exp": "isLoading", "$deps": ["isLoading"] },
-  "else": {
-    "id": "content-el",
-    "type": "div",
-    "props": { "sa-id": "main", "className": "content" },
-    "children": "Content here"
-  },
-  "props": { "sa-id": "loading", "className": "loading" },
-  "children": "Loading..."
-}
-\`\`\`
-
-- **Content Visibility**: Ensure all content is visible
-  - Use \`truncate\` only for long text that should be cut off
-  - Use \`space-y-3\` or \`space-y-4\` for vertical spacing between elements
-  - Don't hide important information - make cards taller if needed
-- **Typography**:
-  - Card titles: \`text-lg font-bold\`
-  - Secondary text: \`text-sm\`
-  - Labels: \`text-xs\` or \`text-sm\`
-
-## Process
-1. Use the **Read** tool to check CLAUDE.md for project guidelines
-2. Use the **Glob** or **Read** tool to check existing components for patterns
-3. Use the **Write** tool to create the TSX file at \`uis/${uiId}/ui.tsx\`
-4. Ensure the component follows the project's established patterns
-
-## Important
-- Work within the current directory (the project root)
-- Use your file manipulation tools (Read, Write, Edit, Glob, Grep)
-- Follow any existing patterns you find in the project
-- The file path is relative: \`uis/${uiId}/ui.tsx\`
-
-Start by reading the CLAUDE.md file to understand the project context, then create the component.`;
+Start by reading the project files, then create the component.`;
 		}
 	}
 

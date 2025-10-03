@@ -1225,11 +1225,11 @@ const EditorSSE = () => {
 
 											return (
 												<div key={index}>
-													<div className="text-xs font-mono text-teal-700">
-														<span className="text-teal-500">
+													<div className="text-xs font-mono text-teal-700 flex flex-wrap items-start">
+														<span className="text-teal-500 flex-shrink-0">
 															{event.timestamp.toLocaleTimeString()}
 														</span>
-														<span className={`ml-2 truncate w-full${
+														<span className={`ml-2 break-words flex-1 ${
 															event.type === 'error' ? 'text-red-600' :
 															event.type === 'complete' ? 'text-green-600 font-semibold' :
 															event.type === 'tool_use' ? 'text-purple-600' :
