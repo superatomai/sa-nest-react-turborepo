@@ -52,8 +52,8 @@ class DuckDBStorage extends Dexie {
       // Store the new file
       await this.duckdbFiles.add(fileRecord);
 
-      console.log(`💾 DuckDB file stored with Dexie: ${name} (${this.formatBytes(dataCopy.length)})`);
-      console.log(`📦 Storage successful, ID: ${id}, timestamp: ${new Date(now).toISOString()}`);
+      // console.log(`💾 DuckDB file stored with Dexie: ${name} (${this.formatBytes(dataCopy.length)})`);
+      // console.log(`📦 Storage successful, ID: ${id}, timestamp: ${new Date(now).toISOString()}`);
 
       return id;
     } catch (error) {
@@ -69,19 +69,19 @@ class DuckDBStorage extends Dexie {
     try {
       const files = await this.duckdbFiles.orderBy('uploadedAt').reverse().toArray();
 
-      console.log(`📦 Dexie query returned ${files.length} files`);
+      // console.log(`📦 Dexie query returned ${files.length} files`);
 
       if (files.length === 0) {
-        console.log('📦 No files found in Dexie storage');
+        // console.log('📦 No files found in Dexie storage');
         return null;
       }
 
       const file = files[0]; // Most recent
-      console.log(`📦 Most recent file:`, {
-        name: file.name,
-        size: file.size,
-        uploadedAt: new Date(file.uploadedAt).toISOString()
-      });
+      // console.log(`📦 Most recent file:`, {
+      //   name: file.name,
+      //   size: file.size,
+      //   uploadedAt: new Date(file.uploadedAt).toISOString()
+      // });
 
       // Update last accessed time (non-blocking)
       this.updateLastAccessed(file.id).catch(() => {
@@ -115,7 +115,7 @@ class DuckDBStorage extends Dexie {
   async clearFiles(): Promise<void> {
     try {
       await this.duckdbFiles.clear();
-      console.log('🗑️ Cleared all DuckDB files from Dexie storage');
+      // console.log('🗑️ Cleared all DuckDB files from Dexie storage');
     } catch (error) {
       console.warn('📦 Dexie clear failed, continuing anyway:', error);
     }
@@ -165,16 +165,16 @@ class DuckDBStorage extends Dexie {
   async debugStorage(): Promise<void> {
     try {
       const files = await this.duckdbFiles.toArray();
-      console.log('📦 DEBUG: Dexie storage contents:', files.map(f => ({
-        id: f.id,
-        name: f.name,
-        size: f.size,
-        uploadedAt: new Date(f.uploadedAt).toISOString(),
-        hasData: f.data instanceof Uint8Array,
-        dataLength: f.data?.length || 0
-      })));
+      // console.log('📦 DEBUG: Dexie storage contents:', files.map(f => ({
+      //   id: f.id,
+      //   name: f.name,
+      //   size: f.size,
+      //   uploadedAt: new Date(f.uploadedAt).toISOString(),
+      //   hasData: f.data instanceof Uint8Array,
+      //   dataLength: f.data?.length || 0
+      // })));
     } catch (error) {
-      console.log('📦 DEBUG: Error accessing Dexie storage:', error);
+      console.error('📦 DEBUG: Error accessing Dexie storage:', error);
     }
   }
 

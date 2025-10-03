@@ -38,7 +38,7 @@ export class SchemaGenerator {
     }
 
     try {
-      console.log(`🔍 Generating schema for database: ${databaseName}`);
+      // console.log(`🔍 Generating schema for database: ${databaseName}`);
 
       // Get attached databases
       const attachedDatabasesResult = await conn.query(`
@@ -60,13 +60,13 @@ export class SchemaGenerator {
       const tables: TableSchema[] = [];
       const tableRows = tablesResult.toArray();
 
-      console.log(`📊 Found ${tableRows.length} tables`);
+      // console.log(`📊 Found ${tableRows.length} tables`);
 
       for (const row of tableRows) {
         const tableName = row.table_name;
         const fullTableName = databaseName === 'main' ? tableName : `${databaseName}.${tableName}`;
 
-        console.log(`📋 Processing table: ${fullTableName}`);
+        // console.log(`📋 Processing table: ${fullTableName}`);
 
         try {
           // Get columns for each table
@@ -104,7 +104,7 @@ export class SchemaGenerator {
             description: `Table from ${databaseName} database`
           });
 
-          console.log(`✅ Table ${tableName}: ${columns.length} columns, ${rowCount || '?'} rows`);
+          // console.log(`✅ Table ${tableName}: ${columns.length} columns, ${rowCount || '?'} rows`);
 
         } catch (error) {
           console.error(`❌ Error processing table ${tableName}:`, error);
@@ -131,7 +131,7 @@ export class SchemaGenerator {
       // Cache the schema
       this.schema = schemaInfo;
 
-      console.log(`✅ Schema generated: ${tables.length} tables, ${relationships.length} relationships`);
+      // console.log(`✅ Schema generated: ${tables.length} tables, ${relationships.length} relationships`);
       return schemaInfo;
 
     } catch (error) {
@@ -173,7 +173,7 @@ export class SchemaGenerator {
         }
       }
 
-      console.log(`🔗 Detected ${relationships.length} relationships`);
+      // console.log(`🔗 Detected ${relationships.length} relationships`);
     } catch (error) {
       console.warn('Warning: Could not detect relationships:', error);
     }

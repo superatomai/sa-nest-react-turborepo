@@ -75,16 +75,16 @@ export class ClaudeUIGenerationSSEService {
 				graphql: "",
 			};
 
-			sseController.sendMessage('status', '🔌 Checking for active data agent connection...');
-			try {
-				const checkAgentConnection = await this.webSocketManager.checkAgentConnectionForProject(projectId);
-				hasActiveAgent = checkAgentConnection.hasAgent;
-				sseController.sendMessage('status', hasActiveAgent ? '✅ Active data agent found' : '❌ No active data agent found');
-			} catch (error) {
-				console.error('Error checking agent connection:', error);
-				hasActiveAgent = false;
-				sseController.sendMessage('status', '❌ No active data agent found');
-			}
+			// sseController.sendMessage('status', '🔌 Checking for active data agent connection...');
+			// try {
+			// 	const checkAgentConnection = await this.webSocketManager.checkAgentConnectionForProject(projectId);
+			// 	hasActiveAgent = checkAgentConnection.hasAgent;
+			// 	sseController.sendMessage('status', hasActiveAgent ? '✅ Active data agent found' : '❌ No active data agent found');
+			// } catch (error) {
+			// 	console.error('Error checking agent connection:', error);
+			// 	hasActiveAgent = false;
+			// 	sseController.sendMessage('status', '❌ No active data agent found');
+			// }
 
 			if (hasActiveAgent) {
 				sseController.sendMessage('status', '📋 Getting docs schema via WebSocket...');

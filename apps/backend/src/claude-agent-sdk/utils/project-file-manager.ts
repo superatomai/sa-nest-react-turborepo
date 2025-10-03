@@ -7,6 +7,7 @@ export interface ProjectStructure {
 	dslPath: string;
 	designPath: string;
 	apiPath: string;
+	databasePath: string;
 	uisPath: string;
 	claudeMdPath: string;
 	claudeConfigPath: string;
@@ -41,11 +42,12 @@ export class ProjectFileManager {
 		const dslPath = path.join(projectPath, 'dsl');
 		const designPath = path.join(projectPath, 'design');
 		const apiPath = path.join(projectPath, 'api');
+		const databasePath = path.join(projectPath, 'database');
 		const uisPath = path.join(projectPath, 'uis');
 		const claudeMdPath = path.join(projectPath, 'CLAUDE.md');
 		const claudeConfigPath = path.join(projectPath, '.claude');
 
-		const dirs = [projectPath, dslPath, designPath, apiPath, uisPath, claudeConfigPath];
+		const dirs = [projectPath, dslPath, designPath, apiPath, databasePath, uisPath, claudeConfigPath];
 
 		for (const dir of dirs) {
 			try {
@@ -67,12 +69,14 @@ export class ProjectFileManager {
 		await this.createDSLFiles(dslPath);
 		await this.createDesignSystemReadme(designPath);
 		await this.createOpenAPISpec(apiPath);
+		await this.createDatabaseSchema(databasePath);
 
 		return {
 			projectPath,
 			dslPath,
 			designPath,
 			apiPath,
+			databasePath,
 			uisPath,
 			claudeMdPath,
 			claudeConfigPath
@@ -216,154 +220,18 @@ export class ProjectFileManager {
 	}
 
 	private async createClaudeMd(claudeMdPath: string, projectId: string): Promise<void> {
-		const claudeMdContent = `# Claude Agent Instructions for Project: ${projectId}
+		const claudeMdContentPath = path.join(process.cwd(), '/src/claude-agent-sdk/docs/claude.md');
+		// await fs.writeFile(claudeMdPath, claudeMdContent);
+    let claudeMdContent;
 
-## Project Overview
-This project uses Claude Code for React JSX component generation. You have full access to the project files and should use your file manipulation tools to create, read, and edit files as needed.
-
-## 🎯 Your Primary Task
-**Generate React JSX components based on user requests.** When a user asks for a UI component, you must:
-
-1. **Create actual JSX files** - Not JSON, not descriptions, but real React JSX code
-2. **Use your file tools** - Read, Write, Edit, Glob, Grep to work with project files
-3. **Generate complete components** - Functional, importable React components
-
-## Your Role
-You are a React component developer working within this project. When asked to create UI components:
-
-1. **Analyze the user request** - Understand what type of component they want
-2. **Read existing files** - Use your file reading tools to understand project structure
-3. **Generate TSX components** - Write actual React components in TSX format
-4. **Save to correct location** - Place components in \`uis/{uiId}/ui.tsx\` files
-5. **Follow React patterns** - Use modern functional components with hooks
-
-## Project Structure
-- \`dsl/\`: Contains DSL context and component definitions
-- \`design/\`: Design system and UI guidelines
-- \`api/\`: API schemas and documentation
-- \`uis/\`: Generated UI components organized by UI ID
-  - Each UI has its own folder: \`uis/{uiId}/\`
-  - **Main component file: \`uis/{uiId}/ui.tsx\`** ← 🎯 **THIS IS WHAT YOU CREATE**
-  - Metadata file: \`uis/{uiId}/ui.json\`
-
-## UI Generation Workflow
-When you receive a UI generation request:
-
-1. **Read context files** - Use Read tool to read:
-   - \`CLAUDE.md\` (this file) - Understand your role and guidelines
-   - \`design/README.md\` - Get design system guidelines (colors, typography, spacing)
-   - \`dsl/native.md\` - Learn about native components available (charts, maps, tables)
-   - \`api/openapi.yaml\` - Understand API endpoints for data integration
-2. **Check existing patterns** - Use Glob tool to list existing components in \`uis/\` directory
-3. **Read sample components** - If any exist, read them to understand the coding style
-4. **Understand the request** - Analyze what the user is asking for
-5. **Generate TSX component** - Create a React component that fulfills the request
-6. **Use Write tool** - Save the component to \`uis/{uiId}/ui.tsx\`
-7. **Make it complete** - Ensure it's a fully functional React component
-
-## Component Requirements
-- **TSX Format**: Must be valid React TSX syntax
-- **Functional Components**: Use modern React functional components
-- **Default Export**: Export the component as default
-- **Proper Imports**: Include \`import React\` and any needed hooks
-- **Tailwind v4 CSS Styling**: Use ONLY Tailwind v4 CSS classes for all styling
-  - No inline styles (\`style={{}}\`) - use Tailwind v4 utilities instead
-  - No custom CSS classes - use Tailwind v4's utility classes
-  - Use responsive prefixes: \`sm:\`, \`md:\`, \`lg:\`, \`xl:\`, \`2xl:\`
-  - Examples: \`bg-blue-500\`, \`text-white\`, \`p-4\`, \`rounded-lg\`, \`hover:bg-blue-600\`
-- **Unique Element IDs**: **CRITICAL - Every element MUST have a unique \`sa-id\` attribute**
-  - Add \`sa-id\` to EVERY HTML element (div, button, span, input, section, etc.)
-  - Use descriptive, kebab-case names: \`sa-id="header-title"\`, \`sa-id="submit-button"\`
-  - Ensure all sa-id values are unique within the component
-  - Example: \`<div sa-id="main-container" className="flex flex-col p-4">\`
-  - Example: \`<button sa-id="login-submit-btn" className="bg-blue-500 text-white px-4 py-2">\`
-- **Responsive Design**: Make components work on mobile and desktop using Tailwind v4 breakpoints
-- **Accessibility**: Include proper ARIA labels and semantic HTML
-- **Props Support**: Accept props for data and customization
-- **Clean Code**: Well-formatted, readable, production-ready code
-
-## Example Component Structure
-\`\`\`jsx
-import React, { useState, useEffect } from 'react';
-
-const UserRequestedComponent = ({ data, onAction, className }) => {
-  const [loading, setLoading] = useState(false);
-  const [state, setState] = useState(null);
-
-  useEffect(() => {
-    // Component logic here
-  }, []);
-
-  return (
-    <div sa-id="main-container" className={\`bg-white rounded-lg shadow-md p-6 \${className || ''}\`}>
-      <h2 sa-id="component-title" className="text-2xl font-bold text-gray-900 mb-4">Component Based on User Request</h2>
-      {loading ? (
-        <div sa-id="loading-state" className="flex items-center justify-center p-8">
-          <div sa-id="loading-spinner" className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-          <span sa-id="loading-text" className="ml-2 text-gray-600">Loading...</span>
-        </div>
-      ) : (
-        <div sa-id="content-container" className="space-y-4">
-          {/* Implement the user's requested functionality */}
-          {data && (
-            <div sa-id="data-display-box" className="bg-gray-50 rounded-md p-4 border border-gray-200">
-              {/* Display data based on user request */}
-              <p sa-id="data-content-text" className="text-gray-700">Data content here</p>
-            </div>
-          )}
-          <button
-            sa-id="action-button"
-            onClick={onAction}
-            className="bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-          >
-            Action Button
-          </button>
-        </div>
-      )}
-    </div>
-  );
-};
-
-export default UserRequestedComponent;
-\`\`\`
-
-## 🚨 Critical Instructions
-1. **ALWAYS generate TSX** - Never just describe what you would create
-2. **USE YOUR FILE TOOLS** - Read, Write, Edit files directly
-3. **CREATE REAL COMPONENTS** - The TSX must be functional and importable
-4. **SAVE TO CORRECT PATH** - Always use \`uis/{uiId}/ui.tsx\` for the component file
-5. **ADD sa-id TO ALL ELEMENTS** - Every single HTML element must have a unique \`sa-id\` attribute
-6. **USE TAILWIND v4** - All styling must use Tailwind v4 utility classes
-7. **FOLLOW USER REQUEST** - Build exactly what the user asks for
-8. **MAKE IT COMPLETE** - Include all necessary imports, exports, and functionality
-
-## Example User Requests & Responses
-- **User**: "Create a login form"
-- **You**: Use Write tool to create a TSX login form with username/password fields
-- **User**: "Build a product card component"
-- **You**: Use Write tool to create a TSX product card with image, title, price, etc.
-- **User**: "Make a data table"
-- **You**: Use Write tool to create a TSX table component with sorting and filtering
-
-## Tools You Have Available
-- **Read**: Read existing files to understand patterns
-- **Write**: Create new TSX component files
-- **Edit**: Modify existing components
-- **Glob**: List files and directories
-- **Grep**: Search for patterns in code
-- **Bash**: Run shell commands if needed
-
-## Important Notes
-- You have full file system access - use it actively!
-- Generate actual TSX code, not pseudocode or descriptions
-- Each component should be production-ready
-- Follow React best practices and modern patterns
-- Make components reusable and well-structured
-- Test your understanding by reading existing project files first
-
-## Last Updated
-${new Date().toISOString()}
-`;
+    try {
+			claudeMdContent = await fs.readFile(claudeMdContentPath, 'utf-8');
+		} catch (error) {
+			console.error('Failed to read claude.md template:', error);
+			console.error('Attempted path:', claudeMdContentPath);
+			// Fallback to minimal content if template file is not found
+			claudeMdContent = '# Claude AI Documentation\n\nThis is the documentation for the Claude AI project.';
+		}
 
 		await fs.writeFile(claudeMdPath, claudeMdContent);
 	}
@@ -1572,13 +1440,15 @@ const fullContext = {
 			await fs.access(readmePath);
 		} catch {
 			// Read the design system content from the template file
-			const templatePath = path.join(__dirname, 'design-system-readme.md');
+			// Use process.cwd() to get project root, then navigate to source files
+			const templatePath = path.join(process.cwd(), '/src/claude-agent-sdk/docs/design-system-readme.md');
 			let designSystemContent: string;
 
 			try {
 				designSystemContent = await fs.readFile(templatePath, 'utf-8');
 			} catch (error) {
 				console.error('Failed to read design-system-readme.md template:', error);
+				console.error('Attempted path:', templatePath);
 				// Fallback to minimal content if template file is not found
 				designSystemContent = `# Design System Guidelines
 
@@ -2247,6 +2117,38 @@ ${new Date().toISOString()}
 				exists: true,
 				uiCount: uis.length
 			};
+		}
+	}
+
+	private async createDatabaseSchema(databasePath: string): Promise<void> {
+		const schemaPath = path.join(databasePath, 'schema.md');
+		try {
+			await fs.access(schemaPath);
+		} catch {
+			// Read the database schema content from the template file
+			// Use process.cwd() to get project root, then navigate to source files
+			const templatePath = path.join(process.cwd(), '/src/claude-agent-sdk/docs/database-schema.md');
+			let schemaContent: string;
+
+			try {
+				schemaContent = await fs.readFile(templatePath, 'utf-8');
+			} catch (error) {
+				console.error('Failed to read database-schema.md template:', error);
+				console.error('Attempted path:', templatePath);
+				// Fallback to minimal content if template file is not found
+				schemaContent = `# Database Schema Documentation
+
+This file contains the database schema information for the project.
+
+## Overview
+The database schema will be documented here when available.
+
+## Usage
+Claude Code will read this file when answering database-related questions.
+`;
+			}
+
+			await fs.writeFile(schemaPath, schemaContent);
 		}
 	}
 }
