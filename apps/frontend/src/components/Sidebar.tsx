@@ -197,7 +197,7 @@ const AppSidebar = () => {
                 <div className="px-2 py-1 max-w-[150px] overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                   <OrganizationSwitcher
                     createOrganizationMode="modal"
-                    afterLeaveOrganizationUrl="/create-organization"
+                    afterLeaveOrganizationUrl="/projects"
                     appearance={{
                       elements: {
                         rootBox: "w-full",
@@ -211,7 +211,7 @@ const AppSidebar = () => {
                 <div className="flex justify-center px-2 relative  ">
                   <OrganizationSwitcher
                     createOrganizationMode="modal"
-                    afterLeaveOrganizationUrl="/create-organization"
+                    afterLeaveOrganizationUrl="/projects"
                     appearance={{
                       elements: {
                         rootBox: "",
