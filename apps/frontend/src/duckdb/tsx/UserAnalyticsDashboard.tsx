@@ -302,7 +302,11 @@ const UserAnalyticsDashboard: React.FC<UserAnalyticsDashboardProps> = ({ userId 
         backgroundColor: '#ffffff',
         borderColor: '#e2e8f0',
         borderWidth: 1,
-        textStyle: { color: '#2d3748' }
+        textStyle: { color: '#2d3748' },
+        formatter: (params: any) => {
+          const param = Array.isArray(params) ? params[0] : params
+          return `${param.name}<br/>${param.seriesName}: ${Number(param.value).toFixed(2)}h`
+        }
       },
       grid: {
         left: '3%',
@@ -482,7 +486,11 @@ const UserAnalyticsDashboard: React.FC<UserAnalyticsDashboardProps> = ({ userId 
         borderColor: '#e2e8f0',
         borderWidth: 1,
         textStyle: { color: '#2d3748' },
-        axisPointer: { type: 'shadow' }
+        axisPointer: { type: 'shadow' },
+        formatter: (params: any) => {
+          const param = Array.isArray(params) ? params[0] : params
+          return `${param.name}<br/>${param.seriesName}: ${Number(param.value).toFixed(2)}h`
+        }
       },
       grid: {
         left: '3%',
@@ -780,7 +788,7 @@ const UserAnalyticsDashboard: React.FC<UserAnalyticsDashboardProps> = ({ userId 
                   <span className="text-xs font-medium text-[#4a5568]">
                     {new Date(log.log_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                   </span>
-                  <span className="text-sm font-bold text-[#6b8cce]">{log.hours_logged}h</span>
+                  <span className="text-sm font-bold text-[#6b8cce]">{Number(log.hours_logged).toFixed(2)}h</span>
                 </div>
                 <p className="text-xs text-[#718096] mb-1 truncate" title={log.task_title}>
                   {log.task_title || 'No task'}

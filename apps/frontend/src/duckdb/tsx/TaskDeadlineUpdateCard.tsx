@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react'
 import { Icon } from '@iconify/react'
 import toast from 'react-hot-toast'
 import { queryExecutor } from '../query'
-import TaskDependencyChecker from './TaskDependencyChecker'
 
 interface TaskDeadlineUpdateCardProps {
   taskId?: number
@@ -34,12 +33,9 @@ const TaskDeadlineUpdateCard: React.FC<TaskDeadlineUpdateCardProps> = ({
   const [isLoading, setIsLoading] = useState<boolean>(true)
   const [isUpdating, setIsUpdating] = useState<boolean>(false)
   const [error, setError] = useState<string | null>(null)
-  const [hasDependencies, setHasDependencies] = useState<boolean>(false)
-  const [isCheckingDependencies, setIsCheckingDependencies] = useState<boolean>(true)
 
   useEffect(() => {
     loadTask()
-    checkDependencies()
   }, [taskId])
 
   const loadTask = async () => {
@@ -70,33 +66,6 @@ const TaskDeadlineUpdateCard: React.FC<TaskDeadlineUpdateCardProps> = ({
       setTask(null)
     }
     setIsLoading(false)
-  }
-
-  const checkDependencies = async () => {
-    setIsCheckingDependencies(true)
-    try {
-      const queries = await Promise.all([
-        queryExecutor.executeQuery(`SELECT COUNT(*) as count FROM ddb.task_comments WHERE task_id = ${taskId}`),
-        queryExecutor.executeQuery(`SELECT COUNT(*) as count FROM ddb.task_tags WHERE task_id = ${taskId}`),
-        queryExecutor.executeQuery(`SELECT COUNT(*) as count FROM ddb.work_logs WHERE task_id = ${taskId}`),
-        queryExecutor.executeQuery(`SELECT COUNT(*) as count FROM ddb.task_dependencies WHERE task_id = ${taskId}`)
-      ])
-
-      const totalDeps = queries.reduce((sum, result) => {
-        const count = typeof result.data[0].count === 'bigint' ? Number(result.data[0].count) : result.data[0].count
-        return sum + count
-      }, 0)
-
-      setHasDependencies(totalDeps > 0)
-    } catch (e) {
-      console.error('Error checking dependencies:', e)
-      setHasDependencies(false)
-    }
-    setIsCheckingDependencies(false)
-  }
-
-  const handleDependenciesCleared = () => {
-    checkDependencies()
   }
 
   const handleUpdateDeadline = async () => {
@@ -191,14 +160,12 @@ const TaskDeadlineUpdateCard: React.FC<TaskDeadlineUpdateCardProps> = ({
     return today.toISOString().split('T')[0]
   }
 
-  if (isLoading || isCheckingDependencies) {
+  if (isLoading) {
     return (
       <div className="bg-white rounded-[20px] shadow-[0_2px_8px_rgba(0,0,0,0.08)] p-8">
         <div className="flex items-center justify-center gap-3 py-12">
           <div className="w-6 h-6 border-2 border-[#6b8cce] border-t-transparent rounded-full animate-spin" />
-          <span className="text-[#718096]">
-            {isCheckingDependencies ? 'Checking dependencies...' : 'Loading task...'}
-          </span>
+          <span className="text-[#718096]">Loading task...</span>
         </div>
       </div>
     )
@@ -212,44 +179,6 @@ const TaskDeadlineUpdateCard: React.FC<TaskDeadlineUpdateCardProps> = ({
           <p className="text-[#2d3748] font-semibold mb-2">{error || 'Task not found'}</p>
           <p className="text-[#718096] text-sm">Please check the task ID and try again</p>
         </div>
-      </div>
-    )
-  }
-
-  // Show dependency checker if task has dependencies
-  if (hasDependencies) {
-    return (
-      <div className="space-y-6">
-        <div className="bg-white rounded-[20px] shadow-[0_2px_8px_rgba(0,0,0,0.08)] p-8">
-          <div className="flex items-center gap-3 mb-6">
-            <Icon icon="mdi:alert-octagon" width={32} height={32} className="text-[#fc8181]" />
-            <h2 className="text-2xl font-bold text-[#fc8181]">Task Deadline Update Blocked</h2>
-          </div>
-
-          {/* Task Info Card */}
-          <div className="bg-gradient-to-r from-[#6b8cce] to-[#5ba3d0] rounded-[16px] p-6 mb-6 shadow-lg">
-            <div className="flex items-start gap-3">
-              <Icon icon="mdi:file-document" width={28} height={28} className="text-white mt-1" />
-              <div className="flex-1">
-                <p className="text-white text-sm font-medium opacity-90 mb-2">Task #{taskId}</p>
-                <h3 className="text-white text-2xl font-bold mb-3">{task.title}</h3>
-                {task.description && (
-                  <p className="text-white text-sm opacity-80 line-clamp-2">{task.description}</p>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-[#fff4e6] border-l-4 border-[#ffa940] p-4 rounded-[12px]">
-            <div className="flex items-start gap-3">
-              <Icon icon="mdi:alert" width={20} height={20} className="text-[#ffa940] mt-0.5" />
-              <p className="text-[#2d3748] text-sm">
-                <span className="font-semibold">This task deadline cannot be updated</span> due to existing dependencies in other tables. Please clear all dependencies first to proceed.
-              </p>
-            </div>
-          </div>
-        </div>
-        <TaskDependencyChecker taskId={taskId} onClearComplete={handleDependenciesCleared} />
       </div>
     )
   }

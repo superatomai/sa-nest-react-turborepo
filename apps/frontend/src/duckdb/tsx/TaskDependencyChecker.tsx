@@ -15,12 +15,55 @@ interface DependencyInfo {
   dependencies: number
 }
 
+interface Comment {
+  id: number
+  user_id: number
+  user_name: string
+  comment_text: string
+  is_blocker_reason: boolean
+  created_at: string
+}
+
+interface Tag {
+  tag: string
+}
+
+interface WorkLog {
+  id: number
+  user_id: number
+  user_name: string
+  hours_logged: number
+  log_date: string
+  description: string
+  created_at: string
+}
+
+interface Dependency {
+  id: number
+  depends_on_task_id: number
+  depends_on_task_title: string
+  dependency_type: string
+  is_hard_dependency: boolean
+}
+
 const TaskDependencyChecker: React.FC<TaskDependencyCheckerProps> = ({ taskId, onClearComplete }) => {
   const [isLoading, setIsLoading] = useState<boolean>(false)
   const [dependencies, setDependencies] = useState<DependencyInfo | null>(null)
   const [showConfirmModal, setShowConfirmModal] = useState<boolean>(false)
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState<boolean>(false)
+
+  // Data states
+  const [comments, setComments] = useState<Comment[]>([])
+  const [tags, setTags] = useState<Tag[]>([])
+  const [workLogs, setWorkLogs] = useState<WorkLog[]>([])
+  const [taskDependencies, setTaskDependencies] = useState<Dependency[]>([])
+
+  // Expanded states
+  const [expandedComments, setExpandedComments] = useState<boolean>(false)
+  const [expandedTags, setExpandedTags] = useState<boolean>(false)
+  const [expandedWorkLogs, setExpandedWorkLogs] = useState<boolean>(false)
+  const [expandedDependencies, setExpandedDependencies] = useState<boolean>(false)
 
   useEffect(() => {
     checkDependencies()
@@ -29,18 +72,56 @@ const TaskDependencyChecker: React.FC<TaskDependencyCheckerProps> = ({ taskId, o
   const checkDependencies = async () => {
     setIsLoading(true)
     try {
-      const queries = await Promise.all([
-        queryExecutor.executeQuery(`SELECT COUNT(*) as count FROM ddb.task_comments WHERE task_id = ${taskId}`),
-        queryExecutor.executeQuery(`SELECT COUNT(*) as count FROM ddb.task_tags WHERE task_id = ${taskId}`),
-        queryExecutor.executeQuery(`SELECT COUNT(*) as count FROM ddb.work_logs WHERE task_id = ${taskId}`),
-        queryExecutor.executeQuery(`SELECT COUNT(*) as count FROM ddb.task_dependencies WHERE task_id = ${taskId}`)
-      ])
+      // Fetch comments with user names
+      const commentsResult = await queryExecutor.executeQuery(`
+        SELECT
+          tc.id, tc.user_id, tc.comment_text, tc.is_blocker_reason, tc.created_at,
+          u.full_name as user_name
+        FROM ddb.task_comments tc
+        LEFT JOIN ddb.users u ON tc.user_id = u.id
+        WHERE tc.task_id = ${taskId}
+        ORDER BY tc.created_at DESC
+      `)
+      setComments(commentsResult.data)
+
+      // Fetch tags
+      const tagsResult = await queryExecutor.executeQuery(`
+        SELECT tag
+        FROM ddb.task_tags
+        WHERE task_id = ${taskId}
+        ORDER BY tag
+      `)
+      setTags(tagsResult.data)
+
+      // Fetch work logs with user names
+      const workLogsResult = await queryExecutor.executeQuery(`
+        SELECT
+          wl.id, wl.user_id, wl.hours_logged, wl.log_date, wl.description, wl.created_at,
+          u.full_name as user_name
+        FROM ddb.work_logs wl
+        LEFT JOIN ddb.users u ON wl.user_id = u.id
+        WHERE wl.task_id = ${taskId}
+        ORDER BY wl.log_date DESC
+      `)
+      setWorkLogs(workLogsResult.data)
+
+      // Fetch task dependencies with task titles
+      const depsResult = await queryExecutor.executeQuery(`
+        SELECT
+          td.id, td.depends_on_task_id, td.dependency_type, td.is_hard_dependency,
+          t.title as depends_on_task_title
+        FROM ddb.task_dependencies td
+        LEFT JOIN ddb.tasks t ON td.depends_on_task_id = t.id
+        WHERE td.task_id = ${taskId}
+        ORDER BY td.id
+      `)
+      setTaskDependencies(depsResult.data)
 
       const deps: DependencyInfo = {
-        comments: typeof queries[0].data[0].count === 'bigint' ? Number(queries[0].data[0].count) : queries[0].data[0].count,
-        tags: typeof queries[1].data[0].count === 'bigint' ? Number(queries[1].data[0].count) : queries[1].data[0].count,
-        workLogs: typeof queries[2].data[0].count === 'bigint' ? Number(queries[2].data[0].count) : queries[2].data[0].count,
-        dependencies: typeof queries[3].data[0].count === 'bigint' ? Number(queries[3].data[0].count) : queries[3].data[0].count
+        comments: commentsResult.data.length,
+        tags: tagsResult.data.length,
+        workLogs: workLogsResult.data.length,
+        dependencies: depsResult.data.length
       }
 
       setDependencies(deps)
@@ -169,81 +250,212 @@ const TaskDependencyChecker: React.FC<TaskDependencyCheckerProps> = ({ taskId, o
             <div className="space-y-4 mb-6">
               {/* Comments */}
               {dependencies.comments > 0 && (
-                <div className="flex items-center justify-between p-4 bg-[#f8f9fb] rounded-[12px]">
-                  <div className="flex items-center gap-3">
-                    <Icon icon="mdi:comment-multiple" width={24} height={24} className="text-[#5ba3d0]" />
-                    <div>
-                      <p className="font-semibold text-[#2d3748]">Task Comments</p>
-                      <p className="text-sm text-[#718096]">{dependencies.comments} comment(s)</p>
-                    </div>
+                <div className="bg-[#f8f9fb] rounded-[12px] overflow-hidden">
+                  <div className="flex items-center justify-between p-4">
+                    <button
+                      onClick={() => setExpandedComments(!expandedComments)}
+                      className="flex items-center gap-3 flex-1 text-left"
+                    >
+                      <Icon icon="mdi:comment-multiple" width={24} height={24} className="text-[#5ba3d0]" />
+                      <div>
+                        <p className="font-semibold text-[#2d3748]">Task Comments</p>
+                        <p className="text-sm text-[#718096]">{dependencies.comments} comment(s)</p>
+                      </div>
+                      <Icon
+                        icon={expandedComments ? "mdi:chevron-up" : "mdi:chevron-down"}
+                        width={20}
+                        height={20}
+                        className="text-[#718096] ml-auto"
+                      />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteRequest('comments')}
+                      className="flex items-center gap-2 px-4 py-2 bg-[#fc8181] text-white rounded-[10px] hover:bg-[#f56565] transition-all duration-200 text-sm font-semibold ml-3"
+                    >
+                      <Icon icon="mdi:delete" width={18} height={18} />
+                      <span>Delete</span>
+                    </button>
                   </div>
-                  <button
-                    onClick={() => handleDeleteRequest('comments')}
-                    className="flex items-center gap-2 px-4 py-2 bg-[#fc8181] text-white rounded-[10px] hover:bg-[#f56565] transition-all duration-200 text-sm font-semibold"
-                  >
-                    <Icon icon="mdi:delete" width={18} height={18} />
-                    <span>Delete</span>
-                  </button>
+                  {expandedComments && (
+                    <div className="border-t border-[#e2e8f0] p-4 space-y-3 bg-white">
+                      {comments.map((comment) => (
+                        <div key={comment.id} className="bg-[#f8f9fb] rounded-[10px] p-3">
+                          <div className="flex items-start justify-between mb-2">
+                            <div className="flex items-center gap-2">
+                              <Icon icon="mdi:account-circle" width={16} height={16} className="text-[#718096]" />
+                              <span className="text-sm font-medium text-[#2d3748]">{comment.user_name || 'Unknown User'}</span>
+                              {comment.is_blocker_reason && (
+                                <span className="px-2 py-0.5 bg-[#fc8181] text-white text-xs rounded-[6px] font-medium">
+                                  Blocker
+                                </span>
+                              )}
+                            </div>
+                            <span className="text-xs text-[#718096]">
+                              {new Date(comment.created_at).toLocaleDateString()}
+                            </span>
+                          </div>
+                          <p className="text-sm text-[#2d3748]">{comment.comment_text}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
 
               {/* Tags */}
               {dependencies.tags > 0 && (
-                <div className="flex items-center justify-between p-4 bg-[#f8f9fb] rounded-[12px]">
-                  <div className="flex items-center gap-3">
-                    <Icon icon="mdi:tag-multiple" width={24} height={24} className="text-[#9b8cce]" />
-                    <div>
-                      <p className="font-semibold text-[#2d3748]">Task Tags</p>
-                      <p className="text-sm text-[#718096]">{dependencies.tags} tag(s)</p>
-                    </div>
+                <div className="bg-[#f8f9fb] rounded-[12px] overflow-hidden">
+                  <div className="flex items-center justify-between p-4">
+                    <button
+                      onClick={() => setExpandedTags(!expandedTags)}
+                      className="flex items-center gap-3 flex-1 text-left"
+                    >
+                      <Icon icon="mdi:tag-multiple" width={24} height={24} className="text-[#9b8cce]" />
+                      <div>
+                        <p className="font-semibold text-[#2d3748]">Task Tags</p>
+                        <p className="text-sm text-[#718096]">{dependencies.tags} tag(s)</p>
+                      </div>
+                      <Icon
+                        icon={expandedTags ? "mdi:chevron-up" : "mdi:chevron-down"}
+                        width={20}
+                        height={20}
+                        className="text-[#718096] ml-auto"
+                      />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteRequest('tags')}
+                      className="flex items-center gap-2 px-4 py-2 bg-[#fc8181] text-white rounded-[10px] hover:bg-[#f56565] transition-all duration-200 text-sm font-semibold ml-3"
+                    >
+                      <Icon icon="mdi:delete" width={18} height={18} />
+                      <span>Delete</span>
+                    </button>
                   </div>
-                  <button
-                    onClick={() => handleDeleteRequest('tags')}
-                    className="flex items-center gap-2 px-4 py-2 bg-[#fc8181] text-white rounded-[10px] hover:bg-[#f56565] transition-all duration-200 text-sm font-semibold"
-                  >
-                    <Icon icon="mdi:delete" width={18} height={18} />
-                    <span>Delete</span>
-                  </button>
+                  {expandedTags && (
+                    <div className="border-t border-[#e2e8f0] p-4 bg-white">
+                      <div className="flex flex-wrap gap-2">
+                        {tags.map((tag, index) => (
+                          <span
+                            key={index}
+                            className="inline-flex items-center gap-1 px-3 py-1.5 bg-[#9b8cce] text-white rounded-[8px] text-sm font-medium"
+                          >
+                            <Icon icon="mdi:tag" width={14} height={14} />
+                            {tag.tag}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
               {/* Work Logs */}
               {dependencies.workLogs > 0 && (
-                <div className="flex items-center justify-between p-4 bg-[#f8f9fb] rounded-[12px]">
-                  <div className="flex items-center gap-3">
-                    <Icon icon="mdi:clock-time-four" width={24} height={24} className="text-[#6bcf7f]" />
-                    <div>
-                      <p className="font-semibold text-[#2d3748]">Work Logs</p>
-                      <p className="text-sm text-[#718096]">{dependencies.workLogs} log(s)</p>
-                    </div>
+                <div className="bg-[#f8f9fb] rounded-[12px] overflow-hidden">
+                  <div className="flex items-center justify-between p-4">
+                    <button
+                      onClick={() => setExpandedWorkLogs(!expandedWorkLogs)}
+                      className="flex items-center gap-3 flex-1 text-left"
+                    >
+                      <Icon icon="mdi:clock-time-four" width={24} height={24} className="text-[#6bcf7f]" />
+                      <div>
+                        <p className="font-semibold text-[#2d3748]">Work Logs</p>
+                        <p className="text-sm text-[#718096]">{dependencies.workLogs} log(s)</p>
+                      </div>
+                      <Icon
+                        icon={expandedWorkLogs ? "mdi:chevron-up" : "mdi:chevron-down"}
+                        width={20}
+                        height={20}
+                        className="text-[#718096] ml-auto"
+                      />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteRequest('workLogs')}
+                      className="flex items-center gap-2 px-4 py-2 bg-[#fc8181] text-white rounded-[10px] hover:bg-[#f56565] transition-all duration-200 text-sm font-semibold ml-3"
+                    >
+                      <Icon icon="mdi:delete" width={18} height={18} />
+                      <span>Delete</span>
+                    </button>
                   </div>
-                  <button
-                    onClick={() => handleDeleteRequest('workLogs')}
-                    className="flex items-center gap-2 px-4 py-2 bg-[#fc8181] text-white rounded-[10px] hover:bg-[#f56565] transition-all duration-200 text-sm font-semibold"
-                  >
-                    <Icon icon="mdi:delete" width={18} height={18} />
-                    <span>Delete</span>
-                  </button>
+                  {expandedWorkLogs && (
+                    <div className="border-t border-[#e2e8f0] p-4 space-y-3 bg-white">
+                      {workLogs.map((log) => (
+                        <div key={log.id} className="bg-[#f8f9fb] rounded-[10px] p-3">
+                          <div className="flex items-start justify-between mb-2">
+                            <div className="flex items-center gap-2">
+                              <Icon icon="mdi:account-circle" width={16} height={16} className="text-[#718096]" />
+                              <span className="text-sm font-medium text-[#2d3748]">{log.user_name || 'Unknown User'}</span>
+                              <span className="px-2 py-0.5 bg-[#6bcf7f] text-white text-xs rounded-[6px] font-medium">
+                                {Number(log.hours_logged).toFixed(2)}h
+                              </span>
+                            </div>
+                            <span className="text-xs text-[#718096]">
+                              {new Date(log.log_date).toLocaleDateString()}
+                            </span>
+                          </div>
+                          {log.description && (
+                            <p className="text-sm text-[#2d3748]">{log.description}</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
 
               {/* Dependencies */}
               {dependencies.dependencies > 0 && (
-                <div className="flex items-center justify-between p-4 bg-[#f8f9fb] rounded-[12px]">
-                  <div className="flex items-center gap-3">
-                    <Icon icon="mdi:link-variant" width={24} height={24} className="text-[#ffa940]" />
-                    <div>
-                      <p className="font-semibold text-[#2d3748]">Task Dependencies</p>
-                      <p className="text-sm text-[#718096]">{dependencies.dependencies} dependency(ies)</p>
-                    </div>
+                <div className="bg-[#f8f9fb] rounded-[12px] overflow-hidden">
+                  <div className="flex items-center justify-between p-4">
+                    <button
+                      onClick={() => setExpandedDependencies(!expandedDependencies)}
+                      className="flex items-center gap-3 flex-1 text-left"
+                    >
+                      <Icon icon="mdi:link-variant" width={24} height={24} className="text-[#ffa940]" />
+                      <div>
+                        <p className="font-semibold text-[#2d3748]">Task Dependencies</p>
+                        <p className="text-sm text-[#718096]">{dependencies.dependencies} dependency(ies)</p>
+                      </div>
+                      <Icon
+                        icon={expandedDependencies ? "mdi:chevron-up" : "mdi:chevron-down"}
+                        width={20}
+                        height={20}
+                        className="text-[#718096] ml-auto"
+                      />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteRequest('dependencies')}
+                      className="flex items-center gap-2 px-4 py-2 bg-[#fc8181] text-white rounded-[10px] hover:bg-[#f56565] transition-all duration-200 text-sm font-semibold ml-3"
+                    >
+                      <Icon icon="mdi:delete" width={18} height={18} />
+                      <span>Delete</span>
+                    </button>
                   </div>
-                  <button
-                    onClick={() => handleDeleteRequest('dependencies')}
-                    className="flex items-center gap-2 px-4 py-2 bg-[#fc8181] text-white rounded-[10px] hover:bg-[#f56565] transition-all duration-200 text-sm font-semibold"
-                  >
-                    <Icon icon="mdi:delete" width={18} height={18} />
-                    <span>Delete</span>
-                  </button>
+                  {expandedDependencies && (
+                    <div className="border-t border-[#e2e8f0] p-4 space-y-3 bg-white">
+                      {taskDependencies.map((dep) => (
+                        <div key={dep.id} className="bg-[#f8f9fb] rounded-[10px] p-3">
+                          <div className="flex items-start justify-between mb-2">
+                            <div className="flex items-center gap-2">
+                              <Icon icon="mdi:link" width={16} height={16} className="text-[#ffa940]" />
+                              <span className="text-sm font-medium text-[#2d3748]">
+                                {dep.depends_on_task_title || `Task #${dep.depends_on_task_id}`}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="px-2 py-0.5 bg-[#ffa940] bg-opacity-20 text-[#ffa940] text-xs rounded-[6px] font-medium capitalize">
+                                {dep.dependency_type.replace('_', ' ')}
+                              </span>
+                              {dep.is_hard_dependency && (
+                                <span className="px-2 py-0.5 bg-[#fc8181] bg-opacity-20 text-[#fc8181] text-xs rounded-[6px] font-medium">
+                                  Hard
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </div>

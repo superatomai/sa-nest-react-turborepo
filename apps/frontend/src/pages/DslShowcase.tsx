@@ -168,7 +168,7 @@ const DslShowcase: React.FC = () => {
       case 'taskAnalytics':
         return (
           <div className="p-8">
-            <TaskAnalyticsDashboard taskId={10} />
+            <TaskAnalyticsDashboard  />
           </div>
         )
       case 'userAnalytics':
