@@ -201,7 +201,21 @@ UI elements are the building blocks rendered by the UpdatedDSLRenderer.
 
 ### Conditional Rendering
 
-#### If/Else Structure
+Conditionals support both **expressions** (`$exp`) and **bindings** (`$bind`).
+
+#### Simple Variable Check (using $bind)
+```json
+{
+  "id": "form-container",
+  "type": "div",
+  "if": {
+    "$bind": "isVisible"
+  },
+  "children": "Form content"
+}
+```
+
+#### Expression Check (using $exp)
 ```json
 {
   "id": "admin-panel",

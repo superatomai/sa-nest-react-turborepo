@@ -45,8 +45,8 @@ export const UIElementSchema = z.object({
     query: QuerySpecSchema.optional(),
 
     // Conditionals
-    if: ExpressionSchema.optional(),
-    elseIf: ExpressionSchema.optional(),
+    if: z.union([ExpressionSchema, BindingSchema]).optional(),
+    elseIf: z.union([ExpressionSchema, BindingSchema]).optional(),
 
     // Loops
     for: ForDirectiveSchema.optional(),

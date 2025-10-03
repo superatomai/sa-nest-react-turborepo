@@ -2,6 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { query, type Options } from '@anthropic-ai/claude-agent-sdk';
 import { ProjectFileManager } from '../utils/project-file-manager';
 import { UIComponent } from 'src/types/dsl';
+import * as fs from 'fs/promises';
+import * as path from 'path';
 
 export interface ClaudeUIGenerationRequest {
 	prompt: string;
@@ -83,7 +85,7 @@ export class ClaudeUIAgentService {
 			const mode = existingJSX ? 'edit' : 'create';
 
 			// Build the Claude Code prompt that lets Claude work with actual files
-			const claudePrompt = this.buildClaudeCodePrompt(prompt, uiId, mode);
+			const claudePrompt = await this.buildClaudeCodePrompt(prompt, uiId, mode);
 
 			// Configure Claude Agent SDK with proper working directory and tools
 			const options: Options = {
@@ -275,46 +277,32 @@ export class ClaudeUIAgentService {
 
 			const projectStructure = await this.projectFileManager.ensureProjectStructure(projectId);
 
+			// Load conversion instructions from file
+			const instructionsPath = path.join(process.cwd(), 'src', 'claude-agent-sdk', 'instructions', 'tsx-to-dsl-conversion.md');
+			let conversionInstructions = '';
+			try {
+				conversionInstructions = await fs.readFile(instructionsPath, 'utf-8');
+			} catch (error) {
+				console.warn('Could not load conversion instructions file, using fallback');
+				conversionInstructions = 'Follow DSL documentation to convert TSX to DSL JSON format.';
+			}
+
 			// Build the conversion prompt
 			const conversionPrompt = `# Convert TSX to DSL JSON
 
 ## Task
 1. Read DSL docs: \`dsl/schema.ts\`, \`dsl/doc.md\`, \`dsl/native.md\`
 2. Read TSX: \`uis/${uiId}/ui.tsx\`
-3. Convert to DSL JSON and write to \`uis/${uiId}/ui.json\`
+3. Read conversion guide below for detailed patterns and examples
+4. Convert to DSL JSON and write to \`uis/${uiId}/ui.json\`
 
-## Conversion Rules
+---
 
-### Element Structure
-- **id field** (required): Unique DSL identifier like \`"main-container-el"\`
-- **sa-id in props** (required): Preserve from TSX like \`"props": {"sa-id": "main-container"}\`
-- Both must be unique within component
+${conversionInstructions}
 
-### Component Mapping
-- **States**: \`const [x, setX] = useState()\` → \`"states": {"x": {...}}\`
-- **Methods**: Event handlers → \`"methods": {"handleClick": {"fn": "() => {...}"}}\`
-- **Effects**: \`useEffect\` → \`"effects": [{"fn": "() => {...}", "deps": [...]}]\`
-- **Data binding**: \`{user.name}\` → \`{"$bind": "user.name"}\`
-- **Expressions**: \`{count + 1}\` → \`{"$exp": "count + 1", "$deps": ["count"]}\`
+---
 
-### Loops (CRITICAL)
-- **Put \`for\` on the SAME element that has grid/list classes**
-- Grid: \`<div className="grid gap-4">{items.map(...)}</div>\` → \`{"for": {...}, "props": {"className": "grid gap-4"}, "children": {...}}\`
-- Select: \`<select>{opts.map(...)}</select>\` → \`{"type": "select", "children": {"type": "option", "for": {...}}}\`
-- List: \`<ul>{items.map(...)}</ul>\` → \`{"type": "ul", "children": {"li", "for": {...}}}\`
-
-### Conditionals (CRITICAL)
-- **Multiple early returns = NESTED structure**
-- TSX: \`if (loading) return <div>Loading</div>\` then \`if (error) return <div>Error</div>\`
-- JSON: \`{"if": loading, "props": {...}, "children": "Loading", "else": {"if": error, "props": {...}, "children": "Error", "else": {...}}}\`
-- Root element = content when \`if\` is TRUE
-- \`else\` object = complete element when \`if\` is FALSE
-
-### TypeScript Cleanup
-- Remove ALL TypeScript: \`(window as any)\` → \`window\`, \`const x: Type\` → \`const x\`, \`(e: Event)\` → \`(e)\`
-- Keep only valid JavaScript in function strings
-
-## Output Structure
+## Final Output Structure
 \`\`\`json
 {
   "id": "${uiId}",
@@ -333,7 +321,7 @@ export class ClaudeUIAgentService {
 }
 \`\`\`
 
-Start conversion now.`;
+Start conversion now. Write the complete DSL JSON to \`uis/${uiId}/ui.json\`.`;
 
 			// Configure Claude Agent SDK for conversion
 			const options: Options = {
@@ -399,7 +387,16 @@ Start conversion now.`;
 		}
 	}
 
-	private buildClaudeCodePrompt(prompt: string, uiId: string, mode: 'create' | 'edit' = 'create'): string {
+	private async buildClaudeCodePrompt(prompt: string, uiId: string, mode: 'create' | 'edit' = 'create'): Promise<string> {
+		// Load TSX generation instructions
+		const instructionsPath = path.join(process.cwd(), 'src', 'claude-agent-sdk', 'instructions', 'tsx-generation-guide.md');
+		let tsxInstructions = '';
+		try {
+			tsxInstructions = await fs.readFile(instructionsPath, 'utf-8');
+		} catch (error) {
+			console.warn('Could not load TSX generation instructions file');
+		}
+
 		if (mode === 'edit') {
 			return `# Edit React Component
 
@@ -424,17 +421,6 @@ ${prompt}
 3. **Grid layouts: Loop on grid container** - \`{items.map(...)}\` must be directly inside the element with \`grid\` class
 4. **Functional component with hooks** - Keep default export
 
-## Grid Layout Pattern
-\`\`\`tsx
-<div sa-id="items-grid" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-  {items.map((item) => (
-    <div key={item.id} className="bg-white rounded-lg p-5">
-      {/* Card content */}
-    </div>
-  ))}
-</div>
-\`\`\`
-
 Start by reading the files, then use Edit tool to make changes.`;
 		} else {
 			return `# Create React Component
@@ -443,28 +429,25 @@ Start by reading the files, then use Edit tool to make changes.`;
 ${prompt}
 
 ## Task
-1. Read \`CLAUDE.md\` for project guidelines
-2. Check \`uis/\` directory for existing patterns
-3. Create component at \`uis/${uiId}/ui.tsx\`
+Read the comprehensive guide below, then follow the steps to create the component.
 
-## TSX Requirements
-1. **Unique \`sa-id\` on EVERY element** - Use descriptive names like \`sa-id="header-title"\`
-2. **Tailwind v4 CSS only** - Use responsive classes like \`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4\`
-3. **Grid layouts: Loop on grid container** - \`{items.map(...)}\` must be directly inside the element with \`grid\` class
-4. **Functional component with hooks** - Include default export
+---
 
-## Grid Layout Pattern
-\`\`\`tsx
-<div sa-id="items-grid" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-  {items.map((item) => (
-    <div key={item.id} className="bg-white rounded-lg p-5">
-      {/* Card content */}
-    </div>
-  ))}
-</div>
-\`\`\`
+${tsxInstructions}
 
-Start by reading the files, then create the component.`;
+---
+
+## Your Steps
+1. Read \`CLAUDE.md\`, \`database/schema.md\`, and \`design/README.md\`
+2. Identify the CRUD operation from the user request (CREATE, LIST, UPDATE, or DELETE)
+3. Follow the appropriate pattern from the guide above
+4. Create component at \`uis/${uiId}/ui.tsx\`
+
+**CRITICAL:**
+- "create [entity]" = CREATE operation = Generate FORM ONLY (no list!)
+- "list [entities]" = LIST operation = Generate grid of cards (no form!)
+
+Start by reading the project files, then create the component.`;
 		}
 	}
 
