@@ -11,6 +11,7 @@ import AllUis from "@/components/uis/AllUis";
 import { ProjectsLoading } from "@/components/loading-skeleton/projects-loading";
 import NoProjectsFound from "@/components/project/NoProjectsFound";
 import AddNewProject from "@/components/project/AddNewProject";
+import { Navigate } from "react-router-dom";
 
 const LIMIT = 8;
 
@@ -20,7 +21,7 @@ const Projects = () => {
 	const [page, setPage] = useState(0);
 
 	if (!orgId) {
-		return <div>No organization selected</div>;
+		return <Navigate to="/create-organization" replace />;
 	}
 
 	const  projectsQuery: any = trpc.projectsGetAll.useQuery(

@@ -16,10 +16,11 @@ import {
   TaskList,
   ProjectList,
   UserList,
-  SchemaExplorer
+  SchemaExplorer,
+  TaskDependencyChecker
 } from '../duckdb/tsx'
 
-type TabType = 'viewer' | 'taskForm' | 'userForm' | 'projectForm' | 'updateDeadline' | 'updateTaskDeadline' | 'updateStatus' | 'reassignTask' | 'taskReassignCard' | 'taskDeadlineCard' | 'taskStatusCard' | 'dbOverview' | 'taskList' | 'projectList' | 'userList' | 'schemaExplorer'
+type TabType = 'viewer' | 'taskForm' | 'userForm' | 'projectForm' | 'updateDeadline' | 'updateTaskDeadline' | 'updateStatus' | 'reassignTask' | 'taskReassignCard' | 'taskDeadlineCard' | 'taskStatusCard' | 'dbOverview' | 'taskList' | 'projectList' | 'userList' | 'schemaExplorer' | 'taskDependencyChecker'
 
 const DslShowcase: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('viewer')
@@ -120,6 +121,12 @@ const DslShowcase: React.FC = () => {
       label: 'Schema Explorer',
       icon: 'mdi:database-cog',
       description: 'Explore database schema and export documentation'
+    },
+    {
+      id: 'taskDependencyChecker',
+      label: 'Task Dependency Checker',
+      icon: 'mdi:alert-circle-check',
+      description: 'Check and clear task dependencies for updates'
     }
   ]
 
@@ -173,6 +180,12 @@ const DslShowcase: React.FC = () => {
         return <UserList />
       case 'schemaExplorer':
         return <SchemaExplorer />
+      case 'taskDependencyChecker':
+        return (
+          <div className="p-8">
+            <TaskDependencyChecker taskId={10} />
+          </div>
+        )
       default:
         return null
     }
