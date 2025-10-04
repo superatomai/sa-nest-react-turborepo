@@ -250,7 +250,7 @@ const DslShowcase: React.FC = () => {
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 bg-[#6b8cce] bg-opacity-10 rounded-[10px] flex items-center justify-center">
-                <Icon icon="mdi:view-dashboard" width={20} height={20} className="text-[#6b8cce]" />
+                <Icon icon="mdi:view-dashboard" width={20} height={20} className="text-white" />
               </div>
               <div>
                 <h1 className="text-lg font-bold text-[#2d3748]">DuckDB Component Showcase</h1>
