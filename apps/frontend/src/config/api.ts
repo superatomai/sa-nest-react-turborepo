@@ -1,23 +1,9 @@
 const getApiEndpoint = () => {
-  const vite_local_api_url = import.meta.env.VITE_LOCAL_API_URL;
   const vite_api_url = import.meta.env.VITE_API_URL;
+  
+  console.log("Using API URL:", vite_api_url);
 
-  const isLocalHost =
-    window.location.hostname === "localhost" ||
-    window.location.hostname === "127.0.0.1";
-
-  let apiUrl;
-
-  // for local dev
-  if (isLocalHost) {
-    apiUrl = vite_local_api_url;
-  } else {
-    apiUrl = vite_api_url;
-  }
-
-  console.log("Using API URL:", apiUrl);
-
-  return apiUrl;
+  return vite_api_url;
 };
 
 export const API_URL = getApiEndpoint();
